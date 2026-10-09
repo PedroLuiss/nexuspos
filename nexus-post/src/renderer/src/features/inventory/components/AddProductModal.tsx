@@ -72,34 +72,37 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-backdrop">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
       <div
-        className="w-full max-w-3xl bg-white rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-modal"
+        className="w-full max-w-3xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col"
         role="dialog"
         aria-modal="true"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#f8f9fa] border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded bg-[#0078D4]/10 text-[#0078D4]">
-              <Package size={20} />
+        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0]">
+              <Package size={18} />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">
+              <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                 {initialData ? 'Editar Producto' : 'Agregar Nuevo Producto'}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-[#717783]">
                 Ingresa los datos para registrar el artículo en el catálogo de inventario
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            title="Cerrar (Esc)"
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="kbd-badge">ESC</span>
+            <button
+              onClick={onClose}
+              title="Cerrar (Esc)"
+              className="p-1 text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] rounded transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Form organized in 2 columns */}
@@ -340,20 +343,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200">
+          <div className="flex items-center justify-end gap-2.5 px-5 py-2.5 bg-[#F9F9F9] border-t border-[#E5E5E5] rounded-b-[8px]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-sm transition-colors border border-slate-300"
+              className="px-4 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white border border-[#D1D1D1] rounded-[4px] hover:bg-[#F9F9F9] cursor-pointer"
             >
-              Cancelar
+              Cancelar [ESC]
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-5 py-1.5 text-xs font-medium text-white bg-[#0078D4] hover:bg-[#106EBE] active:bg-[#005A9E] rounded-sm shadow-xs transition-colors"
+              className="flex items-center gap-1.5 px-5 py-1.5 text-xs font-bold text-white bg-[#0067C0] hover:bg-[#0078D4] active:bg-[#004f96] rounded-[4px] shadow-xs transition-colors cursor-pointer"
             >
               <Check size={14} />
               <span>{initialData ? 'Guardar Cambios' : 'Registrar Producto'}</span>
+              <span className="kbd-badge bg-white/20 text-white border-white/30 text-[10px]">
+                ENTER
+              </span>
             </button>
           </div>
         </form>

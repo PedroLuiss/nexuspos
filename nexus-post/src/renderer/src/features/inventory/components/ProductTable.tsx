@@ -3,6 +3,7 @@ import { Product, KardexReason } from '../../../shared/types/domain'
 import AddProductModal from './AddProductModal'
 import BarcodeGeneratorModal from './BarcodeGeneratorModal'
 import StockAdjustmentModal from './StockAdjustmentModal'
+import StockBranchModal from './StockBranchModal'
 import {
   Search,
   Plus,
@@ -14,7 +15,8 @@ import {
   AlertCircle,
   Filter,
   Barcode,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Building2
 } from '../../../shared/icons/Icons'
 
 interface ProductTableProps {
@@ -43,12 +45,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   // Submodals
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
+  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false)
   const [adjustmentMode, setAdjustmentMode] = useState<'IN' | 'OUT' | null>(null)
 
   // Hotkeys listener for products module
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (isModalOpen || isBarcodeModalOpen || adjustmentMode !== null) return
+      if (isModalOpen || isBarcodeModalOpen || isBranchModalOpen || adjustmentMode !== null) return
 
       if (e.altKey && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault()
@@ -63,12 +66,15 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       } else if (e.altKey && (e.key === 'b' || e.key === 'B')) {
         e.preventDefault()
         setIsBarcodeModalOpen(true)
+      } else if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault()
+        setIsBranchModalOpen(true)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isModalOpen, isBarcodeModalOpen, adjustmentMode])
+  }, [isModalOpen, isBarcodeModalOpen, isBranchModalOpen, adjustmentMode])
 
   // Unique categories
   const categories = useMemo(() => {
@@ -164,8 +170,20 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           >
             <Barcode size={14} className="text-[#0067C0]" />
             <span>Imprimir Cód. Barras</span>
-            <span className="font-mono text-[10px] text-[#5C5C5C] bg-[#EBEBEB] px-1 rounded border border-[#D1D1D1]">
-              [ALT+B]
+            <span className="kbd-badge">
+              ALT+B
+            </span>
+          </button>
+
+          {/* Consulta Stock Sucursales ALT+O */}
+          <button
+            onClick={() => setIsBranchModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0067C0] bg-[#EBF0F5] hover:bg-blue-100 border border-[#0067C0]/30 rounded-[4px] transition-colors cursor-pointer"
+          >
+            <Building2 size={14} className="text-[#0067C0]" />
+            <span>Stock Sucursales</span>
+            <span className="kbd-badge text-[#0067C0] bg-white border-[#0067C0]/30">
+              ALT+O
             </span>
           </button>
         </div>
@@ -478,6 +496,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         products={products}
         onClose={() => setAdjustmentMode(null)}
         onConfirmAdjustment={onStockAdjustment}
+      />
+
+      {/* Multi-Branch Stock Consultation & Transfer Modal (ALT+O) */}
+      <StockBranchModal
+        isOpen={isBranchModalOpen}
+        products={products}
+        onClose={() => setIsBranchModalOpen(false)}
+        onConfirmTransfer={(details) => {
+          alert(`Solicitud de traslado registrada: ${details.quantity} pzas (Motivo: ${details.reason})`)
+        }}
       />
     </div>
   )

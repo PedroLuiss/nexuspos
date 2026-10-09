@@ -27,29 +27,32 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
   const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-2xl bg-white rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-modal">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
+      <div className="w-full max-w-2xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-[#f8f9fa] border-b border-slate-200">
+        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded bg-[#0078D4]/10 text-[#0078D4] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0] flex items-center justify-center">
               <Barcode size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-800">
+              <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                 Generador de Etiquetas y Códigos de Barras
               </h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-[#717783]">
                 Configuración de dimensiones térmicas para impresoras de etiquetas (Zebra / Xprinter)
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1 rounded"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="kbd-badge">ESC</span>
+            <button
+              onClick={onClose}
+              className="text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] p-1 rounded transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Content: 2 Columns (Config Left, Preview Right) */}

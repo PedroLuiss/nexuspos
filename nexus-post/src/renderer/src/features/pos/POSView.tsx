@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Product, CartItem, PaymentDetails, SuspendedSale, Customer } from '../../shared/types/domain'
+import {
+  Product,
+  PaymentDetails,
+  Customer
+} from '../../shared/types/domain'
 import SaleModal from './components/SaleModal'
 import SplitPaymentModal from './components/SplitPaymentModal'
 import SuspendedSalesModal from './components/SuspendedSalesModal'
@@ -26,23 +30,7 @@ import {
   UserCheck,
   X
 } from '../../shared/icons/Icons'
-
-interface POSViewProps {
-  products: Product[]
-  cart: CartItem[]
-  suspendedSales: SuspendedSale[]
-  customers?: Customer[]
-  onAddCustomer?: (customer: Omit<Customer, 'id' | 'currentDebt' | 'debts' | 'payments'>) => Customer
-  onAddToCart: (product: Product, quantity?: number) => void
-  onUpdateQuantity: (productId: string, quantity: number) => void
-  onUpdateDiscount: (productId: string, discountPercent: number) => void
-  onRemoveFromCart: (productId: string) => void
-  onClearCart: () => void
-  onCompleteSale: (details: PaymentDetails) => void
-  onSuspendSale: () => void
-  onResumeSale: (sale: SuspendedSale) => void
-  onDeleteSuspendedSale: (id: string) => void
-}
+import { POSViewProps } from './types'
 
 export const POSView: React.FC<POSViewProps> = ({
   products,
@@ -429,7 +417,7 @@ export const POSView: React.FC<POSViewProps> = ({
                 onKeyDown={handleSearchKeyDown}
                 className="w-full pl-9 pr-24 py-2 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] focus:bg-white focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] font-medium text-[#1B1B1B] placeholder:text-[#717783]"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-[2px] bg-[#EBEBEB] text-[10px] font-mono font-semibold text-[#1B1B1B] border border-[#D1D1D1]">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 kbd-badge">
                 ENTER
               </span>
             </div>
@@ -441,8 +429,8 @@ export const POSView: React.FC<POSViewProps> = ({
             >
               <List size={14} className="text-[#0067C0]" />
               <span>Lista</span>
-              <span className="font-mono text-[10px] bg-[#EBEBEB] px-1 rounded text-[#5C5C5C] border border-[#D1D1D1]">
-                [ALT+L]
+              <span className="kbd-badge">
+                ALT+L
               </span>
             </button>
 
@@ -454,8 +442,8 @@ export const POSView: React.FC<POSViewProps> = ({
             >
               <Pause size={13} className="text-amber-600" />
               <span>Pausar</span>
-              <span className="font-mono text-[10px] bg-[#EBEBEB] px-1 rounded text-[#5C5C5C] border border-[#D1D1D1]">
-                [ALT+P]
+              <span className="kbd-badge">
+                ALT+P
               </span>
             </button>
 
@@ -471,8 +459,8 @@ export const POSView: React.FC<POSViewProps> = ({
                   {suspendedSales.length}
                 </span>
               )}
-              <span className="font-mono text-[10px] bg-[#EBEBEB] px-1 rounded text-[#5C5C5C] border border-[#D1D1D1]">
-                [ALT+E]
+              <span className="kbd-badge">
+                ALT+E
               </span>
             </button>
           </div>
@@ -834,7 +822,7 @@ export const POSView: React.FC<POSViewProps> = ({
                         setShowCustomerDropdown(true)
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
-                      onKeyDown={handleCustomerCedulaCedulaKeyDown}
+                      onKeyDown={handleCustomerCedulaKeyDown}
                       className="w-full pl-8 pr-16 py-1.5 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] focus:bg-white focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] text-[#1B1B1B] font-mono"
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#717783] bg-[#EBEBEB] px-1 rounded border border-[#D1D1D1]">
@@ -967,8 +955,8 @@ export const POSView: React.FC<POSViewProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-sm">${finalTotal.toFixed(2)}</span>
-                <span className="font-mono text-xs bg-[#005228]/40 px-2 py-0.5 rounded text-white">
-                  [F12]
+                <span className="kbd-badge bg-[#005228]/50 text-white border-emerald-700/50">
+                  F12
                 </span>
               </div>
             </button>
@@ -983,8 +971,8 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <Banknote size={16} className="text-[#107C41] mb-0.5" />
                 <span>Efectivo</span>
-                <span className="text-[10px] text-[#717783] font-mono bg-[#EBEBEB] px-1 rounded border border-[#D1D1D1] mt-0.5">
-                  [F6]
+                <span className="kbd-badge mt-0.5 text-[10px]">
+                  F6
                 </span>
               </button>
 
@@ -996,8 +984,8 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <CreditCard size={16} className="text-[#0067C0] mb-0.5" />
                 <span>Tarjeta</span>
-                <span className="text-[10px] text-[#717783] font-mono bg-[#EBEBEB] px-1 rounded border border-[#D1D1D1] mt-0.5">
-                  [F7]
+                <span className="kbd-badge mt-0.5 text-[10px]">
+                  F7
                 </span>
               </button>
 
@@ -1009,8 +997,8 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <Layers size={16} className="text-purple-700 mb-0.5" />
                 <span>Mixto</span>
-                <span className="text-[10px] text-[#717783] font-mono bg-[#EBEBEB] px-1 rounded border border-[#D1D1D1] mt-0.5">
-                  [F8]
+                <span className="kbd-badge mt-0.5 text-[10px]">
+                  F8
                 </span>
               </button>
             </div>
@@ -1020,24 +1008,24 @@ export const POSView: React.FC<POSViewProps> = ({
               <button
                 onClick={handleQuickCash}
                 disabled={cart.length === 0}
-                className="flex items-center justify-center gap-1 py-2 px-2 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 text-emerald-800 font-bold border border-emerald-200 rounded-[4px] transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2 px-2 bg-[#107C41]/10 hover:bg-[#107C41]/20 active:bg-[#107C41]/30 disabled:opacity-40 text-[#107C41] font-bold border border-[#107C41]/30 rounded-[4px] transition-colors cursor-pointer"
               >
                 <Zap size={14} className="text-[#107C41]" />
                 <span>Cobro Rápido</span>
-                <span className="font-mono text-[10px] bg-emerald-200/60 px-1 rounded text-emerald-900 border border-emerald-300">
-                  [ALT+Q]
+                <span className="kbd-badge text-[#107C41] bg-[#107C41]/15 border-[#107C41]/30">
+                  ALT+Q
                 </span>
               </button>
 
               <button
                 onClick={() => setIsPreviewModalOpen(true)}
                 disabled={cart.length === 0}
-                className="flex items-center justify-center gap-1 py-2 px-2 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] font-semibold border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2 px-2 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] font-semibold border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
               >
                 <Receipt size={14} className="text-[#0067C0]" />
                 <span>Ver Ticket</span>
-                <span className="font-mono text-[10px] bg-[#EBEBEB] px-1 rounded text-[#5C5C5C] border border-[#D1D1D1]">
-                  [ALT+T]
+                <span className="kbd-badge">
+                  ALT+T
                 </span>
               </button>
             </div>

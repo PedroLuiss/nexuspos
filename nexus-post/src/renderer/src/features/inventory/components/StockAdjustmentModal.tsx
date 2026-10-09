@@ -43,16 +43,16 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-lg bg-white rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-modal">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
+      <div className="w-full max-w-lg bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-[#f8f9fa] border-b border-slate-200">
+        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
           <div className="flex items-center gap-2.5">
             <div
-              className={`w-8 h-8 rounded flex items-center justify-center ${
+              className={`w-8 h-8 rounded-[4px] flex items-center justify-center border ${
                 isInputMode
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-red-50 text-red-700'
+                  ? 'bg-emerald-50 text-[#107C41] border-emerald-200'
+                  : 'bg-red-50 text-[#C42B1C] border-red-200'
               }`}
             >
               {isInputMode ? <Plus size={18} /> : <Minus size={18} />}

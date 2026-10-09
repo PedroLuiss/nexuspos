@@ -30,7 +30,9 @@ export function NavigationTabs({ tabs, activeTab, onTabChange }: NavigationTabsP
           >
             {tab.label}
             {tab.hotkey && (
-              <span className="ml-2 text-xs font-mono opacity-50">[{tab.hotkey}]</span>
+              <span className={`ml-2 kbd-badge ${isActive ? 'bg-[#EBF0F5] text-[#0067C0] border-[#0067C0]/30' : ''}`}>
+                {tab.hotkey}
+              </span>
             )}
             {/* Indicador de pestaña activa al estilo WinUI (borde inferior) */}
             {isActive && (

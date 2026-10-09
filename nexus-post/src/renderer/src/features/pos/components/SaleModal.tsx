@@ -180,7 +180,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 >
                   <Banknote size={18} />
                   <span>Efectivo</span>
-                  <span className="text-[10px] font-mono bg-[#EBEBEB] px-1 rounded text-[#1B1B1B]">[F6]</span>
+                  <span className="kbd-badge mt-0.5 text-[10px]">F6</span>
                 </button>
 
                 <button
@@ -194,7 +194,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 >
                   <CreditCard size={18} />
                   <span>Tarjeta</span>
-                  <span className="text-[10px] font-mono bg-[#EBEBEB] px-1 rounded text-[#1B1B1B]">[F7]</span>
+                  <span className="kbd-badge mt-0.5 text-[10px]">F7</span>
                 </button>
 
                 <button
@@ -208,7 +208,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 >
                   <Layers size={18} />
                   <span>Pago Mixto</span>
-                  <span className="text-[10px] font-mono bg-[#EBEBEB] px-1 rounded text-[#1B1B1B]">[F8]</span>
+                  <span className="kbd-badge mt-0.5 text-[10px]">F8</span>
                 </button>
               </div>
             </div>
@@ -339,8 +339,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 </span>
               </label>
 
-              <span className="text-[11px] text-[#5C5C5C] font-mono bg-[#EBEBEB] px-1.5 py-0.5 rounded border border-[#D1D1D1]">
-                [ENTER]
+              <span className="kbd-badge">
+                ENTER
               </span>
             </div>
           </div>
@@ -350,9 +350,10 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] shadow-xs transition-colors cursor-pointer"
             >
-              Cancelar [ESC]
+              <span>Cancelar</span>
+              <span className="kbd-badge">ESC</span>
             </button>
             <button
               type="submit"
@@ -361,8 +362,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             >
               <Check size={15} />
               <span>Confirmar Venta (${total.toFixed(2)})</span>
-              <span className="font-mono text-[10px] bg-[#005228]/40 px-1.5 py-0.2 rounded text-white">
-                [F12]
+              <span className="kbd-badge bg-[#005228]/50 text-white border-emerald-700/50">
+                F12
               </span>
             </button>
           </div>
