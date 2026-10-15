@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Product, KardexMovementType, KardexReason } from '../../../shared/types/domain'
-import { Plus, Minus, X, Check, Package, AlertCircle } from '../../../shared/icons/Icons'
+import { Product, KardexReason } from '../../../shared/types/domain'
+import { Plus, Minus, X, Check } from '../../../shared/icons/Icons'
 
 interface StockAdjustmentModalProps {
   isOpen: boolean

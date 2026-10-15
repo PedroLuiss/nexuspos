@@ -1,7 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerIpcHandlers } from './ipc'
+import { closeDatabase } from './adapters/persistence/sqlite/database'
 
 function createWindow(): void {
   // Create the browser window.
@@ -49,8 +51,8 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  // Initialize persistence (SQLite), migrations and IPC handlers
+  registerIpcHandlers()
 
   createWindow()
 
@@ -68,6 +70,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  closeDatabase()
 })
 
 // In this file you can include the rest of your app's specific main process

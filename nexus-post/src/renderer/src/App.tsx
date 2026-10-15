@@ -1,11 +1,9 @@
 import React, { useState } from 'react'
 import {
-  ActiveTab,
   Product,
   CartItem,
   PaymentDetails,
   KardexMovement,
-  KardexReason,
   CashMovement,
   ShiftState,
   Customer,
@@ -486,103 +484,6 @@ function AppContent(): React.JSX.Element {
     showToast('Venta en espera descartada', 'info')
   }
 
-  // Stock Adjustment (Entradas / Salidas Masivas) -> Logs directly to Kardex
-  const handleStockAdjustment = (
-    productId: string,
-    quantity: number,
-    reason: KardexReason,
-    notes: string
-  ): void => {
-    const prod = products.find((p) => p.id === productId)
-    if (!prod) return
-
-    const isInput =
-      reason === 'ENTRADA_MASIVA' || reason === 'INVENTARIO_INICIAL' || reason === 'DEVOLUCION'
-    const prevStock = prod.stock
-    const newStock = isInput ? prevStock + quantity : Math.max(0, prevStock - quantity)
-
-    const mov: KardexMovement = {
-      id: `k-${Date.now()}`,
-      timestamp: new Date().toLocaleString('es-MX'),
-      productId: prod.id,
-      productName: prod.name,
-      productCode: prod.code,
-      type: isInput ? 'ENTRADA' : 'SALIDA',
-      reason,
-      previousStock: prevStock,
-      quantity,
-      newStock,
-      responsibleUser: shift.cashier,
-      notes
-    }
-
-    setKardex((prev) => [mov, ...prev])
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
-    )
-    showToast(
-      `Ajuste de stock registrado: ${isInput ? '+' : '-'}${quantity} ${prod.unit} (${reason})`
-    )
-  }
-
-  // Product CRUD
-  const handleAddProduct = (newProduct: Omit<Product, 'id'>): void => {
-    const product: Product = {
-      ...newProduct,
-      id: `prod-${Date.now()}`
-    }
-    setProducts((prev) => [product, ...prev])
-
-    // Log initial stock in Kardex
-    if (product.stock > 0) {
-      const mov: KardexMovement = {
-        id: `k-${Date.now()}`,
-        timestamp: new Date().toLocaleString('es-MX'),
-        productId: product.id,
-        productName: product.name,
-        productCode: product.code,
-        type: 'ENTRADA',
-        reason: 'INVENTARIO_INICIAL',
-        previousStock: 0,
-        quantity: product.stock,
-        newStock: product.stock,
-        responsibleUser: shift.cashier,
-        notes: 'Registro inicial de nuevo producto'
-      }
-      setKardex((prev) => [mov, ...prev])
-    }
-
-    showToast(`Producto "${product.name}" creado en catálogo`)
-  }
-
-  const handleUpdateProduct = (updatedProduct: Product): void => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    )
-    showToast(`Producto "${updatedProduct.name}" modificado`)
-  }
-
-  // Soft delete product
-  const handleDeleteProduct = (id: string): void => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, active: false, deleted: true } : p))
-    )
-    showToast('Producto desactivado (Soft Delete para conservar integridad referencial)', 'info')
-  }
-
-  const handleToggleStatus = (id: string): void => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const nextActive = !p.active
-          showToast(`Producto ${nextActive ? 'activado' : 'desactivado'}`)
-          return { ...p, active: nextActive }
-        }
-        return p
-      })
-    )
-  }
-
   // Customer Management & Abonos
   const handleAddCustomer = (
     customerData: Omit<Customer, 'id' | 'currentDebt' | 'debts' | 'payments'>
@@ -652,8 +553,6 @@ function AppContent(): React.JSX.Element {
     showToast(`Turno cerrado exitosamente. Efectivo físico verificado: $${countedCash.toFixed(2)}`)
   }
 
-  const totalDebtorsCount = customers.filter((c) => c.currentDebt > 0).length
-
   return (
     <DashboardLayout>
       {/* Toast Alert Feedback */}
@@ -685,16 +584,7 @@ function AppContent(): React.JSX.Element {
       )}
 
       {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
-      {activeTab === 'products' && (
-        <ProductTable
-          products={products}
-          onAddProduct={handleAddProduct}
-          onUpdateProduct={handleUpdateProduct}
-          onDeleteProduct={handleDeleteProduct}
-          onToggleStatus={handleToggleStatus}
-          onStockAdjustment={handleStockAdjustment}
-        />
-      )}
+      {activeTab === 'products' && <ProductTable />}
 
       {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
       {activeTab === 'kardex' && <KardexView movements={kardex} />}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Product } from '../../../shared/types/domain'
-import { Barcode, Printer, X, Check, SlidersHorizontal } from '../../../shared/icons/Icons'
+import { Barcode, Printer, X } from '../../../shared/icons/Icons'
 
 interface BarcodeGeneratorModalProps {
   isOpen: boolean
@@ -81,7 +81,7 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
                 <label className="block font-medium text-slate-700 mb-1">Simbología</label>
                 <select
                   value={barcodeFormat}
-                  onChange={(e) => setBarcodeFormat(e.target.value as any)}
+                  onChange={(e) => setBarcodeFormat(e.target.value as 'EAN-13' | 'Code128')}
                   className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-sm"
                 >
                   <option value="EAN-13">EAN-13 (Comercial)</option>

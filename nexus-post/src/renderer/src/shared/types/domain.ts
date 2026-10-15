@@ -1,19 +1,11 @@
-export interface Product {
-  id: string
-  code: string
-  name: string
-  category: string
-  costPrice: number
-  salePrice: number
-  stock: number
-  minStock: number
-  maxStock?: number
-  unit: string
-  hasTax: boolean
-  active: boolean
-  deleted?: boolean // Soft delete
-  description?: string
-}
+import type { Product } from '@shared/contracts/product.contract'
+
+export type { Product, ProductInput, ProductFilter } from '@shared/contracts/product.contract'
+export type {
+  KardexMovementType,
+  KardexReason,
+  KardexMovement
+} from '@shared/contracts/inventory.contract'
 
 export interface CartItem {
   product: Product
@@ -74,33 +66,6 @@ export interface SalesChartPoint {
   ticketCount: number
 }
 
-// Kardex Audit Movement
-export type KardexMovementType = 'ENTRADA' | 'SALIDA'
-export type KardexReason =
-  | 'VENTA'
-  | 'ENTRADA_MASIVA'
-  | 'SALIDA_AJUSTE'
-  | 'MERMA'
-  | 'DEVOLUCION'
-  | 'INVENTARIO_INICIAL'
-
-export interface KardexMovement {
-  id: string
-  timestamp: string
-  productId: string
-  productName: string
-  productCode: string
-  type: KardexMovementType
-  reason: KardexReason
-  previousStock: number
-  quantity: number
-  newStock: number
-  finalStock?: number
-  responsibleUser: string
-  notes?: string
-}
-
-// Cash Drawer Movement & Shift
 export interface CashMovement {
   id: string
   timestamp: string
@@ -123,7 +88,6 @@ export interface ShiftState {
   extraExpenses: number
 }
 
-// Customer & Accounts Receivable (Créditos)
 export interface CustomerDebt {
   id: string
   ticketNumber: string
@@ -146,7 +110,7 @@ export interface Customer {
   id: string
   code: string
   name: string
-  taxId: string // RFC / CIF
+  taxId: string
   phone: string
   email: string
   address: string
@@ -156,7 +120,6 @@ export interface Customer {
   payments: CustomerPayment[]
 }
 
-// Suspended Sales (Ventas en espera)
 export interface SuspendedSale {
   id: string
   name: string
@@ -167,7 +130,6 @@ export interface SuspendedSale {
   total: number
 }
 
-// User RBAC permissions
 export interface UserPermissions {
   canDeleteProduct: boolean
   canSeeReports: boolean
