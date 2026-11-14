@@ -19,6 +19,8 @@ import CustomersView from './features/customers/CustomersView'
 import ReportsView from './features/reports/ReportsView'
 import SettingsGrid from './features/settings/SettingsGrid'
 import { CheckCircle2 } from './shared/icons/Icons'
+import type { User } from '@shared/contracts'
+import { LoginView } from './features/auth'
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -255,6 +257,7 @@ const INITIAL_KARDEX: KardexMovement[] = [
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS)
   const [kardex, setKardex] = useState<KardexMovement[]>(INITIAL_KARDEX)
@@ -344,13 +347,13 @@ function AppContent(): React.JSX.Element {
         return prev.map((item) =>
           item.product.id === product.id
             ? {
-                ...item,
-                quantity: item.quantity + quantity,
-                total:
-                  (item.quantity + quantity) *
-                  item.product.salePrice *
-                  (1 - item.discountPercent / 100)
-              }
+              ...item,
+              quantity: item.quantity + quantity,
+              total:
+                (item.quantity + quantity) *
+                item.product.salePrice *
+                (1 - item.discountPercent / 100)
+            }
             : item
         )
       } else {
@@ -373,10 +376,10 @@ function AppContent(): React.JSX.Element {
       prev.map((item) =>
         item.product.id === productId
           ? {
-              ...item,
-              quantity,
-              total: quantity * item.product.salePrice * (1 - item.discountPercent / 100)
-            }
+            ...item,
+            quantity,
+            total: quantity * item.product.salePrice * (1 - item.discountPercent / 100)
+          }
           : item
       )
     )
@@ -387,10 +390,10 @@ function AppContent(): React.JSX.Element {
       prev.map((item) =>
         item.product.id === productId
           ? {
-              ...item,
-              discountPercent,
-              total: item.quantity * item.product.salePrice * (1 - discountPercent / 100)
-            }
+            ...item,
+            discountPercent,
+            total: item.quantity * item.product.salePrice * (1 - discountPercent / 100)
+          }
           : item
       )
     )
@@ -553,76 +556,80 @@ function AppContent(): React.JSX.Element {
     showToast(`Turno cerrado exitosamente. Efectivo físico verificado: $${countedCash.toFixed(2)}`)
   }
 
+  if (!currentUser) {
+    return <LoginView onLoginSuccess={(user) => setCurrentUser(user)} />
+  }
+
   return (
-    <DashboardLayout>
-      {/* Toast Alert Feedback */}
-      {notification && (
-        <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
-          <CheckCircle2 size={16} className="text-emerald-400" />
-          <span className="font-semibold">{notification.message}</span>
-        </div>
-      )}
+      <DashboardLayout currentUser={currentUser} onLogout={() => setCurrentUser(null)}>
+        {/* Toast Alert Feedback */}
+        {notification && (
+          <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
+            <CheckCircle2 size={16} className="text-emerald-400" />
+            <span className="font-semibold">{notification.message}</span>
+          </div>
+        )}
 
-      {/* 1. MÓDULO DE VENTAS (POS) */}
-      {activeTab === 'pos' && (
-        <POSView
-          products={products}
-          cart={cart}
-          suspendedSales={suspendedSales}
-          customers={customers}
-          onAddCustomer={handleAddCustomer}
-          onAddToCart={handleAddToCart}
-          onUpdateQuantity={handleUpdateQuantity}
-          onUpdateDiscount={handleUpdateDiscount}
-          onRemoveFromCart={handleRemoveFromCart}
-          onClearCart={handleClearCart}
-          onCompleteSale={handleCompleteSale}
-          onSuspendSale={handleSuspendSale}
-          onResumeSale={handleResumeSale}
-          onDeleteSuspendedSale={handleDeleteSuspendedSale}
-        />
-      )}
+        {/* 1. MÓDULO DE VENTAS (POS) */}
+        {activeTab === 'pos' && (
+          <POSView
+            products={products}
+            cart={cart}
+            suspendedSales={suspendedSales}
+            customers={customers}
+            onAddCustomer={handleAddCustomer}
+            onAddToCart={handleAddToCart}
+            onUpdateQuantity={handleUpdateQuantity}
+            onUpdateDiscount={handleUpdateDiscount}
+            onRemoveFromCart={handleRemoveFromCart}
+            onClearCart={handleClearCart}
+            onCompleteSale={handleCompleteSale}
+            onSuspendSale={handleSuspendSale}
+            onResumeSale={handleResumeSale}
+            onDeleteSuspendedSale={handleDeleteSuspendedSale}
+          />
+        )}
 
-      {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
-      {activeTab === 'products' && <ProductTable />}
+        {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
+        {activeTab === 'products' && <ProductTable />}
 
-      {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
-      {activeTab === 'kardex' && <KardexView movements={kardex} />}
+        {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
+        {activeTab === 'kardex' && <KardexView movements={kardex} />}
 
-      {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
-      {activeTab === 'cash' && (
-        <CashShiftView
-          shift={shift}
-          cashMovements={cashMovements}
-          onAddCashMovement={handleAddCashMovement}
-          onCloseShift={handleCloseShift}
-        />
-      )}
+        {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
+        {activeTab === 'cash' && (
+          <CashShiftView
+            shift={shift}
+            cashMovements={cashMovements}
+            onAddCashMovement={handleAddCashMovement}
+            onCloseShift={handleCloseShift}
+          />
+        )}
 
-      {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
-      {activeTab === 'customers' && (
-        <CustomersView
-          customers={customers}
-          onAddCustomer={handleAddCustomer}
-          onAddPayment={handleAddCustomerPayment}
-        />
-      )}
+        {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
+        {activeTab === 'customers' && (
+          <CustomersView
+            customers={customers}
+            onAddCustomer={handleAddCustomer}
+            onAddPayment={handleAddCustomerPayment}
+          />
+        )}
 
-      {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
-      {activeTab === 'reports' && <ReportsView />}
+        {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
+        {activeTab === 'reports' && <ReportsView />}
 
-      {/* 7. MÓDULO DE AJUSTES DEL SISTEMA */}
-      {activeTab === 'settings' && <SettingsGrid />}
-    </DashboardLayout>
-  )
+        {/* 7. MÓDULO DE AJUSTES DEL SISTEMA */}
+        {activeTab === 'settings' && <SettingsGrid />}
+      </DashboardLayout>
+      )
 }
 
-export function App(): React.JSX.Element {
+      export function App(): React.JSX.Element {
   return (
-    <HotkeysProvider>
-      <AppContent />
-    </HotkeysProvider>
-  )
+      <HotkeysProvider>
+        <AppContent />
+      </HotkeysProvider>
+      )
 }
 
-export default App
+      export default App

@@ -9,7 +9,9 @@ import type {
   AdjustStockInput,
   Category,
   CategoryInput,
-  CategoryFilter
+  CategoryFilter,
+  LoginInput,
+  PinLoginInput
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -34,6 +36,12 @@ const api: NexusApi = {
     update: (category: Category) => ipcRenderer.invoke(IPC_CHANNELS.categories.update, category),
     softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.categories.softDelete, id),
     toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.categories.toggleStatus, id)
+  },
+  auth: {
+    login: (input: LoginInput) => ipcRenderer.invoke(IPC_CHANNELS.auth.login, input),
+    loginWithPin: (input: PinLoginInput) => ipcRenderer.invoke(IPC_CHANNELS.auth.loginPin, input),
+    logout: () => ipcRenderer.invoke(IPC_CHANNELS.auth.logout),
+    getCurrentUser: () => ipcRenderer.invoke(IPC_CHANNELS.auth.getCurrentUser)
   }
 }
 

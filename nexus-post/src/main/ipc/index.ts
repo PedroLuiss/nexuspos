@@ -3,13 +3,16 @@ import { runMigrations } from '../adapters/persistence/sqlite/migrations'
 import { SqliteProductRepository } from '../adapters/persistence/sqlite/products.sqlite'
 import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/stock-movements.sqlite'
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
+import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { ProductService } from '../domain/products/product.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
+import { AuthService } from '../domain/auth/auth.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
+import { registerAuthIpc } from './auth.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -22,6 +25,7 @@ export function registerIpcHandlers(): void {
   const productRepository = new SqliteProductRepository(db)
   const stockMovementRepository = new SqliteStockMovementRepository(db)
   const categoryRepository = new SqliteCategoryRepository(db)
+  const userRepository = new SqliteUserRepository(db)
   const transactionRunner = new SqliteTransactionRunner(db)
 
   const productService = new ProductService(productRepository)
@@ -31,8 +35,10 @@ export function registerIpcHandlers(): void {
     transactionRunner
   )
   const categoryService = new CategoryService(categoryRepository)
+  const authService = new AuthService(userRepository)
 
   registerProductIpc(productService)
   registerInventoryIpc(inventoryService)
   registerCategoryIpc(categoryService)
+  registerAuthIpc(authService)
 }

@@ -9,11 +9,13 @@ export interface Migration {
 import { migration001Products } from './001_products'
 import { migration002StockMovements } from './002_stock_movements'
 import { migration003Categories } from './003_categories'
+import { migration004Users } from './004_users'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
   migration002StockMovements,
-  migration003Categories
+  migration003Categories,
+  migration004Users
 ]
 
 /** Ejecuta de forma idempotente las migraciones pendientes. */
