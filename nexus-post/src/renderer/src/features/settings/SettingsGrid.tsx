@@ -5,19 +5,23 @@ import {
   Building2,
   Database,
   Scale,
+  Percent,
   CheckCircle2,
   AlertCircle,
   ShieldAlert
 } from '../../shared/icons/Icons'
 import { canManageUsers } from '../../shared/lib/permissions'
+import { getCurrencySymbol } from '../../shared/lib/businessConfig'
+import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import { useUsers } from './hooks/useUsers'
 import SettingsCard from './components/SettingsCard'
 import UserManagerModal from './components/UserManagerModal'
 import BusinessInfoModal from './components/BusinessInfoModal'
+import TaxSettingsModal from './components/TaxSettingsModal'
 import DatabaseBackupModal from './components/DatabaseBackupModal'
 import ScaleSettingsModal from './components/ScaleSettingsModal'
 
-type SettingsModal = 'users' | 'business' | 'database' | 'scale' | null
+type SettingsModal = 'users' | 'business' | 'tax' | 'database' | 'scale' | null
 
 interface SettingsGridProps {
   currentUser?: User | null
@@ -45,14 +49,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     clearError
   } = useUsers(isAdmin)
 
-  // Identidad comercial y plantilla de ticket
-  const [business, setBusiness] = useState({
-    companyName: 'NEXUS MARKET S.A. DE C.V.',
-    taxId: 'NEX-980412-A10',
-    phone: '(55) 5555-0199',
-    header: '¡Bienvenidos a Nexus Market!',
-    footer: 'Conserve este ticket para cualquier cambio o devolución.'
-  })
+  const { config: business, saveConfig, isLoading: isConfigLoading } = useBusinessConfig()
 
   // Báscula serial RS-232
   const [scale, setScale] = useState({ comPort: 'COM3', baudRate: 9600 })
@@ -67,16 +64,31 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       showFeedback('Acceso denegado: solo el Administrador gestiona usuarios y permisos.', 'error')
       return
     }
+    if ((modal === 'business' || modal === 'tax') && !isAdmin) {
+      showFeedback(
+        'Acceso denegado: solo el Administrador modifica los datos fiscales y los impuestos.',
+        'error'
+      )
+      return
+    }
     clearError()
     setActiveModal(modal)
   }
 
-  // Atajo [ALT+U] del módulo (solo Administrador)
+  // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.altKey && e.key.toLowerCase() === 'u') {
+      if (!e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'u') {
         e.preventDefault()
         openModal('users')
+      } else if (key === 'a') {
+        e.preventDefault()
+        openModal('business')
+      } else if (key === 't') {
+        e.preventDefault()
+        openModal('tax')
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -86,6 +98,11 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
 
   const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active).length
   const activeUsers = users.filter((u) => u.active).length
+  const currencySymbol = getCurrencySymbol(business.currency)
+  const fiscalId =
+    business.taxIdType === 'NONE'
+      ? 'Sin identificación fiscal'
+      : `${business.taxIdType}: ${business.taxId || '—'}`
 
   return (
     <div className="flex flex-col h-full p-3 space-y-2.5 overflow-y-auto bg-[#F3F3F3]">
@@ -95,7 +112,8 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
             Ajustes Generales del Sistema NexusPOS
           </h2>
           <p className="text-xs text-[#5C5C5C] mt-0.5">
-            Gestión de usuarios y permisos (RBAC), identidad fiscal, base de datos SQLite y puertos de hardware
+            Datos del negocio y ticket, impuestos (IVA), usuarios y permisos (RBAC), base de datos
+            SQLite y puertos de hardware
           </p>
         </div>
 
@@ -121,7 +139,10 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           accent="blue"
           badge={
             isAdmin
-              ? { label: 'Administrador', className: 'bg-[#0067C0]/10 text-[#0067C0] border-[#0067C0]/20' }
+              ? {
+                  label: 'Administrador',
+                  className: 'bg-[#0067C0]/10 text-[#0067C0] border-[#0067C0]/20'
+                }
               : { label: 'Solo Admin', className: 'bg-slate-100 text-slate-500 border-slate-200' }
           }
           description="Registre cajeros y supervisores, asigne su rol comercial y habilite los módulos y acciones críticas que podrá usar durante el turno."
@@ -150,19 +171,73 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
 
         <SettingsCard
           icon={<Building2 size={22} />}
-          title="Datos de Negocio y Ticket"
-          subtitle="Datos fiscales y plantilla de recibo"
+          title="Datos del Negocio y Ticket"
+          subtitle="Identidad fiscal, propietario y comprobante"
           accent="green"
-          badge={{ label: 'Verificado', className: 'bg-emerald-50 text-[#107C41] border-emerald-200' }}
-          description="Personalice el encabezado del ticket térmico de 80mm, RFC/RUT, teléfono de atención y mensajes de pie de página."
+          badge={{
+            label: isConfigLoading ? 'Cargando…' : business.taxIdType,
+            className: 'bg-emerald-50 text-[#107C41] border-emerald-200'
+          }}
+          description="Razón social, identificación fiscal, propietario, contacto, domicilio, moneda y plantilla del ticket térmico de 80mm."
           facts={[
-            { label: 'Razón Social:', value: business.companyName, valueClassName: 'font-mono max-w-[200px]' },
-            { label: 'Registro Fiscal (RFC):', value: business.taxId, valueClassName: 'font-mono' },
-            { label: 'Formato Ticket:', value: 'ESC/POS Térmico 80mm' }
+            {
+              label: 'Razón Social:',
+              value: business.legalName || '—',
+              valueClassName: 'font-mono max-w-[200px]'
+            },
+            { label: 'Propietario:', value: business.ownerName || '—' },
+            { label: 'ID Fiscal:', value: fiscalId, valueClassName: 'font-mono' },
+            {
+              label: 'Moneda:',
+              value: `${business.currency} (${currencySymbol})`,
+              valueClassName: 'font-mono'
+            }
           ]}
-          footerNote="Impresión activa"
-          actionLabel="Editar Datos Ticket"
+          footerNote={isAdmin ? 'Guardado en SQLite' : 'Solo lectura'}
+          actionLabel="Editar Datos"
+          actionHotkey="ALT+A"
           onAction={() => openModal('business')}
+          disabled={!isAdmin}
+          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
+        />
+
+        <SettingsCard
+          icon={<Percent size={22} />}
+          title="Impuestos y Facturación (IVA)"
+          subtitle="Tasa trasladada en ventas y ticket"
+          accent="amber"
+          badge={
+            business.taxEnabled
+              ? {
+                  label: `${business.taxName} ${business.taxRate}%`,
+                  className: 'bg-amber-50 text-amber-700 border-amber-200'
+                }
+              : { label: 'Desactivado', className: 'bg-slate-100 text-slate-500 border-slate-200' }
+          }
+          description="Defina el nombre local del impuesto (IVA, IGV, ITBMS), su tasa y si los precios de venta ya lo incluyen. El POS y el ticket usan esta configuración."
+          facts={[
+            {
+              label: 'Estado del impuesto:',
+              value: business.taxEnabled ? 'Activo' : 'Desactivado',
+              valueClassName: business.taxEnabled ? 'text-[#107C41]' : 'text-slate-500'
+            },
+            {
+              label: 'Tasa aplicada:',
+              value: business.taxEnabled ? `${business.taxName} ${business.taxRate}%` : '—',
+              valueClassName: 'font-mono'
+            },
+            {
+              label: 'Tratamiento del precio:',
+              value: business.pricesIncludeTax ? 'Impuesto incluido' : 'Se suma al subtotal',
+              valueClassName: 'font-mono'
+            }
+          ]}
+          footerNote={isAdmin ? 'Configuración tributaria' : 'Solo lectura'}
+          actionLabel="Configurar IVA"
+          actionHotkey="ALT+T"
+          onAction={() => openModal('tax')}
+          disabled={!isAdmin}
+          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
         />
 
         <SettingsCard
@@ -175,7 +250,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           facts={[
             { label: 'Motor Local:', value: 'better-sqlite3' },
             { label: 'Integridad:', value: 'OK (Sin corrupción)', valueClassName: 'text-[#107C41]' },
-            { label: 'Usuarios auditados:', value: `${users.length} registros` }
+            { label: 'Registros de ajustes:', value: '1 configuración activa' }
           ]}
           footerNote="Offline-first"
           actionLabel="Backup / Restore"
@@ -187,12 +262,27 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           title="Báscula y Puerto Serial (RS-232)"
           subtitle="Comunicación COM por hardware"
           accent="amber"
-          badge={{ label: `${scale.comPort} Configurado`, className: 'bg-amber-50 text-amber-700 border-amber-200' }}
+          badge={{
+            label: `${scale.comPort} Configurado`,
+            className: 'bg-amber-50 text-amber-700 border-amber-200'
+          }}
           description="Conexión para balanzas de peso comercial (Torrey, Rhino, Dibal) mediante puerto serial. Transmite el peso al POS."
           facts={[
-            { label: 'Puerto Activo:', value: `${scale.comPort} (RS-232)`, valueClassName: 'font-mono' },
-            { label: 'Baud Rate:', value: `${scale.baudRate} bps`, valueClassName: 'font-mono' },
-            { label: 'Estado de Enlace:', value: 'Listo para pesaje', valueClassName: 'text-[#107C41]' }
+            {
+              label: 'Puerto Activo:',
+              value: `${scale.comPort} (RS-232)`,
+              valueClassName: 'font-mono'
+            },
+            {
+              label: 'Baud Rate:',
+              value: `${scale.baudRate} bps`,
+              valueClassName: 'font-mono'
+            },
+            {
+              label: 'Estado de Enlace:',
+              value: 'Listo para pesaje',
+              valueClassName: 'text-[#107C41]'
+            }
           ]}
           footerNote="Node serialport"
           actionLabel="Configurar Puerto Serial"
@@ -215,15 +305,33 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
         onReload={reload}
       />
 
-      <BusinessInfoModal
-        isOpen={activeModal === 'business'}
-        onClose={() => setActiveModal(null)}
-        initialData={business}
-        onSave={(data) => {
-          setBusiness(data)
-          showFeedback('Plantilla de ticket y datos fiscales actualizados')
-        }}
-      />
+      {activeModal === 'business' && (
+        <BusinessInfoModal
+          isOpen
+          onClose={() => setActiveModal(null)}
+          config={business}
+          canEdit={isAdmin}
+          onSave={async (input) => {
+            await saveConfig(input)
+            showFeedback('Datos del negocio y plantilla de ticket guardados en SQLite')
+          }}
+        />
+      )}
+
+      {activeModal === 'tax' && (
+        <TaxSettingsModal
+          isOpen
+          onClose={() => setActiveModal(null)}
+          config={business}
+          canEdit={isAdmin}
+          onSave={async (input) => {
+            await saveConfig(input)
+            showFeedback(
+              `Impuesto ${input.taxName} ${input.taxRate}% guardado y aplicado en el POS`
+            )
+          }}
+        />
+      )}
 
       <DatabaseBackupModal
         isOpen={activeModal === 'database'}
@@ -244,8 +352,8 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-[4px] text-[11px] text-slate-600">
           <ShieldAlert size={14} className="text-slate-500" />
           <span>
-            Sesión sin privilegios de Administrador: la gestión de usuarios, roles y permisos está
-            bloqueada.
+            Sesión sin privilegios de Administrador: la gestión de usuarios, los datos fiscales del
+            negocio y la tasa de impuesto están en modo lectura.
           </span>
         </div>
       )}

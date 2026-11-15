@@ -9,6 +9,8 @@ import SplitPaymentModal from './components/SplitPaymentModal'
 import SuspendedSalesModal from './components/SuspendedSalesModal'
 import TicketPreviewModal from './components/TicketPreviewModal'
 import ProductAvatar from '../../shared/ui/ProductAvatar'
+import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
+import { computeGrandTotal, computeTaxAmount, getTaxLabel } from '../../shared/lib/businessConfig'
 import {
   Search,
   Plus,
@@ -49,6 +51,7 @@ export const POSView: React.FC<POSViewProps> = ({
   onResumeSale,
   onDeleteSuspendedSale
 }) => {
+  const { config: businessConfig } = useBusinessConfig()
   const [searchInput, setSearchInput] = useState('')
   const [searchMatches, setSearchMatches] = useState<Product[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
@@ -96,8 +99,9 @@ export const POSView: React.FC<POSViewProps> = ({
       return acc + item.product.salePrice * item.quantity * (1 - item.discountPercent / 100)
     }, 0)
 
-  const taxTotal = taxableAmount * 0.16
-  const finalTotal = subtotal - discountTotal + taxTotal
+  const taxTotal = computeTaxAmount(taxableAmount, businessConfig)
+  const finalTotal = computeGrandTotal(subtotal - discountTotal, taxableAmount, businessConfig)
+  const taxLabel = getTaxLabel(businessConfig)
   const totalItemCount = cart.reduce((acc, item) => acc + item.quantity, 0)
 
   // Detección de déficit de stock
@@ -925,12 +929,14 @@ export const POSView: React.FC<POSViewProps> = ({
                 </div>
               )}
 
-              <div className="flex justify-between text-[#5C5C5C]">
-                <span>IVA Trasladado (16%):</span>
-                <span className="font-mono font-medium text-[#1B1B1B]">
-                  ${taxTotal.toFixed(2)}
-                </span>
-              </div>
+              {businessConfig.taxEnabled && (
+                <div className="flex justify-between text-[#5C5C5C]">
+                  <span>{taxLabel}{businessConfig.pricesIncludeTax ? ' incluido' : ''}:</span>
+                  <span className="font-mono font-medium text-[#1B1B1B]">
+                    ${taxTotal.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Prominent Balance Card (Stitch: currency-total in #1B1B1B / Emerald state) */}

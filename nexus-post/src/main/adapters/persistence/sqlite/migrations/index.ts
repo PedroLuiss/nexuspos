@@ -13,6 +13,7 @@ import { migration004Users } from './004_users'
 import { migration005ProductImages } from './005_product_images'
 import { migration006SeedProducts } from './006_seed_products'
 import { migration007UserPermissions } from './007_user_permissions'
+import { migration008BusinessSettings } from './008_business_settings'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -21,7 +22,8 @@ const MIGRATIONS: Migration[] = [
   migration004Users,
   migration005ProductImages,
   migration006SeedProducts,
-  migration007UserPermissions
+  migration007UserPermissions,
+  migration008BusinessSettings
 ]
 
 /** Ejecuta de forma idempotente las migraciones pendientes. */

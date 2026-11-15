@@ -10,7 +10,7 @@
 El módulo POS es el núcleo transaccional de atención rápida:
 - Búsqueda reactiva de productos por código de barras (lector USB/Bluetooth) o descripción en vivo (`[ALT + L]`).
 - Carrito de compras con steppers de cantidad (`+`/`-`), cálculo de descuentos en línea y validación inmediata de existencias (prevención de sobreventa).
-- Panel de cobro inferior con desglose de subtotal, descuentos, IVA 16% y visor total en `#0078D4`.
+- Panel de cobro inferior con desglose de subtotal, descuentos, impuesto IVA (tasa configurable en Ajustes) y visor total en `#0078D4`. Los montos se muestran en la moneda configurada (VES / USD / EUR).
 - Modal de Cobro Estándar (`[F12]`): Métodos de pago en Efectivo, Tarjeta, Mixto y Crédito.
 - Cobro Rápido en Efectivo (`[ALT + Q]`): Liquidación inmediata con un solo toque.
 - Pago Dividido / Mixto (`[F11]`): Distribución exacta de montos entre múltiples formas de pago.
@@ -34,16 +34,20 @@ nexus-post/src/
 ├── shared/contracts/
 │   └── sales.contract.ts                    # DTOs: CreateSaleInput, SaleResult, CartItem
 │
-└── renderer/src/features/pos/
-    ├── POSView.tsx                          # Pantalla principal del terminal de ventas
-    ├── components/
-    │   ├── SaleModal.tsx                    # Modal de cobro estándar [F12]
-    │   ├── SplitPaymentModal.tsx            # Modal de pago dividido [F11]
-    │   ├── SuspendedSalesModal.tsx          # Modal de ventas en espera [ALT + P]
-    │   └── TicketPreviewModal.tsx           # Modal de previsualización de ticket 80mm
-    └── types/
-        ├── POSView.type.ts                  # Tipos locales del carrito y estado
-        └── index.ts                         # Re-export de tipos
+└── renderer/src/
+    ├── shared/
+    │   ├── hooks/useBusinessConfig.ts       # Configuración global del negocio e impuestos
+    │   └── lib/businessConfig.ts            # computeTaxAmount, computeGrandTotal, getTaxLabel
+    └── features/pos/
+        ├── POSView.tsx                      # Pantalla principal del terminal de ventas
+        ├── components/
+        │   ├── SaleModal.tsx                # Modal de cobro estándar [F12]
+        │   ├── SplitPaymentModal.tsx        # Modal de pago dividido [F11]
+        │   ├── SuspendedSalesModal.tsx      # Modal de ventas en espera [ALT + P]
+        │   └── TicketPreviewModal.tsx       # Ticket 80mm alimentado por business_settings
+        └── types/
+            ├── POSView.type.ts              # Tipos locales del carrito y estado
+            └── index.ts                     # Re-export de tipos
 ```
 
 ---
@@ -69,7 +73,7 @@ nexus-post/src/
 - ➡️ **Módulo 04 (Kardex):** Cada venta confirmada genera automáticamente un registro inmutable de Kardex con tipo `SALIDA (-)` y motivo `VENTA`.
 - ➡️ **Módulo 05 (Caja y Turno):** El dinero recibido (efectivo) incrementa directamente la gaveta de caja del turno abierto.
 - ➡️ **Módulo 06 (Clientes):** Si la venta se marca como método `CRÉDITO`, el total se carga a la deuda del cliente seleccionado.
-- ➡️ **Módulo 08 (Hardware):** Al finalizar la venta, envía el comando de impresión a la impresora térmica USB/COM y pulso de apertura a la gaveta de dinero.
+- ➡️ **Módulo 08 (Ajustes y Hardware):** La identidad fiscal, el domicilio, la plantilla del ticket y la tasa de impuesto se leen de `business_settings`; al finalizar la venta se envía el comando de impresión a la impresora térmica USB/COM y el pulso de apertura a la gaveta de dinero.
 
 ---
 
@@ -78,3 +82,6 @@ nexus-post/src/
 1. **Transaccionalidad Atómica:** El registro de la venta, el decremento de existencias en `products` y la inserción en `kardex` deben ocurrir dentro de una misma transacción SQLite (`db.transaction()`).
 2. **Validación de Sobrevendido:** Si un producto no tiene suficiente stock y el cajero carece del permiso `CAN_OVERRIDE_NO_STOCK`, la interfaz bloquea el cobro y resalta la fila en `#C42B1C`.
 3. **Restricción de Tamaño:** `POSView.tsx` no debe rebasar **300 líneas**. Extraer componentes como `CartTable`, `TotalsPanel` y `SearchBar` si el archivo se expande.
+4. **Impuesto dinámico:** La tasa y el nombre del impuesto provienen de `useBusinessConfig()` (Ajustes → IVA). Solo los productos con `hasTax === true` forman la base gravable. Si `taxEnabled` es `false`, no se traslada impuesto y la línea desaparece del resumen y del ticket.
+5. **Precio con impuesto incluido:** Si `pricesIncludeTax === true`, `computeTaxAmount` desagrega el impuesto del precio y `computeGrandTotal` **no** lo suma; el cliente paga el precio de lista. En caso contrario, el impuesto se suma al subtotal.
+6. **Consistencia del cobro:** `App.handleCompleteSale` recalcula el total con `computeGrandTotal` usando la configuración vigente, de modo que la venta persistida coincide con lo mostrado en el POS y el ticket.

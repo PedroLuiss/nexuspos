@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/types/domain'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { getTaxLabel } from '../../../shared/lib/businessConfig'
 import {
   Banknote,
   CreditCard,
@@ -32,6 +34,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   onClose,
   onConfirmSale
 }) => {
+  const { config: businessConfig } = useBusinessConfig()
+  const taxLabel = getTaxLabel(businessConfig)
   const [method, setMethod] = useState<PaymentMethodType>('cash')
   const [cashTendered, setCashTendered] = useState<number>(total)
   const [cardAuth, setCardAuth] = useState<string>('')
@@ -151,7 +155,10 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           <div className="text-right text-xs text-[#5C5C5C] space-y-0.5 font-medium">
             <div>{items.length} artículos en la orden</div>
             <div className="font-mono text-[11px]">
-              Subtotal: ${subtotal.toFixed(2)} | IVA (16%): ${tax.toFixed(2)}
+              Subtotal: ${subtotal.toFixed(2)}
+              {businessConfig.taxEnabled
+                ? ` | ${taxLabel}${businessConfig.pricesIncludeTax ? ' incluido' : ''}: $${tax.toFixed(2)}`
+                : ' | Sin impuesto'}
             </div>
             {discount > 0 && (
               <div className="text-[#107C41] font-semibold text-[11px]">

@@ -11,6 +11,7 @@ import {
 } from './shared/types/domain'
 import { HotkeysProvider, useRouter } from './app/providers/HotkeysProvider'
 import DashboardLayout from './app/DashboardLayout'
+import { BusinessConfigProvider } from './app/providers/BusinessConfigProvider'
 import POSView from './features/pos/POSView'
 import ProductTable from './features/inventory/components/ProductTable'
 import KardexView from './features/kardex/KardexView'
@@ -23,6 +24,8 @@ import type { User } from '@shared/contracts'
 import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
+import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
+import { computeGrandTotal } from './shared/lib/businessConfig'
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -259,6 +262,7 @@ const INITIAL_KARDEX: KardexMovement[] = [
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
+  const { config: businessConfig } = useBusinessConfig()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS)
@@ -412,7 +416,18 @@ function AppContent(): React.JSX.Element {
 
   // Complete Sale -> Deducts stock and logs to Kardex
   const handleCompleteSale = (details: PaymentDetails): void => {
-    const saleTotal = cart.reduce((acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100), 0)
+    const netTotal = cart.reduce(
+      (acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100),
+      0
+    )
+    const taxableBase = cart
+      .filter((item) => item.product.hasTax)
+      .reduce(
+        (acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100),
+        0
+      )
+    // Importe realmente cobrado según la configuración de IVA vigente en Ajustes.
+    const saleTotal = computeGrandTotal(netTotal, taxableBase, businessConfig)
 
     // Log each cart item in Kardex and deduct product stock
     cart.forEach((item) => {
@@ -642,7 +657,9 @@ function AppContent(): React.JSX.Element {
       export function App(): React.JSX.Element {
   return (
       <HotkeysProvider>
-        <AppContent />
+        <BusinessConfigProvider>
+          <AppContent />
+        </BusinessConfigProvider>
       </HotkeysProvider>
       )
 }

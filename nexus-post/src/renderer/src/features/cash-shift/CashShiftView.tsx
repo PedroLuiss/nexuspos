@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ShiftState, CashMovement } from '../../shared/types/domain'
+import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import {
   Wallet,
   DollarSign,
@@ -25,6 +26,7 @@ export const CashShiftView: React.FC<CashShiftViewProps> = ({
   onAddCashMovement,
   onCloseShift
 }) => {
+  const { config: businessConfig } = useBusinessConfig()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'INGRESO' | 'EGRESO'>('EGRESO')
   const [amount, setAmount] = useState<number>(0)
@@ -51,7 +53,8 @@ export const CashShiftView: React.FC<CashShiftViewProps> = ({
     shift.totalCreditSales
 
   const profitWithoutTax = totalSalesAll * 0.32
-  const profitWithTax = profitWithoutTax * 0.84 // Net after 16% tax margin
+  const taxMargin = businessConfig.taxEnabled ? businessConfig.taxRate / 100 : 0
+  const profitWithTax = profitWithoutTax * (1 - taxMargin) // Neto tras descontar el impuesto configurado
 
   const cashDifference = countedCash - expectedCashInDrawer
 
@@ -187,7 +190,8 @@ export const CashShiftView: React.FC<CashShiftViewProps> = ({
             ${profitWithTax.toFixed(2)}
           </div>
           <div className="text-[11px] text-[#717783] mt-0.5">
-            Utilidad disponible descontando IVA (16%)
+            Utilidad disponible descontando {businessConfig.taxName || 'impuesto'} (
+            {businessConfig.taxEnabled ? businessConfig.taxRate : 0}%)
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#0067C0]"></div>
         </div>

@@ -1,6 +1,8 @@
 import React from 'react'
 import { CartItem, PaymentDetails } from '../../../shared/types/domain'
 import { Printer, X, Receipt } from '../../../shared/icons/Icons'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatBusinessAddress, getTaxLabel } from '../../../shared/lib/businessConfig'
 
 interface TicketPreviewModalProps {
   isOpen: boolean
@@ -29,6 +31,9 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
   cashierName,
   customerName
 }) => {
+  const { config: business } = useBusinessConfig()
+  const taxLabel = getTaxLabel(business)
+
   if (!isOpen) return null
 
   return (
@@ -50,12 +55,30 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
         {/* Paper Receipt Simulation */}
         <div className="flex-1 overflow-y-auto p-4 bg-slate-100 flex justify-center">
           <div className="w-72 bg-white p-4 shadow-md font-mono text-[11px] leading-relaxed text-slate-800 border-t-4 border-[#0078D4]">
-            {/* Business Header */}
+            {/* Business Header (desde Ajustes → Datos del Negocio) */}
             <div className="text-center pb-2 border-b border-dashed border-slate-300">
-              <div className="font-extrabold text-sm tracking-wider">NEXUS MARKET S.A.</div>
-              <div className="text-[10px] text-slate-500">RFC: NEX-980412-A10</div>
-              <div className="text-[10px] text-slate-500">Av. Central #120, Col. Centro</div>
-              <div className="text-[10px] text-slate-500">Tel: (55) 5555-0199</div>
+              {business.ticketHeader && (
+                <div className="text-[9px] text-slate-500 mb-0.5">{business.ticketHeader}</div>
+              )}
+              <div className="font-extrabold text-sm tracking-wider">
+                {business.legalName || 'NEXUSPOS'}
+              </div>
+              {business.tradeName && (
+                <div className="text-[10px] text-slate-600">{business.tradeName}</div>
+              )}
+              {business.ticketShowTaxId && business.taxIdType !== 'NONE' && (
+                <div className="text-[10px] text-slate-500">
+                  {business.taxIdType}: {business.taxId || '—'}
+                </div>
+              )}
+              {business.ticketShowAddress && (
+                <div className="text-[10px] text-slate-500">
+                  {formatBusinessAddress(business)}
+                </div>
+              )}
+              {business.ticketShowAddress && business.phone && (
+                <div className="text-[10px] text-slate-500">Tel: {business.phone}</div>
+              )}
             </div>
 
             {/* Ticket Info */}
@@ -65,10 +88,12 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                 <span>CAJA 01</span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>Fecha: {new Date().toLocaleDateString('es-MX')}</span>
-                <span>{new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>Fecha: {new Date().toLocaleDateString('es-VE')}</span>
+                <span>{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <div className="text-slate-600">Cajero: {cashierName}</div>
+              {business.ticketShowCashier && (
+                <div className="text-slate-600">Cajero: {cashierName}</div>
+              )}
               {customerName && <div className="text-slate-600 font-bold">Cliente: {customerName}</div>}
             </div>
 
@@ -112,10 +137,15 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                   <span>-${discount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span>IVA Trasladado (16%):</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
+              {business.taxEnabled && (
+                <div className="flex justify-between">
+                  <span>
+                    {taxLabel}
+                    {business.pricesIncludeTax ? ' incluido' : ''}:
+                  </span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-200">
                 <span>TOTAL A PAGAR:</span>
                 <span>${total.toFixed(2)}</span>
@@ -154,8 +184,11 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                 *{ticketNumber}*
               </div>
               <div className="text-[9px] text-slate-500 mt-2 italic">
-                ¡Gracias por su compra! Conserve este ticket para devoluciones.
+                {business.ticketFooter || '¡Gracias por su compra!'}
               </div>
+              {business.ticketLegalNote && (
+                <div className="text-[8px] text-slate-400 mt-1">{business.ticketLegalNote}</div>
+              )}
             </div>
           </div>
         </div>

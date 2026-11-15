@@ -3,6 +3,7 @@ import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inve
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
 import type { UsersApi } from './user.contract'
+import type { SettingsApi } from './settings.contract'
 
 /**
  * Nombres canónicos de los canales IPC.
@@ -44,6 +45,10 @@ export const IPC_CHANNELS = {
     update: 'users:update',
     delete: 'users:delete',
     toggleStatus: 'users:toggleStatus'
+  },
+  settings: {
+    getBusiness: 'settings:getBusiness',
+    updateBusiness: 'settings:updateBusiness'
   }
 } as const
 
@@ -76,4 +81,5 @@ export interface NexusApi {
   categories: CategoriesApi
   auth: AuthApi
   users: UsersApi
+  settings: SettingsApi
 }

@@ -1,6 +1,8 @@
 import React from 'react'
 import type { ProductFormValues } from '../hooks/useProductForm'
 import { Sparkles } from '../../../shared/icons/Icons'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { getProductTaxLabel } from '../../../shared/lib/businessConfig'
 
 interface ProductPricingFieldsProps {
   values: ProductFormValues
@@ -22,6 +24,9 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
   setSalePrice,
   marginDollar
 }) => {
+  const { config: businessConfig } = useBusinessConfig()
+  const taxLabel = getProductTaxLabel(businessConfig)
+
   return (
     <div className="space-y-4">
       <div className="border-b border-slate-100 pb-2">
@@ -175,7 +180,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               onChange={(e) => update('hasTax', e.target.checked)}
               className="w-4 h-4 rounded border-slate-300 text-[#0067C0] focus:ring-[#0067C0]"
             />
-            IVA 16%
+            {taxLabel}
           </label>
         </div>
       </div>
