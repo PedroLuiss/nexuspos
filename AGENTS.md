@@ -54,3 +54,7 @@ Para optimizar el uso de tokens y permitir que cualquier IA comprenda el proyect
 
 4. **Integridad de Datos**:
    - Usar siempre **Soft Delete** (`deleted = true`, `active = false`) para productos para preservar el historial de Kardex e informes contables.
+
+5. **Escalabilidad Multi-Caja LAN (WiFi)**:
+   - El sistema opera actualmente en modo **monopuesto (una sola computadora)** con base de datos SQLite local.
+   - Sin embargo, toda la arquitectura (Hexagonal + FSD + Contratos `@shared/contracts`) debe mantenerse estrictamente desacoplada para que en la siguiente fase de crecimiento una caja pueda operar como **Caja Maestra / Servidor LAN** y las demás como **Terminales Satélite conectadas vía WiFi**, consumiendo los mismos contratos sin modificar la UI ni la lógica de negocio.

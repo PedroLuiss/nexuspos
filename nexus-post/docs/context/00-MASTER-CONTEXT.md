@@ -118,10 +118,39 @@ Para trabajar de manera eficiente sin saturar la ventana de contexto de la IA, c
 
 ---
 
-## 6. Protocolo Obligatorio para IAs: Ciclo de Actualización
+## 7. Hoja de Ruta Arquitectónica: Escalabilidad Monopuesto a Multi-Caja LAN (WiFi)
+
+> **Directriz Estratégica Obligatoria:** Todo el desarrollo presente debe tener en cuenta que el sistema evolucionará de monopuesto local a sincronización multi-caja en red WiFi/LAN local sin requerir internet obligatorio ni servidores externos en la nube.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    RED LOCAL WIFI / LAN                     │
+├──────────────────────────────┬──────────────────────────────┤
+│  CAJA 1: MAESTRA / SERVIDOR   │  CAJAS 2..N: TERMINALES SATÉLITE
+│  - SQLite (Base de datos WAL)│  - UI idéntica (React 19)    │
+│  - Microservicio LAN embebido│  - Conexión LAN HTTP/WS      │
+│  - Cobro, inventario y turno │  - Sincronización en vivo    │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+1. **Fase Actual (Monopuesto Autónomo):**
+   - Una sola computadora local (caja física autónoma).
+   - Persistencia local en SQLite mediante `better-sqlite3` con `journal_mode = WAL`.
+   - Aislamiento estricto de capas mediante Arquitectura Hexagonal.
+
+2. **Fase de Escalado (Multi-Caja Local por WiFi):**
+   - **Topología Maestro-Satélite:** La computadora principal (Caja 1) actúa como servidor local de datos, levantando un microservicio interno en Electron (HTTP REST + WebSockets en puerto LAN, ej: `:3001`).
+   - **Terminales Satélite:** Las cajas adicionales conectadas a la misma red WiFi se sincronizan con la Caja Maestra en tiempo real (descuento inmediato de stock, bloqueo de folios concurrentes, turnos independientes por cajero).
+   - **Transparencia en Frontend:** Como el frontend consume puertos y contratos (`@shared/contracts`) a través de la capa `api/`, cambiar de SQLite local a conexión LAN requerirá únicamente alternar el adaptador de infraestructura sin reescribir componentes visuales ni formularios.
+   - **Resiliencia ante Caídas de WiFi:** Las terminales satélite contarán con cola local de ventas (Local Queue) para no frenar la venta en caja si el router WiFi sufre micro-cortes, sincronizando en lote al reanudar enlace.
+
+
+---
+
+## 8. Protocolo Obligatorio para IAs: Ciclo de Actualización
 
 Cada vez que una IA o programador agregue, modifique o refactorice código en un módulo:
-1. **Identificar el módulo afectado** en el índice anterior.
+1. **Identificar el módulo afectado** en el índice modular.
 2. **Implementar los cambios** respetando las reglas de tamaño (UI $\le 300$, Hooks $\le 200$) y aislamiento FSD.
 3. **Actualizar el archivo de contexto del módulo correspondiente** (ej. actualizar el estado actual, nuevas props, canales IPC añadidos o tareas completadas).
 4. **Verificar la compilación TypeScript** ejecutando `npx tsc --noEmit`.
