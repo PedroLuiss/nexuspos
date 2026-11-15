@@ -1,92 +1,71 @@
 ---
 name: nexuspos-guide
-description: Guía completa de arquitectura, patrones de diseño, estructura de carpetas, atajos de teclado y reglas de NexusPOS Desktop (Electron + React 19 + TypeScript + SQLite). Usar SIEMPRE que se cree, modifique o consulte sobre el proyecto NexusPOS.
+description: Guía maestra de ingeniería y navegación modular para NexusPOS Desktop (Electron + React 19 + TypeScript + SQLite). Usar SIEMPRE que cualquier IA o agente interactúe con el proyecto para ahorrar tokens y garantizar la escalabilidad y consistencia del código.
 ---
 
-# Skill: Arquitectura y Guía del Proyecto NexusPOS Desktop
+# 🤖 NexusPOS Guide: Protocolo de Ingeniería y Navegación Modular para IAs
 
-## 1. Visión General del Proyecto
-**NexusPOS** es un sistema de Punto de Venta (POS), inventario, kardex y control contable empresarial nativo para Windows (estilo **Windows 11 Fluent Design / WinUI 3**).
-
-- **Stack**: Electron + React 19 + TypeScript + Vite (`electron-vite`) + Tailwind CSS + Lucide Icons + SQLite (`better-sqlite3`).
-- **Arquitectura**: Arquitectura Hexagonal (Puertos y Adaptadores) en proceso `main`, Feature-Sliced Design en `renderer`, Offline-First, Event-Driven.
-- **Diseño Visual**: "Fluent POS Engine" — Fondo `#F3F3F3`, Acento principal `#0067C0`, Cobro/Éxito `#107C41`, Tablas Densas de 40px, fuentes tabulares monospace para montos.
+Esta guía está diseñada para que cualquier agente o Inteligencia Artificial que se conecte a **NexusPOS Desktop** comprenda de inmediato la arquitectura del sistema, aplique los patrones establecidos sin desviarse, ahorre tokens cargando únicamente el contexto relevante y mantenga la documentación sincronizada con cada cambio.
 
 ---
 
-## 2. Mapa de Atajos de Teclado (Hotkeys)
-- **F1..F7**: Navegación de pestañas (POS, Inventario, Kardex, Caja, Clientes, Reportes, Ajustes).
-- **F12**: Modal de Cobro Estándar.
-- **ALT + Q**: Cobro Rápido (efectivo exacto).
-- **ALT + L**: Selector reactivo de productos.
-- **ALT + P**: Pausar / Suspender venta actual.
-- **ALT + E / S**: Entradas y Salidas masivas (ajuste de stock).
-- **ALT + B**: Generador de etiquetas e impresión de códigos de barras (EAN-13, Code128).
-- **ALT + N**: Registrar Nuevo Producto.
-- **ALT + G**: Registrar Gasto Manual en caja.
-- **ALT + C**: Registrar Nuevo Cliente.
-- **ALT + U**: Matriz RBAC de permisos.
-- **Esc**: Cancelar o cerrar modales.
-- **Enter**: Confirmar formularios / escáner de código de barras.
+## ⚡ Directiva Obligatoria de Ahorro de Tokens
+
+NexusPOS utiliza una **Matriz de Contextos Modulares** ubicada en:
+📂 `docs/context/`
+
+> 🛑 **REGLA FUNDAMENTAL PARA IAs:** 
+> **NUNCA** cargues todos los archivos de contexto a la vez ni leas todo el código de golpe.
+> 1. Lee primero [`00-MASTER-CONTEXT.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/00-MASTER-CONTEXT.md).
+> 2. Lee **ÚNICAMENTE** el archivo del módulo específico en el que vas a trabajar.
+
+### Mapa de Enrutamiento de Contextos:
+
+| Si tu tarea trata sobre... | Lee este contexto modular |
+| :--- | :--- |
+| **Arquitectura global, contratos o reglas inviolables** | [`00-MASTER-CONTEXT.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/00-MASTER-CONTEXT.md) |
+| **Login, PIN rápido, OTP, cambio de clave, usuarios** | [`01-AUTH-SESSION.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/01-AUTH-SESSION.md) |
+| **Terminal de ventas, carrito, cobro normal/rápido/mixto, tickets 80mm** | [`02-POS-SALES.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/02-POS-SALES.md) |
+| **Catálogo, alta de productos, stock, merma/ajuste masivo, códigos de barras** | [`03-INVENTORY-PRODUCTS.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/03-INVENTORY-PRODUCTS.md) |
+| **Auditoría inmutable, trazabilidad de entradas/salidas, exportación** | [`04-KARDEX-AUDIT.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/04-KARDEX-AUDIT.md) |
+| **Apertura de turno, arqueo Z, balance en gaveta, gastos de caja chica** | [`05-CASH-SHIFT.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/05-CASH-SHIFT.md) |
+| **Cartera de clientes, límites de crédito, cuentas por cobrar, abonos a caja** | [`06-CUSTOMERS-CREDIT.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/06-CUSTOMERS-CREDIT.md) |
+| **KPIs de venta, ganancias netas, gráficos SVG interactivos, top 5** | [`07-REPORTS-ANALYTICS.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/07-REPORTS-ANALYTICS.md) |
+| **Báscula RS-232, impresora térmica ESC/POS, respaldos SQLite, matriz RBAC** | [`08-SETTINGS-HARDWARE.md`](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/08-SETTINGS-HARDWARE.md) |
 
 ---
 
-## 3. Estructura Canónica del Proyecto
+## 🏗️ Patrones de Diseño del Proyecto
 
-```text
-src/
-├── main/                                    # Proceso Node/Electron (Hexagonal + DDD)
-│   ├── index.ts                             # Bootstrap de Electron
-│   ├── ipc/                                 # Canales IPC (1 por dominio)
-│   │   ├── index.ts
-│   │   ├── sales.ipc.ts
-│   │   └── products.ipc.ts
-│   ├── domain/                              # Lógica pura (sin Electron, sin SQLite)
-│   │   ├── sales/ (sale.entity.ts, sale.service.ts, sale.errors.ts)
-│   │   ├── inventory/
-│   │   └── shared/ (money.ts, result.ts)
-│   ├── ports/                               # Interfaces de repositorios y hardware
-│   └── adapters/                            # Implementaciones SQLite y Hardware (RS-232, ESC/POS)
-│       ├── persistence/sqlite/
-│       └── hardware/
-│
-├── preload/
-│   └── index.ts                             # contextBridge tipado (window.api.*)
-│
-└── renderer/src/                            # Frontend React 19
-    ├── app/                                 # Shell, Router (tabs.config), Providers
-    ├── features/                            # Feature-Sliced Modules
-    │   ├── pos/                             # POSView, components, hooks, api, types
-    │   ├── inventory/                       # ProductTable, Modales de Stock, Barcode
-    │   ├── kardex/                          # KardexView (Auditoría inmutable)
-    │   ├── cash-shift/                      # CashShiftView (Arqueo Z, Gaveta)
-    │   ├── customers/                       # CustomersView (Cuentas por cobrar, Abonos)
-    │   ├── reports/                         # ReportsView (KPIs, Gráficos SVG)
-    │   └── settings/                        # SettingsGrid (RBAC, Impresora, Báscula)
-    └── shared/                              # UI Reutilizable, Hooks, Lib, Types
-        ├── ui/                              # Button, Modal, DataTable, MoneyInput
-        ├── lib/                             # money.ts, iva.ts, result.ts
-        └── types/                           # domain.ts
-```
+### 1. Proceso Main (Backend Node): Arquitectura Hexagonal & DDD
+El backend local en `src/main` se estructura estrictamente en:
+- **`domain/<dominio>/`**: Lógica de negocio pura (entidades, validaciones, cálculos). **PROHIBIDO** importar `electron` o `better-sqlite3`.
+- **`ports/`**: Interfaces TypeScript de contratos de persistencia y hardware (`UserRepository`, `ProductRepository`, etc.).
+- **`adapters/persistence/sqlite/`**: Implementación concreta de base de datos con SQLite nativo (`better-sqlite3`).
+- **`ipc/`**: Endpoints de comunicación `ipcMain.handle()` tipados.
+
+### 2. Capa Preload: Puente Seguro
+- `src/preload/index.ts`: Expone al navegador exclusivamente el objeto `window.api.<dominio>.<metodo>()` usando `contextBridge`. Nunca expone APIs crudas de Node.
+
+### 3. Proceso Renderer (Frontend React 19): Feature-Sliced Design (FSD)
+- **`features/<nombre>/`**: Módulos encapsulados (`api/`, `components/`, `hooks/`, `types/`).
+- ❌ **Límite inviolable:** `features/pos` **NUNCA** debe importar de `features/inventory`. Si ambos comparten lógica, entidades o componentes, se suben a `src/renderer/src/shared/`.
+- **`shared/`**: UI agnóstica (`shared/ui/`), utilidades de cálculo (`shared/lib/`), iconos (`shared/icons/`) y tipos.
 
 ---
 
-## 4. Reglas de Arquitectura e Importación
+## 📏 Restricciones Físicas de Código
 
-1. **Aislamiento entre Features**: `features/A` NUNCA importa de `features/B`. Todo lo compartido sube a `shared/`.
-2. **Componentes Shared Puros**: `shared/ui` no contiene llamadas a IPC ni lógica de negocio.
-3. **Lógica de Dominio Pura**: `main/domain` no importa `electron`, `better-sqlite3` ni adaptadores.
-4. **IPC Seguro**: `renderer` interactúa con el proceso main exclusivamente a través de `window.api.*` (preload `contextBridge`).
-5. **Límites de Tamaño**: Componentes UI <= 300 líneas. Hooks <= 200 líneas.
-6. **Soft Delete**: Los productos eliminados usan borrado lógico (`deleted = true`, `active = false`) para resguardar la trazabilidad histórica de Kardex y tickets.
+Toda IA debe verificar antes de entregar cualquier cambio:
+1. **Componentes UI:** **Máximo 300 líneas**. Si un componente supera este límite, debe fraccionarse en subcomponentes más pequeños.
+2. **Custom Hooks:** **Máximo 200 líneas**. Si un hook crece más, debe separarse la lógica de estado o los efectos secundarios.
+3. **Soft Delete Obligatorio:** En `products` y tablas clave, nunca ejecutar `DELETE FROM`. Se marca `deleted = 1` y `active = 0` para resguardar la consistencia de Kardex y tickets.
+4. **Cero Errores TypeScript:** Al finalizar, debe verificarse la compilación ejecutando `npx tsc --noEmit`.
 
 ---
 
-## 5. Módulos y Dominio de Negocio
+## 🔄 Protocolo de Actualización de Contextos para IAs
 
-- **POS (Terminal de Ventas)**: Búsqueda reactiva, carrito con steppers, cobro mixto (efectivo/tarjeta/crédito), suspensión de ventas y tickets térmicos de 80mm.
-- **Inventario**: Catálogo denso estilo Excel, alertas de stock mínimo/máximo, entradas/salidas masivas y generador de código de barras para impresoras térmicas (Zebra/Xprinter).
-- **Kardex**: Registro inmutable de cada movimiento de stock (+ entradas / - salidas), filtrable por producto, motivo y fechas, exportable a Excel.
-- **Caja & Turno**: Arqueo Z, control de saldo inicial, dinero esperado vs dinero físico, registro de gastos y abonos en tiempo real.
-- **Clientes & Crédito**: Cartera de clientes a crédito, historial de tickets pendientes y recepción de abonos directos a la gaveta de caja.
-- **Ajustes & Hardware**: Matriz RBAC, respaldo/restauración de BD SQLite, conexión RS-232 para básculas de pesaje comercial.
+Cuando termines de implementar o modificar una característica:
+1. **Actualiza el archivo de contexto modular** correspondiente en `docs/context/` (agrega nuevas props, canales IPC añadidos o marca tareas completadas).
+2. De esta forma, la siguiente IA que continúe el trabajo comprenderá el estado exacto sin tener que reescanear todo el código fuente.
