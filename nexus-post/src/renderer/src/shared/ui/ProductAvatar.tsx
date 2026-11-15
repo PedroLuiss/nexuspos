@@ -81,7 +81,7 @@ export const ProductAvatar: React.FC<ProductAvatarProps> = ({
           alt={name}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
-          loading="lazy"
+          loading="eager"
         />
       </div>
     )
