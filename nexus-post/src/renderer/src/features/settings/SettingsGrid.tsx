@@ -32,10 +32,23 @@ interface Feedback {
   type: 'success' | 'error'
 }
 
+interface ScaleConfigView {
+  comPort: string
+  baudRate: number
+  isEnabled: boolean
+  isConnected: boolean
+}
+
 export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
   const isAdmin = canManageUsers(currentUser ?? null)
   const [activeModal, setActiveModal] = useState<SettingsModal>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [scaleConfig, setScaleConfig] = useState<ScaleConfigView>({
+    comPort: 'COM3',
+    baudRate: 9600,
+    isEnabled: false,
+    isConnected: false
+  })
 
   const {
     users,
@@ -50,9 +63,6 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
   } = useUsers(isAdmin)
 
   const { config: business, saveConfig, isLoading: isConfigLoading } = useBusinessConfig()
-
-  // Báscula serial RS-232
-  const [scale, setScale] = useState({ comPort: 'COM3', baudRate: 9600 })
 
   const showFeedback = (message: string, type: Feedback['type'] = 'success'): void => {
     setFeedback({ message, type })
@@ -71,9 +81,37 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       )
       return
     }
+    if (modal === 'scale' && !isAdmin) {
+      showFeedback(
+        'Acceso denegado: solo el Administrador configura la báscula serial.',
+        'error'
+      )
+      return
+    }
     clearError()
     setActiveModal(modal)
   }
+
+  // Cargar configuración de báscula al montar
+  useEffect(() => {
+    const loadScaleConfig = async (): Promise<void> => {
+      try {
+        const config = await window.api.hardware.getScaleConfig()
+        const status = await window.api.hardware.isConnected()
+        if (config) {
+          setScaleConfig({
+            comPort: config.comPort,
+            baudRate: config.baudRate,
+            isEnabled: config.isEnabled,
+            isConnected: status.isConnected
+          })
+        }
+      } catch {
+        // Ignorar errores al cargar configuración de escala
+      }
+    }
+    loadScaleConfig()
+  }, [])
 
   // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA
   useEffect(() => {
@@ -263,30 +301,36 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           subtitle="Comunicación COM por hardware"
           accent="amber"
           badge={{
-            label: `${scale.comPort} Configurado`,
-            className: 'bg-amber-50 text-amber-700 border-amber-200'
+            label: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
+            className: scaleConfig.isConnected
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-100 text-slate-500 border-slate-200'
           }}
           description="Conexión para balanzas de peso comercial (Torrey, Rhino, Dibal) mediante puerto serial. Transmite el peso al POS."
           facts={[
             {
-              label: 'Puerto Activo:',
-              value: `${scale.comPort} (RS-232)`,
+              label: 'Puerto COM:',
+              value: scaleConfig.comPort,
               valueClassName: 'font-mono'
             },
             {
               label: 'Baud Rate:',
-              value: `${scale.baudRate} bps`,
+              value: `${scaleConfig.baudRate} bps`,
               valueClassName: 'font-mono'
             },
             {
               label: 'Estado de Enlace:',
-              value: 'Listo para pesaje',
-              valueClassName: 'text-[#107C41]'
+              value: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
+              valueClassName: scaleConfig.isConnected
+                ? 'text-[#107C41] font-mono'
+                : 'text-slate-500 font-mono'
             }
           ]}
-          footerNote="Node serialport"
+          footerNote={scaleConfig.isEnabled ? 'Habilitada en POS' : 'Deshabilitada'}
           actionLabel="Configurar Puerto Serial"
           onAction={() => openModal('scale')}
+          disabled={!isAdmin}
+          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
         />
       </div>
 
@@ -342,9 +386,6 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       <ScaleSettingsModal
         isOpen={activeModal === 'scale'}
         onClose={() => setActiveModal(null)}
-        initialPort={scale.comPort}
-        initialBaudRate={scale.baudRate}
-        onSave={(comPort, baudRate) => setScale({ comPort, baudRate })}
         onFeedback={(msg) => showFeedback(msg)}
       />
 

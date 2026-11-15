@@ -4,6 +4,7 @@ import type { Category, CategoryInput, CategoryFilter } from './category.contrac
 import type { AuthApi } from './auth.contract'
 import type { UsersApi } from './user.contract'
 import type { SettingsApi } from './settings.contract'
+import type { HardwareApi } from './hardware.contract'
 
 /**
  * Nombres canónicos de los canales IPC.
@@ -49,6 +50,15 @@ export const IPC_CHANNELS = {
   settings: {
     getBusiness: 'settings:getBusiness',
     updateBusiness: 'settings:updateBusiness'
+  },
+  hardware: {
+    listPorts: 'hardware:listPorts',
+    openPort: 'hardware:openPort',
+    closePort: 'hardware:closePort',
+    readWeight: 'hardware:readWeight',
+    isConnected: 'hardware:isConnected',
+    saveScaleConfig: 'hardware:saveScaleConfig',
+    getScaleConfig: 'hardware:getScaleConfig'
   }
 } as const
 
@@ -82,4 +92,5 @@ export interface NexusApi {
   auth: AuthApi
   users: UsersApi
   settings: SettingsApi
+  hardware: HardwareApi
 }

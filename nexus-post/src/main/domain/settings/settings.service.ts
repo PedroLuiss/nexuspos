@@ -7,7 +7,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_TAX_RATE = 100
 const TAX_ID_TYPES = TAX_ID_TYPE_OPTIONS.map((t) => t.value)
 const CURRENCIES = CURRENCY_OPTIONS.map((c) => c.code)
-const RIF_RE = /^[JVEGP]-\d{8}-\d$/
 
 function clean(value: unknown, maxLength = 200): string {
   if (typeof value !== 'string') return ''
@@ -32,7 +31,7 @@ export class SettingsService {
   constructor(
     private readonly repository: SettingsRepository,
     private readonly auth: AuthService
-  ) {}
+  ) { }
 
   private requireAdminSession(): { name: string } {
     const session = this.auth.getSessionUser()
@@ -86,10 +85,8 @@ export class SettingsService {
     if (!TAX_ID_TYPES.includes(taxIdType)) {
       throw new Error('El tipo de identificación fiscal no es válido.')
     }
-    if (taxIdType === 'RIF' && !RIF_RE.test(taxId)) {
-      throw new Error(
-        'El RIF debe tener formato válido venezolano (ej. J-00000000-0).'
-      )
+    if (taxIdType === 'RIF' && !taxId) {
+      throw new Error('El RIF es obligatorio cuando el tipo de documento es RIF.')
     }
     if (taxIdType !== 'NONE' && !taxId) {
       throw new Error('El número de identificación fiscal (RIF) es obligatorio.')

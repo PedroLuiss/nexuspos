@@ -60,10 +60,13 @@ export const BusinessIdentityForm: React.FC<BusinessIdentityFormProps> = ({
             <label className={labelClass}>Tipo de Documento</label>
             <select
               disabled={disabled}
-              value={values.taxIdType}
-              onChange={(e) => onChange({ taxIdType: e.target.value as TaxIdType })}
+              value={values.taxIdType || ''}
+              onChange={(e) =>
+                onChange({ taxIdType: (e.target.value as TaxIdType) || 'NONE' })
+              }
               className={inputClass}
             >
+              <option value="">Seleccionar tipo de documento…</option>
               {TAX_ID_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -80,13 +83,13 @@ export const BusinessIdentityForm: React.FC<BusinessIdentityFormProps> = ({
               type="text"
               disabled={disabled}
               value={values.taxId}
-              onChange={(e) => onChange({ taxId: e.target.value.toUpperCase() })}
-              placeholder="J-00000000-0"
+              onChange={(e) => onChange({ taxId: e.target.value })}
+              placeholder="Ingrese RIF o identificación fiscal"
               className={`${inputClass} font-mono`}
-              maxLength={11}
+              maxLength={10}
             />
             <p className="text-[10px] text-slate-500 mt-1">
-              Formato SENIAT: letra + 8 dígitos + dígito verificador (J, V, E, G, P).
+              Identificación fiscal del SENIAT (máximo 10 caracteres).
             </p>
           </div>
           <div>
@@ -184,10 +187,13 @@ export const BusinessIdentityForm: React.FC<BusinessIdentityFormProps> = ({
             <label className={labelClass}>Moneda de Operación</label>
             <select
               disabled={disabled}
-              value={values.currency}
-              onChange={(e) => onChange({ currency: e.target.value as CurrencyCode })}
+              value={values.currency || ''}
+              onChange={(e) =>
+                onChange({ currency: (e.target.value as CurrencyCode) || 'VES' })
+              }
               className={inputClass}
             >
+              <option value="">Seleccionar moneda…</option>
               {CURRENCY_OPTIONS.map((opt) => (
                 <option key={opt.code} value={opt.code}>
                   {opt.code} — {opt.label}

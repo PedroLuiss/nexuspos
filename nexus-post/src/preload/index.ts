@@ -16,7 +16,12 @@ import type {
   ResetPasswordInput,
   CreateUserInput,
   UpdateUserInput,
-  BusinessConfigInput
+  BusinessConfigInput,
+  ScaleConfigInput,
+  SerialPortInfo,
+  ScaleReading,
+  ScaleConnectionStatus,
+  BaudRate
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -64,6 +69,18 @@ const api: NexusApi = {
     getBusiness: () => ipcRenderer.invoke(IPC_CHANNELS.settings.getBusiness),
     updateBusiness: (input: BusinessConfigInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.settings.updateBusiness, input)
+  },
+  hardware: {
+    listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.listPorts),
+    openPort: (comPort: string, baudRate: BaudRate) =>
+      ipcRenderer.invoke(IPC_CHANNELS.hardware.openPort, comPort, baudRate),
+    closePort: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.closePort),
+    readWeight: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.readWeight),
+    isConnected: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.hardware.isConnected),
+    saveScaleConfig: (input: ScaleConfigInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.hardware.saveScaleConfig, input),
+    getScaleConfig: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.getScaleConfig)
   }
 }
 
