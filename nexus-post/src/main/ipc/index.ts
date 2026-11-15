@@ -10,10 +10,12 @@ import { ProductService } from '../domain/products/product.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
 import { AuthService } from '../domain/auth/auth.service'
+import { UserService } from '../domain/users/user.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
 import { registerAuthIpc } from './auth.ipc'
+import { registerUsersIpc } from './users.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -38,9 +40,11 @@ export function registerIpcHandlers(): void {
   const categoryService = new CategoryService(categoryRepository)
   const authAdapter = new LaravelAuthAdapter()
   const authService = new AuthService(userRepository, authAdapter)
+  const userService = new UserService(userRepository, authService)
 
   registerProductIpc(productService)
   registerInventoryIpc(inventoryService)
   registerCategoryIpc(categoryService)
   registerAuthIpc(authService)
+  registerUsersIpc(userService)
 }

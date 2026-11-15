@@ -13,7 +13,9 @@ import type {
   LoginInput,
   PinLoginInput,
   VerifyOtpInput,
-  ResetPasswordInput
+  ResetPasswordInput,
+  CreateUserInput,
+  UpdateUserInput
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -48,6 +50,14 @@ const api: NexusApi = {
     verifyOtp: (input: VerifyOtpInput) => ipcRenderer.invoke(IPC_CHANNELS.auth.verifyOtp, input),
     resetPassword: (input: ResetPasswordInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.auth.resetPassword, input)
+  },
+  users: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.users.list),
+    getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.users.getById, id),
+    create: (input: CreateUserInput) => ipcRenderer.invoke(IPC_CHANNELS.users.create, input),
+    update: (input: UpdateUserInput) => ipcRenderer.invoke(IPC_CHANNELS.users.update, input),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.users.delete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.users.toggleStatus, id)
   }
 }
 

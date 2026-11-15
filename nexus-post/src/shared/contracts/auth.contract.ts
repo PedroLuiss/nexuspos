@@ -16,6 +16,7 @@ export interface User {
   active: boolean
   branch?: string
   station?: string
+  permissions?: string[]
   createdAt?: string
   updatedAt?: string
 }

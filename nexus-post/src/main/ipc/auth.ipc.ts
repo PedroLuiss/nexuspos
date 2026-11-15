@@ -28,14 +28,14 @@ export function registerAuthIpc(auth: AuthService): void {
 
   ipcMain.handle(
     IPC_CHANNELS.auth.logout,
-    async (_event): Promise<void> => {
+    async (): Promise<void> => {
       await auth.logout()
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.getCurrentUser,
-    (_event): Promise<User | null> => {
+    (): Promise<User | null> => {
       return auth.getCurrentUser()
     }
   )

@@ -1,28 +1,48 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from './providers/HotkeysProvider'
 import { TABS_CONFIG, TabId } from './router/tabs.config'
 import { NavigationTabs } from '../shared/ui/NavigationTabs'
 import AuthModal from '../shared/ui/AuthModal'
 import { LogOut } from '../shared/icons/Icons'
+import { canAccessTab } from '../shared/lib/permissions'
+import type { User } from '@shared/contracts'
 
   interface DashboardLayoutProps {
     children?: React.ReactNode
-    currentUser?: { name: string; role?: string; station?: string } | null
+    currentUser?: User | null
     onLogout?: () => void
+  }
+
+  const DEMO_USER: User = {
+    id: 'usr-demo',
+    username: 'carlos.morales',
+    email: 'carlos.morales@nexuspos.pe',
+    name: 'Carlos Morales',
+    role: 'CASHIER',
+    active: true,
+    station: 'CAJA-01'
   }
 
   export function DashboardLayout({ children, currentUser, onLogout }: DashboardLayoutProps): React.JSX.Element {
     const { activeTab, setActiveTab } = useRouter()
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-    const [user, setUser] = useState(
-      currentUser ?? { name: 'Carlos Morales', role: 'Cajero / POS', station: 'CAJA-01' }
+    // Nombre del operador seleccionado en el Pinpad (override temporal de la sesión mostrada).
+    const [manualName, setManualName] = useState<string | null>(null)
+
+    const baseUser = currentUser ?? DEMO_USER
+    const user: User = manualName ? { ...baseUser, name: manualName } : baseUser
+
+    // RBAC: solo se muestran los módulos autorizados para la sesión actual.
+    const allowedTabs = useMemo(
+      () => TABS_CONFIG.filter((tab) => canAccessTab(user, tab.id)),
+      [user]
     )
 
     useEffect(() => {
-      if (currentUser) {
-        setUser(currentUser)
+      if (!allowedTabs.some((tab) => tab.id === activeTab)) {
+        setActiveTab((allowedTabs[0]?.id ?? 'pos') as TabId)
       }
-    }, [currentUser])
+    }, [allowedTabs, activeTab, setActiveTab])
 
     return (
       <div className="flex flex-col h-screen bg-[#F3F3F3] text-[#1B1B1B] font-sans overflow-hidden select-none">
@@ -58,7 +78,7 @@ import { LogOut } from '../shared/icons/Icons'
               className="flex items-center gap-2 bg-[#F9F9F9] hover:bg-[#EBF0F5] border border-[#E5E5E5] px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
               title="Cambiar cajero / Supervisor Override"
             >
-              <span className="text-[#717783]">Cajero:</span>
+              <span className="text-[#717783]">{user.role === 'ADMIN' ? 'Admin:' : 'Cajero:'}</span>
               <span className="font-bold text-[#0067C0] flex items-center gap-1">
                 <span>{user.name}</span>
                 <span className="kbd-badge text-[9px] text-[#0067C0] bg-[#0067C0]/10 border-[#0067C0]/20">LOCK</span>
@@ -81,7 +101,7 @@ import { LogOut } from '../shared/icons/Icons'
 
         {/* 2. Command Bar Tabs Navigation */}
         <NavigationTabs
-          tabs={TABS_CONFIG}
+          tabs={allowedTabs}
           activeTab={activeTab}
           onTabChange={(id) => setActiveTab(id as TabId)}
         />
@@ -117,7 +137,7 @@ import { LogOut } from '../shared/icons/Icons'
         <AuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
-          onLoginSuccess={(u) => setUser(u)}
+          onLoginSuccess={(u) => setManualName(u.name)}
         />
       </div>
     )

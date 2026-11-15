@@ -6,8 +6,19 @@ import type {
   VerifyOtpInput,
   ResetPasswordInput
 } from '@shared/contracts'
-import type { UserRepository } from '../../ports/user.repository'
+import { ROLE_DEFAULT_PERMISSIONS } from '@shared/contracts'
+import type { UserRepository, UserWithSecret } from '../../ports/user.repository'
 import type { RemoteAuthPort } from '../../ports/remote-auth.port'
+
+/**
+ * Convierte el registro persistido (que incluye el secreto) en un usuario de sesión
+ * apto para renderer: elimina `passwordHash` sin exponerlo nunca por IPC.
+ */
+function toSessionUser(source: UserWithSecret): User {
+  const user: User = { ...source }
+  delete (user as Partial<UserWithSecret>).passwordHash
+  return user
+}
 
 export class AuthService {
   private currentUser: User | null = null
@@ -19,66 +30,133 @@ export class AuthService {
   ) {}
 
   /**
-   * Inicio de sesión híbrido:
-   * 1. Intenta validar credenciales contra la API de Laravel (servidor principal).
-   * 2. Si la API no está disponible (modo offline o desarrollo local), recurre a SQLite local.
+   * Inicio de sesión híbrido inteligente:
+   * 1. Verifica primero si el usuario ya existe en SQLite local. Si existe, valida directamente contra SQLite
+   *    (sin consumir la API de Laravel) garantizando velocidad y operación Offline-First.
+   * 2. Si NO existe localmente (primera instalación o nuevo equipo), consume la API de Laravel.
+   *    Si la API responde con éxito, crea automáticamente el usuario ADMIN en SQLite de una vez,
+   *    asegurando que en sesiones posteriores ya no sea necesario consumir el endpoint de Laravel.
    */
   async login(input: LoginInput): Promise<AuthResponse> {
     if (!input.emailOrUsername || !input.password) {
       return { success: false, error: 'Debe ingresar su usuario/correo y contraseña.' }
     }
 
-    // Intento 1: API de Laravel (Landing / Cuenta Maestra)
+    // Paso 1: Verificar si el usuario ya existe en SQLite local
+    const localUserWithSecret = this.userRepository.findByEmailOrUsername(input.emailOrUsername)
+
+    if (localUserWithSecret) {
+      if (localUserWithSecret.passwordHash !== input.password) {
+        return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' }
+      }
+
+      const user = toSessionUser(localUserWithSecret)
+      const sessionUser: User = {
+        ...user,
+        branch: input.branch ?? user.branch,
+        station: input.station ?? user.station
+      }
+
+      this.currentUser = sessionUser
+      return {
+        success: true,
+        user: sessionUser
+      }
+    }
+
+    // Paso 2: Si NO existe localmente (primer inicio de sesión tras instalar la app), consumir API de Laravel
     if (this.remoteAuth) {
       try {
         const remoteRes = await this.remoteAuth.login(input)
         if (remoteRes.success && remoteRes.user) {
-          this.currentUser = remoteRes.user
-          return remoteRes
+          // Acceso exitoso en Laravel: Crear el usuario ADMIN en SQLite de una vez.
+          // Se persiste la misma contraseña usada en el login remoto para que los
+          // siguientes inicios de sesión se resuelvan 100% offline contra SQLite.
+          const email = (remoteRes.user.email || input.emailOrUsername).trim().toLowerCase()
+          const username = (remoteRes.user.username || email.split('@')[0] || 'admin')
+            .trim()
+            .toLowerCase()
+
+          try {
+            const adminUser = this.userRepository.create({
+              username,
+              email,
+              name: remoteRes.user.name || 'Administrador',
+              password: input.password,
+              pin: remoteRes.user.pin || '9999',
+              role: 'ADMIN',
+              permissions: [...ROLE_DEFAULT_PERMISSIONS.ADMIN],
+              branch: input.branch ?? 'Sucursal Central',
+              station: input.station ?? 'CAJA-01'
+            })
+
+            this.currentUser = adminUser
+            return {
+              success: true,
+              user: adminUser
+            }
+          } catch (createError: unknown) {
+            // Si el registro ya existe (por usuario o correo) se reutiliza para no bloquear el acceso.
+            const existing =
+              this.userRepository.findByEmail(email) ?? this.userRepository.findByUsername(username)
+
+            if (existing && existing.active) {
+              const user = toSessionUser(existing)
+              this.currentUser = {
+                ...user,
+                branch: input.branch ?? user.branch,
+                station: input.station ?? user.station
+              }
+              return { success: true, user: this.currentUser }
+            }
+
+            const detail = createError instanceof Error ? ` ${createError.message}` : ''
+            return {
+              success: false,
+              error: `No se pudo registrar el administrador local en SQLite.${detail}`
+            }
+          }
         }
 
-        // Si la API respondió con error de credenciales explícito de Laravel, lo respetamos
-        if (remoteRes.error && !remoteRes.error.includes('No se pudo conectar') && !remoteRes.error.includes('Tiempo de espera')) {
+        if (remoteRes.error) {
           return remoteRes
         }
-      } catch {
-        // En caso de excepción de red inesperada, cae en fallback local
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error de red'
+        return {
+          success: false,
+          error: `No se pudo conectar con el servidor principal: ${msg}`
+        }
       }
     }
 
-    // Intento 2: Fallback local en SQLite (Offline-First)
-    const userWithSecret = this.userRepository.findByEmailOrUsername(input.emailOrUsername)
-    if (!userWithSecret) {
-      return { success: false, error: 'Usuario no encontrado o inactivo.' }
-    }
-
-    if (userWithSecret.passwordHash !== input.password) {
-      return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' }
-    }
-
-    const { passwordHash: _, ...user } = userWithSecret
-    const sessionUser: User = {
-      ...user,
-      branch: input.branch ?? user.branch,
-      station: input.station ?? user.station
-    }
-
-    this.currentUser = sessionUser
     return {
-      success: true,
-      user: sessionUser
+      success: false,
+      error: 'Usuario no registrado. Inicia sesión con la cuenta con la que descargaste el sistema.'
     }
   }
 
   /**
    * Login rápido con PIN de 4 dígitos.
+   * Offline-First: SQLite local primero; la API de Laravel solo se consulta si el PIN no existe localmente.
    */
   async loginWithPin(input: PinLoginInput): Promise<AuthResponse> {
     if (!input.pin || input.pin.length < 4) {
       return { success: false, error: 'Ingrese un PIN válido de 4 dígitos.' }
     }
 
-    // Intento 1: API de Laravel
+    // Intento 1: SQLite Local (respuesta inmediata, sin red)
+    const localUser = this.userRepository.findByPin(input.pin)
+    if (localUser) {
+      const sessionUser: User = {
+        ...localUser,
+        station: input.station ?? localUser.station ?? 'CAJA-01'
+      }
+      this.currentUser = sessionUser
+      return { success: true, user: sessionUser }
+    }
+
+    // Intento 2: API de Laravel (cajeros creados solo en la nube)
     if (this.remoteAuth) {
       try {
         const remoteRes = await this.remoteAuth.loginWithPin(input)
@@ -90,26 +168,16 @@ export class AuthService {
           return remoteRes
         }
       } catch {
-        // Fallback local
+        // Sin red: se mantiene el fallback local
       }
     }
 
-    // Intento 2: SQLite Local
-    const user = this.userRepository.findByPin(input.pin)
-    if (!user) {
-      return { success: false, error: 'PIN de cajero no reconocido.' }
-    }
+    return { success: false, error: 'PIN de cajero no reconocido.' }
+  }
 
-    const sessionUser: User = {
-      ...user,
-      station: input.station ?? user.station ?? 'CAJA-01'
-    }
-
-    this.currentUser = sessionUser
-    return {
-      success: true,
-      user: sessionUser
-    }
+  /** Sesión en memoria actual (acceso sincrónico para guardias de permisos en IPC). */
+  getSessionUser(): User | null {
+    return this.currentUser
   }
 
   async logout(): Promise<void> {
@@ -222,7 +290,7 @@ export class AuthService {
     this.userRepository.updatePassword(userWithSecret.id, input.newPassword)
     this.otps.delete(cleanEmail)
 
-    const { passwordHash: _, ...user } = userWithSecret
+    const user = toSessionUser(userWithSecret)
     const sessionUser: User = {
       ...user,
       station: 'CAJA-01'

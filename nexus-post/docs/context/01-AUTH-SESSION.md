@@ -1,4 +1,4 @@
-# 🔐 MÓDULO 01 — AUTH & SESSION MANAGEMENT (LARAVEL API READY)
+# 🔐 MÓDULO 01 — AUTH & SESSION MANAGEMENT (LOCAL-FIRST + LARAVEL BOOTSTRAP)
 
 > **Contexto Modular:** Este documento contiene la arquitectura, contratos, integración con la API de Laravel y reglas del módulo de Autenticación, Sesión y Seguridad de NexusPOS Desktop.
 > **Contexto Maestro:** Ver [`00-MASTER-CONTEXT.md`](./00-MASTER-CONTEXT.md) para estándares globales.
@@ -7,22 +7,61 @@
 
 ## 1. Responsabilidad y Modelo de Negocio
 
-El acceso a NexusPOS Desktop opera bajo un modelo de suscripción y cuentas centralizadas:
-1. **Registro en Landing Page Web:** El usuario/comercio se registra y adquiere su suscripción en la Landing Page (React Web + Laravel API).
-2. **Descarga del Instalador Desktop:** Una vez creada la cuenta en la plataforma, descarga el sistema POS de escritorio.
-3. **Validación de Credenciales:** La aplicación de escritorio valida el correo y la contraseña directamente contra la API de Laravel (`POST /api/v1/auth/login`).
-4. **Resiliencia Offline-First:** Si el servidor de Laravel no está disponible (modo offline o mientras el backend esté en desarrollo), el sistema permite un fallback transparente a SQLite local para no detener la operación.
+El acceso a NexusPOS Desktop opera bajo un modelo de suscripción con **arranque remoto único** y operación local permanente:
+
+1. **Registro en Landing Page Web:** El comercio se registra y adquiere su suscripción en la Landing Page (React Web + Laravel API).
+2. **Descarga del Instalador Desktop:** Con la cuenta creada, descarga el sistema POS de escritorio (SQLite vacío salvo semillas de catálogo).
+3. **Primer inicio de sesión (bootstrap remoto):** Si el identificador **no existe** en SQLite local, se consume `POST /api/v1/auth/login` de Laravel. Si el acceso es exitoso, la aplicación **crea de inmediato el usuario `ADMIN` en SQLite** con la contraseña y PIN usados/recibidos, y con el catálogo completo de permisos.
+4. **Sesiones posteriores (100% local):** Como el usuario ya existe en SQLite, el login se resuelve contra la base local **sin llamar a Laravel**, garantizando velocidad y operación Offline-First.
+
+> **Regla de oro:** La API de Laravel solo se consulta cuando el identificador (usuario/correo o PIN) **no existe localmente**. Nunca se consulta en cada inicio de sesión.
 
 ---
 
-## 2. Mapa de Archivos del Módulo
+## 2. Flujo de Autenticación
+
+### 2.1 Login con credenciales (`auth:login`)
+
+```text
+LoginInput (emailOrUsername + password)
+      │
+      ├─ Paso 1: userRepository.findByEmailOrUsername(identifier)
+      │     ├─ Existe → compara passwordHash en SQLite
+      │     │     ├─ Correcto → sesión OK (sin red)
+      │     │     └─ Incorrecto → error "Contraseña incorrecta"
+      │     └─ No existe → Paso 2
+      │
+      └─ Paso 2: remoteAuth.login(input)  (Laravel)
+            ├─ success → userRepository.create({ role: 'ADMIN', ... })
+            │             └─ Si colisiona (ya existe por usuario/correo) se reutiliza el registro
+            │                activo en lugar de bloquear el acceso
+            └─ fail / sin red → error de credenciales o de conexión
+```
+
+### 2.2 Login rápido por PIN (`auth:loginPin`)
+
+1. **SQLite primero:** `findByPin(pin)` con `active = 1` → sesión inmediata, sin red.
+2. **Laravel después:** solo si el PIN no existe localmente (cajeros creados únicamente en la nube).
+3. Sin conexión y sin PIN local → `PIN de cajero no reconocido.`
+
+### 2.3 Sesión en memoria
+
+- `AuthService.currentUser` guarda la sesión activa y se expone a través de `getSessionUser()`.
+- `UserService` usa esa sesión para autorizar todas las operaciones de usuarios (`role === 'ADMIN'`).
+- `logout()` limpia la sesión local y revoca el token remoto si existe; **nunca lanza excepción** al renderer.
+
+---
+
+## 3. Mapa de Archivos del Módulo
 
 ```text
 nexus-post/src/
 ├── main/
 │   ├── domain/auth/
-│   │   ├── auth.service.ts                  # Lógica de dominio híbrida (Laravel API + fallback SQLite)
+│   │   ├── auth.service.ts                  # Login local-first + bootstrap ADMIN + sesión
 │   │   └── user.entity.ts                   # Entidad User y roles
+│   ├── domain/users/
+│   │   └── user.service.ts                  # RBAC: solo sesión ADMIN gestiona usuarios
 │   ├── ports/
 │   │   ├── user.repository.ts               # Puerto UserRepository (SQLite local)
 │   │   └── remote-auth.port.ts              # Puerto RemoteAuthPort (API Laravel)
@@ -30,47 +69,43 @@ nexus-post/src/
 │   │   ├── remote/
 │   │   │   └── laravel-auth.adapter.ts      # Cliente HTTP nativo contra endpoints de Laravel
 │   │   └── persistence/sqlite/
-│   │       ├── users.sqlite.ts              # Adaptador SQLite con queries preparadas
-│   │       └── migrations/004_users.ts      # Tabla 'users' con cajero inicial sembrado
+│   │       ├── users.sqlite.ts              # Consultas preparadas, incluye findByUsername/Email
+│   │       └── migrations/
+│   │           ├── 004_users.ts             # Tabla 'users' con cajero inicial sembrado
+│   │           └── 007_user_permissions.ts  # Columna JSON 'permissions' + presets
 │   └── ipc/
-│       ├── auth.ipc.ts                      # Handlers de ipcMain ('auth:*')
-│       └── index.ts                         # Inyección de dependencias (LaravelAuthAdapter + SQLite)
+│       ├── auth.ipc.ts                      # Handlers 'auth:*'
+│       ├── users.ipc.ts                     # Handlers 'users:*' (delegados a UserService)
+│       └── index.ts                         # DI: LaravelAuthAdapter → AuthService → UserService
 │
 ├── preload/
-│   └── index.ts                             # Expone api.auth.* al renderer
+│   └── index.ts                             # Expone api.auth.* y api.users.* al renderer
 │
 ├── shared/
 │   ├── config/
-│   │   └── api.config.ts                    # Configuración centralizada de URLs y endpoints de Laravel
+│   │   └── api.config.ts                    # URL base y endpoints de Laravel
 │   └── contracts/
-│       ├── auth.contract.ts                 # Interfaces: User, LoginInput, PinLoginInput, etc.
-│       └── api.contract.ts                  # Canales IPC_CHANNELS.auth
+│       ├── auth.contract.ts                 # User, LoginInput, PinLoginInput, AuthResponse
+│       ├── user.contract.ts                 # PermissionKey, presets por rol, UsersApi
+│       └── api.contract.ts                  # Canales IPC_CHANNELS.auth / .users
 │
-└── renderer/src/features/auth/
-    ├── api/
-    │   └── auth.api.ts                      # Wrapper de window.api.auth con fallbacks
-    ├── hooks/
-    │   └── useAuth.ts                       # Custom Hook de estado de autenticación (<= 200 lín.)
-    ├── components/
-    │   ├── AuthHeader.tsx                   # Barra de título WinUI 3 y controles de ventana
-    │   ├── AuthFooter.tsx                   # Barra inferior con estado de terminal
-    │   ├── LoginForm.tsx                    # Formulario de login (sin selector de sucursal)
-    │   ├── QuickPinModal.tsx                # Modal F10 con teclado numérico y 4 dots
-    │   ├── ForgotPasswordView.tsx           # Pantalla completa Stitch (ingreso de email)
-    │   └── VerifyCodeResetPasswordView.tsx  # Pantalla split Stitch (OTP 5 col + Reset 6 col)
-    └── LoginView.tsx                        # Orquestador del flujo de pantallas Auth
+└── renderer/src/
+    ├── shared/lib/permissions.ts            # getUserPermissions / canAccessTab / canManageUsers
+    └── features/auth/
+        ├── api/auth.api.ts                  # Wrapper de window.api.auth con fallbacks
+        ├── hooks/useAuth.ts                 # Estado de sesión (<= 200 líneas)
+        ├── components/                      # AuthHeader, AuthFooter, LoginForm, QuickPinModal, OTP...
+        └── LoginView.tsx                    # Orquestador del flujo de pantallas Auth
 ```
 
 ---
 
-## 3. Catálogo de Endpoints de Laravel API (Ya Conectados)
-
-La aplicación de escritorio ya tiene programados y conectados los siguientes endpoints en `src/main/adapters/remote/laravel-auth.adapter.ts` y `src/shared/config/api.config.ts`:
+## 4. Catálogo de Endpoints de Laravel API
 
 | Método | Endpoint | Descripción | Payload Enviado |
 | :---: | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/login` | Login con credenciales principales | `{ email, password, station, device_name }` |
-| `POST` | `/api/v1/auth/pin-login` | Login rápido de cajero en terminal | `{ pin, station, device_name }` |
+| `POST` | `/api/v1/auth/login` | Login con credenciales principales (**solo bootstrap**) | `{ email, password, station, device_name }` |
+| `POST` | `/api/v1/auth/pin-login` | Login rápido de cajero (solo si el PIN no existe local) | `{ pin, station, device_name }` |
 | `POST` | `/api/v1/auth/logout` | Revocación de Bearer Token (Sanctum) | Header `Authorization: Bearer <token>` |
 | `GET` | `/api/v1/auth/me` | Obtiene el perfil y licencia del usuario | Header `Authorization: Bearer <token>` |
 | `POST` | `/api/v1/auth/forgot-password` | Envía código OTP de 6 dígitos por email | `{ email }` |
@@ -100,11 +135,11 @@ La aplicación de escritorio ya tiene programados y conectados los siguientes en
 }
 ```
 
+> Cualquier usuario que se autentique por primera vez contra Laravel se materializa localmente como **`ADMIN`** (es el dueño de la instalación y quien administra usuarios desde Ajustes).
+
 ---
 
-## 4. Cómo Conectar la API Cuando Esté Lista
-
-Cuando el backend de **Laravel** esté desarrollado y corriendo, solo debes configurar la URL base en el archivo `.env` o en `src/shared/config/api.config.ts`:
+## 5. Configuración de la API
 
 ```env
 # En nexus-post/.env (o variable de entorno del sistema):
@@ -112,22 +147,28 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
 NEXUS_API_URL=http://127.0.0.1:8000/api/v1
 ```
 
-O si utilizas un host virtual de Laragon / Valet:
+O con host virtual de Laragon / Valet:
 ```env
 VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 ```
 
-El adaptador detectará automáticamente la URL activa y autenticará contra Laravel.
+`API_CONFIG.baseUrl` prioriza `NEXUS_API_URL` y cae a `VITE_API_BASE_URL`; el adaptador detecta la URL activa automáticamente.
 
 ---
 
-## 5. Modo Fallback / Desarrollo (Offline)
+## 6. Modo Fallback / Desarrollo (Offline)
 
-Mientras la API de Laravel no esté corriendo:
-- Si la conexión falla (`ECONNREFUSED` / timeout), el sistema pasa automáticamente al modo local en SQLite.
-- Permite usar las credenciales de demostración sembradas:
-  - **Email:** `cajero.central@nexuspos.pe`
-  - **Contraseña:** `SecurityKey#2026`
-  - **PIN:** `1234`
+- Si Laravel no está corriendo y el identificador **tampoco** existe localmente, el login devuelve un error de conexión claro (no hay bypass silencioso).
+- Credenciales de demostración sembradas en SQLite:
+  - **Admin:** `admin@nexuspos.pe` / `Admin#2026` / PIN `9999`
+  - **Cajero:** `cajero.central@nexuspos.pe` / `SecurityKey#2026` / PIN `1234`
   - **Código OTP Demo:** `849215`
-- Esto garantiza que puedes continuar desarrollando el frontend de escritorio sin depender de que la API esté levantada.
+- Esto permite desarrollar y operar el escritorio sin la API levantada.
+
+---
+
+## 7. Tareas Pendientes / Deuda Técnica
+
+- ⚠️ **Hash de contraseñas:** `users.password_hash` guarda texto plano; migrar a `scrypt`/`argon2`.
+- ⚠️ **Tokens persistentes:** el Bearer de Laravel vive solo en memoria del proceso `main`; falta almacenamiento seguro (`safeStorage`).
+- ⚠️ **Multi-caja LAN:** cuando exista Caja Maestra, la sesión deberá validarse contra el servidor maestro reutilizando estos mismos contratos.

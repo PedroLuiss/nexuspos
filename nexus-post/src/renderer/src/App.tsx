@@ -22,6 +22,7 @@ import { CheckCircle2 } from './shared/icons/Icons'
 import type { User } from '@shared/contracts'
 import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
+import { canAccessTab } from './shared/lib/permissions'
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -603,13 +604,13 @@ function AppContent(): React.JSX.Element {
         )}
 
         {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
-        {activeTab === 'products' && <ProductTable />}
+        {activeTab === 'products' && canAccessTab(currentUser, 'products') && <ProductTable />}
 
         {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
-        {activeTab === 'kardex' && <KardexView movements={kardex} />}
+        {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && <KardexView movements={kardex} />}
 
         {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
-        {activeTab === 'cash' && (
+        {activeTab === 'cash' && canAccessTab(currentUser, 'cash') && (
           <CashShiftView
             shift={shift}
             cashMovements={cashMovements}
@@ -619,7 +620,7 @@ function AppContent(): React.JSX.Element {
         )}
 
         {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
-        {activeTab === 'customers' && (
+        {activeTab === 'customers' && canAccessTab(currentUser, 'customers') && (
           <CustomersView
             customers={customers}
             onAddCustomer={handleAddCustomer}
@@ -628,10 +629,12 @@ function AppContent(): React.JSX.Element {
         )}
 
         {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
-        {activeTab === 'reports' && <ReportsView />}
+        {activeTab === 'reports' && canAccessTab(currentUser, 'reports') && <ReportsView />}
 
         {/* 7. MÓDULO DE AJUSTES DEL SISTEMA */}
-        {activeTab === 'settings' && <SettingsGrid />}
+        {activeTab === 'settings' && canAccessTab(currentUser, 'settings') && (
+          <SettingsGrid currentUser={currentUser} />
+        )}
       </DashboardLayout>
       )
 }

@@ -12,6 +12,7 @@ import { migration003Categories } from './003_categories'
 import { migration004Users } from './004_users'
 import { migration005ProductImages } from './005_product_images'
 import { migration006SeedProducts } from './006_seed_products'
+import { migration007UserPermissions } from './007_user_permissions'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -19,7 +20,8 @@ const MIGRATIONS: Migration[] = [
   migration003Categories,
   migration004Users,
   migration005ProductImages,
-  migration006SeedProducts
+  migration006SeedProducts,
+  migration007UserPermissions
 ]
 
 /** Ejecuta de forma idempotente las migraciones pendientes. */
