@@ -1,18 +1,17 @@
-# 🔐 MÓDULO 01 — AUTH & SESSION MANAGEMENT
+# 🔐 MÓDULO 01 — AUTH & SESSION MANAGEMENT (LARAVEL API READY)
 
-> **Contexto Modular:** Este documento contiene la arquitectura, contratos, estado actual y reglas de desarrollo del módulo de Autenticación, Sesión y Seguridad de NexusPOS Desktop.
+> **Contexto Modular:** Este documento contiene la arquitectura, contratos, integración con la API de Laravel y reglas del módulo de Autenticación, Sesión y Seguridad de NexusPOS Desktop.
 > **Contexto Maestro:** Ver [`00-MASTER-CONTEXT.md`](./00-MASTER-CONTEXT.md) para estándares globales.
 
 ---
 
-## 1. Responsabilidad del Módulo
+## 1. Responsabilidad y Modelo de Negocio
 
-Este módulo gestiona la barrera de acceso a NexusPOS:
-- Inicio de sesión por credenciales corporativas (email + contraseña).
-- Identificación ultrarrápida de cajeros mediante PIN numérico de 4 dígitos (`[F10]`).
-- Soporte para autenticación por credencial de proximidad RFID / NFC (USB).
-- Recuperación de cuenta empresarial en dos fases (solicitud de email corporativo y canvas split WinUI 3 para verificación OTP de 6 dígitos + definición de nueva clave con políticas Active Directory).
-- Mantenimiento de la sesión del operador en curso en `DashboardLayout` y desconexión segura (`logout`).
+El acceso a NexusPOS Desktop opera bajo un modelo de suscripción y cuentas centralizadas:
+1. **Registro en Landing Page Web:** El usuario/comercio se registra y adquiere su suscripción en la Landing Page (React Web + Laravel API).
+2. **Descarga del Instalador Desktop:** Una vez creada la cuenta en la plataforma, descarga el sistema POS de escritorio.
+3. **Validación de Credenciales:** La aplicación de escritorio valida el correo y la contraseña directamente contra la API de Laravel (`POST /api/v1/auth/login`).
+4. **Resiliencia Offline-First:** Si el servidor de Laravel no está disponible (modo offline o mientras el backend esté en desarrollo), el sistema permite un fallback transparente a SQLite local para no detener la operación.
 
 ---
 
@@ -22,22 +21,30 @@ Este módulo gestiona la barrera de acceso a NexusPOS:
 nexus-post/src/
 ├── main/
 │   ├── domain/auth/
-│   │   ├── auth.service.ts                  # Lógica de dominio (login, hashing, tokens OTP)
+│   │   ├── auth.service.ts                  # Lógica de dominio híbrida (Laravel API + fallback SQLite)
 │   │   └── user.entity.ts                   # Entidad User y roles
 │   ├── ports/
-│   │   └── user.repository.ts               # Puerto UserRepository
-│   ├── adapters/persistence/sqlite/
-│   │   ├── users.sqlite.ts                  # Adaptador SQLite con queries preparadas
-│   │   └── migrations/004_users.ts          # Tabla 'users' con cajero inicial sembrado
+│   │   ├── user.repository.ts               # Puerto UserRepository (SQLite local)
+│   │   └── remote-auth.port.ts              # Puerto RemoteAuthPort (API Laravel)
+│   ├── adapters/
+│   │   ├── remote/
+│   │   │   └── laravel-auth.adapter.ts      # Cliente HTTP nativo contra endpoints de Laravel
+│   │   └── persistence/sqlite/
+│   │       ├── users.sqlite.ts              # Adaptador SQLite con queries preparadas
+│   │       └── migrations/004_users.ts      # Tabla 'users' con cajero inicial sembrado
 │   └── ipc/
-│       └── auth.ipc.ts                      # Handlers de ipcMain ('auth:*')
+│       ├── auth.ipc.ts                      # Handlers de ipcMain ('auth:*')
+│       └── index.ts                         # Inyección de dependencias (LaravelAuthAdapter + SQLite)
 │
 ├── preload/
 │   └── index.ts                             # Expone api.auth.* al renderer
 │
-├── shared/contracts/
-│   ├── auth.contract.ts                     # Interfaces: User, LoginInput, PinLoginInput, etc.
-│   └── api.contract.ts                      # Canales IPC_CHANNELS.auth
+├── shared/
+│   ├── config/
+│   │   └── api.config.ts                    # Configuración centralizada de URLs y endpoints de Laravel
+│   └── contracts/
+│       ├── auth.contract.ts                 # Interfaces: User, LoginInput, PinLoginInput, etc.
+│       └── api.contract.ts                  # Canales IPC_CHANNELS.auth
 │
 └── renderer/src/features/auth/
     ├── api/
@@ -45,7 +52,7 @@ nexus-post/src/
     ├── hooks/
     │   └── useAuth.ts                       # Custom Hook de estado de autenticación (<= 200 lín.)
     ├── components/
-    │   ├── AuthHeader.tsx                   # Barra de título WinUI 3 y botones ventana
+    │   ├── AuthHeader.tsx                   # Barra de título WinUI 3 y controles de ventana
     │   ├── AuthFooter.tsx                   # Barra inferior con estado de terminal
     │   ├── LoginForm.tsx                    # Formulario de login (sin selector de sucursal)
     │   ├── QuickPinModal.tsx                # Modal F10 con teclado numérico y 4 dots
@@ -56,66 +63,71 @@ nexus-post/src/
 
 ---
 
-## 3. Contratos e Interfaces Clave (`@shared/contracts`)
+## 3. Catálogo de Endpoints de Laravel API (Ya Conectados)
 
-```typescript
-export interface User {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'supervisor' | 'cashier'
-  pin?: string
-  active: boolean
-  createdAt: string
-}
+La aplicación de escritorio ya tiene programados y conectados los siguientes endpoints en `src/main/adapters/remote/laravel-auth.adapter.ts` y `src/shared/config/api.config.ts`:
 
-export interface AuthResponse {
-  success: boolean
-  user?: User
-  error?: string
+| Método | Endpoint | Descripción | Payload Enviado |
+| :---: | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/login` | Login con credenciales principales | `{ email, password, station, device_name }` |
+| `POST` | `/api/v1/auth/pin-login` | Login rápido de cajero en terminal | `{ pin, station, device_name }` |
+| `POST` | `/api/v1/auth/logout` | Revocación de Bearer Token (Sanctum) | Header `Authorization: Bearer <token>` |
+| `GET` | `/api/v1/auth/me` | Obtiene el perfil y licencia del usuario | Header `Authorization: Bearer <token>` |
+| `POST` | `/api/v1/auth/forgot-password` | Envía código OTP de 6 dígitos por email | `{ email }` |
+| `POST` | `/api/v1/auth/verify-otp` | Valida el código OTP ingresado | `{ email, code }` |
+| `POST` | `/api/v1/auth/reset-password` | Actualiza la contraseña en la base central | `{ email, code, password, password_confirmation }` |
+| `GET` | `/api/v1/license/validate` | Valida vigencia de suscripción comercial | Header `Authorization: Bearer <token>` |
+
+### Estructura de Respuesta Esperada de Laravel (Sanctum)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "token": "1|qX8yZ...sanctum_token",
+    "token_type": "Bearer",
+    "user": {
+      "id": 1,
+      "name": "Carlos Morales",
+      "email": "cajero.central@nexuspos.pe",
+      "username": "cajero.central",
+      "role": "CASHIER",
+      "branch": "Sucursal Principal",
+      "station": "CAJA-01",
+      "active": true
+    }
+  }
 }
 ```
 
-Canales IPC registrados (`IPC_CHANNELS.auth`):
-- `auth:login`: Login con email y password.
-- `auth:login-pin`: Login rápido con PIN de 4 dígitos.
-- `auth:logout`: Cierre de sesión y limpieza de estado.
-- `auth:get-current-user`: Obtiene usuario con sesión activa en el arranque.
-- `auth:send-otp`: Emite código numérico temporal de 6 dígitos.
-- `auth:verify-otp`: Valida el código OTP de 6 dígitos.
-- `auth:reset-password`: Actualiza la contraseña en la base de datos local SQLite.
+---
+
+## 4. Cómo Conectar la API Cuando Esté Lista
+
+Cuando el backend de **Laravel** esté desarrollado y corriendo, solo debes configurar la URL base en el archivo `.env` o en `src/shared/config/api.config.ts`:
+
+```env
+# En nexus-post/.env (o variable de entorno del sistema):
+VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+NEXUS_API_URL=http://127.0.0.1:8000/api/v1
+```
+
+O si utilizas un host virtual de Laragon / Valet:
+```env
+VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
+```
+
+El adaptador detectará automáticamente la URL activa y autenticará contra Laravel.
 
 ---
 
-## 4. Estado Actual de Implementación
+## 5. Modo Fallback / Desarrollo (Offline)
 
-- ✅ **LoginView Inicial:** La aplicación arranca en `LoginView` si no hay sesión (`App.tsx`).
-- ✅ **Sin selector de sucursal en Login:** La sucursal no se selecciona en el login (las sucursales pertenecen a la cuenta autenticada y se administran internamente).
-- ✅ **Diseño Stitch 1:1:**
-  - `ForgotPasswordView`: Pantalla completa acrílica WinUI 3 con ícono de cifrado, input RFC 5322 con barra inferior activa y tarjeta de seguridad RSA-4096.
-  - `VerifyCodeResetPasswordView`: Canvas ancho de 2 columnas (`max-w-5xl`). Columna izquierda (5 cols) con cajas de 6 dígitos OTP y timer; Columna derecha (6 cols) con medidor de fuerza de 4 barras WinUI 3, 4 chips de política de seguridad y confirmación de contraseña (desbloqueada únicamente tras validar el OTP).
-- ✅ **Credenciales por Defecto (Seed SQLite):**
-  - Email: `cajero.central@nexuspos.pe`
-  - Contraseña: `SecurityKey#2026`
-  - PIN: `1234`
-  - Código demo OTP: `849215`
-- ✅ **Cierre de sesión resiliente (botón `Salir`):**
-  - `DashboardLayout` dispara `handleLogout` en `App.tsx`, que ejecuta `logoutApi()` (canal `auth:logout`) y luego limpia `cart` y `currentUser`.
-  - `logoutApi()` nunca lanza excepción: si el canal IPC o SQLite aún no está disponible, la sesión local del renderer se cierra de todas formas (los flujos UI no dependen de la BD).
-  - Flag `sessionAutoRestoreBlocked` (en `features/auth/api/auth.api.ts`): tras un logout explícito, `useAuth` no restaura la sesión de `auth:get-current-user` al montar `LoginView`, evitando el rebote inmediato al dashboard. Se rehabilita al autenticarse de nuevo (login, PIN u OTP).
-
----
-
-## 5. Conexiones con Otros Módulos
-
-- ➡️ **Módulo 02 (POS):** Al loguearse exitosamente, el objeto `User` se inyecta en el estado global para registrar las ventas a nombre del cajero (`sale.cashierId`).
-- ➡️ **Módulo 05 (Caja y Turnos):** El usuario en sesión determina la apertura de caja y el cajero responsable del Arqueo Z.
-- ➡️ **Módulo 08 (Ajustes & RBAC):** El rol (`admin`, `supervisor`, `cashier`) condiciona los permisos de anulación, descuentos manuales y reportes financieros.
-
----
-
-## 6. Reglas Específicas del Módulo
-
-1. **Aislamiento de Componentes:** Cada vista de pantalla (`ForgotPasswordView`, `VerifyCodeResetPasswordView`) es autocontenida.
-2. **Tamaño de Archivos:** `useAuth.ts` debe mantenerse bajo **200 líneas**. `LoginView.tsx` y subcomponentes bajo **300 líneas**.
-3. **Manejo de Errores Amigable:** Los fallos de autenticación muestran toasts acrílicos con íconos Fluent y feedback sonoro o visual.
+Mientras la API de Laravel no esté corriendo:
+- Si la conexión falla (`ECONNREFUSED` / timeout), el sistema pasa automáticamente al modo local en SQLite.
+- Permite usar las credenciales de demostración sembradas:
+  - **Email:** `cajero.central@nexuspos.pe`
+  - **Contraseña:** `SecurityKey#2026`
+  - **PIN:** `1234`
+  - **Código OTP Demo:** `849215`
+- Esto garantiza que puedes continuar desarrollando el frontend de escritorio sin depender de que la API esté levantada.

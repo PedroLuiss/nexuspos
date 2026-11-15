@@ -15,50 +15,49 @@ export function registerAuthIpc(auth: AuthService): void {
   ipcMain.handle(
     IPC_CHANNELS.auth.login,
     (_event, input: LoginInput): Promise<AuthResponse> => {
-      return Promise.resolve(auth.login(input))
+      return auth.login(input)
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.loginPin,
     (_event, input: PinLoginInput): Promise<AuthResponse> => {
-      return Promise.resolve(auth.loginWithPin(input))
+      return auth.loginWithPin(input)
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.logout,
-    (_event): Promise<void> => {
-      auth.logout()
-      return Promise.resolve()
+    async (_event): Promise<void> => {
+      await auth.logout()
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.getCurrentUser,
     (_event): Promise<User | null> => {
-      return Promise.resolve(auth.getCurrentUser())
+      return auth.getCurrentUser()
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.sendOtp,
     (_event, email: string): Promise<{ success: boolean; error?: string }> => {
-      return Promise.resolve(auth.sendOtp(email))
+      return auth.sendOtp(email)
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.verifyOtp,
     (_event, input: VerifyOtpInput): Promise<{ success: boolean; error?: string }> => {
-      return Promise.resolve(auth.verifyOtp(input))
+      return auth.verifyOtp(input)
     }
   )
 
   ipcMain.handle(
     IPC_CHANNELS.auth.resetPassword,
     (_event, input: ResetPasswordInput): Promise<AuthResponse> => {
-      return Promise.resolve(auth.resetPassword(input))
+      return auth.resetPassword(input)
     }
   )
 }

@@ -7,24 +7,51 @@ import type {
   ResetPasswordInput
 } from '@shared/contracts'
 import type { UserRepository } from '../../ports/user.repository'
+import type { RemoteAuthPort } from '../../ports/remote-auth.port'
 
 export class AuthService {
   private currentUser: User | null = null
   private readonly otps = new Map<string, { code: string; expiresAt: number }>()
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly remoteAuth?: RemoteAuthPort
+  ) {}
 
-  login(input: LoginInput): AuthResponse {
+  /**
+   * Inicio de sesión híbrido:
+   * 1. Intenta validar credenciales contra la API de Laravel (servidor principal).
+   * 2. Si la API no está disponible (modo offline o desarrollo local), recurre a SQLite local.
+   */
+  async login(input: LoginInput): Promise<AuthResponse> {
     if (!input.emailOrUsername || !input.password) {
       return { success: false, error: 'Debe ingresar su usuario/correo y contraseña.' }
     }
 
+    // Intento 1: API de Laravel (Landing / Cuenta Maestra)
+    if (this.remoteAuth) {
+      try {
+        const remoteRes = await this.remoteAuth.login(input)
+        if (remoteRes.success && remoteRes.user) {
+          this.currentUser = remoteRes.user
+          return remoteRes
+        }
+
+        // Si la API respondió con error de credenciales explícito de Laravel, lo respetamos
+        if (remoteRes.error && !remoteRes.error.includes('No se pudo conectar') && !remoteRes.error.includes('Tiempo de espera')) {
+          return remoteRes
+        }
+      } catch {
+        // En caso de excepción de red inesperada, cae en fallback local
+      }
+    }
+
+    // Intento 2: Fallback local en SQLite (Offline-First)
     const userWithSecret = this.userRepository.findByEmailOrUsername(input.emailOrUsername)
     if (!userWithSecret) {
       return { success: false, error: 'Usuario no encontrado o inactivo.' }
     }
 
-    // Comprobación de contraseña
     if (userWithSecret.passwordHash !== input.password) {
       return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' }
     }
@@ -43,11 +70,31 @@ export class AuthService {
     }
   }
 
-  loginWithPin(input: PinLoginInput): AuthResponse {
+  /**
+   * Login rápido con PIN de 4 dígitos.
+   */
+  async loginWithPin(input: PinLoginInput): Promise<AuthResponse> {
     if (!input.pin || input.pin.length < 4) {
       return { success: false, error: 'Ingrese un PIN válido de 4 dígitos.' }
     }
 
+    // Intento 1: API de Laravel
+    if (this.remoteAuth) {
+      try {
+        const remoteRes = await this.remoteAuth.loginWithPin(input)
+        if (remoteRes.success && remoteRes.user) {
+          this.currentUser = remoteRes.user
+          return remoteRes
+        }
+        if (remoteRes.error && !remoteRes.error.includes('No se pudo conectar') && !remoteRes.error.includes('Tiempo de espera')) {
+          return remoteRes
+        }
+      } catch {
+        // Fallback local
+      }
+    }
+
+    // Intento 2: SQLite Local
     const user = this.userRepository.findByPin(input.pin)
     if (!user) {
       return { success: false, error: 'PIN de cajero no reconocido.' }
@@ -65,39 +112,68 @@ export class AuthService {
     }
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    if (this.remoteAuth) {
+      await this.remoteAuth.logout().catch(() => {})
+    }
     this.currentUser = null
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUser
+  async getCurrentUser(): Promise<User | null> {
+    if (this.currentUser) return this.currentUser
+
+    if (this.remoteAuth) {
+      const remoteUser = await this.remoteAuth.getCurrentUser().catch(() => null)
+      if (remoteUser) {
+        this.currentUser = remoteUser
+        return remoteUser
+      }
+    }
+
+    return null
   }
 
-  sendOtp(email: string): { success: boolean; error?: string } {
+  async sendOtp(email: string): Promise<{ success: boolean; error?: string }> {
     const cleanEmail = email.trim().toLowerCase()
+
+    if (this.remoteAuth) {
+      const res = await this.remoteAuth.sendOtp(cleanEmail).catch(() => null)
+      if (res && res.success) return { success: true }
+      if (res && res.error && !res.error.includes('No se pudo conectar')) {
+        return res
+      }
+    }
+
+    // Fallback local: verificar si existe en SQLite
     const userWithSecret = this.userRepository.findByEmailOrUsername(cleanEmail)
     if (!userWithSecret) {
       return { success: false, error: 'No se encontró un usuario registrado con este correo.' }
     }
 
-    // Generar código de 6 dígitos (por defecto 849215 para test o random)
     const code = Math.floor(100000 + Math.random() * 900000).toString()
-    // Válido por 10 minutos
     const expiresAt = Date.now() + 10 * 60 * 1000
     this.otps.set(cleanEmail, { code, expiresAt })
 
     return { success: true }
   }
 
-  verifyOtp(input: VerifyOtpInput): { success: boolean; error?: string } {
+  async verifyOtp(input: VerifyOtpInput): Promise<{ success: boolean; error?: string }> {
     const cleanEmail = input.email.trim().toLowerCase()
-    const stored = this.otps.get(cleanEmail)
 
-    // Permitir código maestro '849215' (de la maqueta de Stitch) o el generado
+    if (this.remoteAuth) {
+      const res = await this.remoteAuth.verifyOtp(input).catch(() => null)
+      if (res && res.success) return { success: true }
+      if (res && res.error && !res.error.includes('No se pudo conectar')) {
+        return res
+      }
+    }
+
+    // Permitir código maestro '849215' (de la maqueta de Stitch) o el generado en memoria
     if (input.code === '849215') {
       return { success: true }
     }
 
+    const stored = this.otps.get(cleanEmail)
     if (!stored) {
       return { success: false, error: 'No hay un código pendiente de verificación para este correo.' }
     }
@@ -114,9 +190,22 @@ export class AuthService {
     return { success: true }
   }
 
-  resetPassword(input: ResetPasswordInput): AuthResponse {
+  async resetPassword(input: ResetPasswordInput): Promise<AuthResponse> {
     const cleanEmail = input.email.trim().toLowerCase()
-    const verify = this.verifyOtp({ email: cleanEmail, code: input.code })
+
+    if (this.remoteAuth) {
+      const res = await this.remoteAuth.resetPassword(input).catch(() => null)
+      if (res && res.success && res.user) {
+        this.currentUser = res.user
+        return res
+      }
+      if (res && res.error && !res.error.includes('No se pudo conectar')) {
+        return res
+      }
+    }
+
+    // Fallback local
+    const verify = await this.verifyOtp({ email: cleanEmail, code: input.code })
     if (!verify.success) {
       return { success: false, error: verify.error }
     }
@@ -130,7 +219,6 @@ export class AuthService {
       return { success: false, error: 'La contraseña debe tener al menos 8 caracteres.' }
     }
 
-    // Actualizar en BD SQLite
     this.userRepository.updatePassword(userWithSecret.id, input.newPassword)
     this.otps.delete(cleanEmail)
 

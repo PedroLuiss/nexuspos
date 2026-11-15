@@ -5,6 +5,7 @@ import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/st
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
+import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { ProductService } from '../domain/products/product.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
@@ -35,7 +36,8 @@ export function registerIpcHandlers(): void {
     transactionRunner
   )
   const categoryService = new CategoryService(categoryRepository)
-  const authService = new AuthService(userRepository)
+  const authAdapter = new LaravelAuthAdapter()
+  const authService = new AuthService(userRepository, authAdapter)
 
   registerProductIpc(productService)
   registerInventoryIpc(inventoryService)
