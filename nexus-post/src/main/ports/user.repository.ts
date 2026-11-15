@@ -13,4 +13,5 @@ export interface UserRepository {
   findByPin(pin: string): User | null
   findById(id: string): User | null
   findAll(): User[]
+  updatePassword(id: string, newPassword: string): void
 }

@@ -5,8 +5,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Store,
-  ChevronDown,
   LogIn,
   KeyRound,
   Radio,
@@ -33,7 +31,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [emailOrUsername, setEmailOrUsername] = useState('cajero.central@nexuspos.pe')
   const [password, setPassword] = useState('SecurityKey#2026')
   const [showPassword, setShowPassword] = useState(false)
-  const [branch, setBranch] = useState('Sucursal Central - Javier Prado [Principal]')
   const [rememberStation, setRememberStation] = useState(true)
 
   const handleSubmit = (e: React.FormEvent): void => {
@@ -41,7 +38,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     onSubmit({
       emailOrUsername: emailOrUsername.trim(),
       password,
-      branch,
       station: 'CAJA-01',
       rememberStation
     })
@@ -120,38 +116,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
-          </div>
-        </div>
-
-        {/* Branch / Database Selector */}
-        <div className="flex flex-col gap-1 pt-0.5">
-          <label className="text-xs font-semibold text-[#1B1B1B] flex items-center gap-1">
-            <Store size={14} className="text-[#5C5C5C]" />
-            <span>Sucursal / Base de Datos Activa</span>
-          </label>
-          <div className="relative">
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full h-9 pl-3 pr-8 rounded-md bg-[#F3F3F3] text-xs text-[#1B1B1B] outline-none appearance-none cursor-pointer focus:bg-white focus:shadow-[0_0_0_2px_#0067C0] border border-transparent"
-            >
-              <option value="Sucursal Central - Javier Prado [Principal]">
-                Sucursal Central - Javier Prado [Principal]
-              </option>
-              <option value="Sucursal Express - Aeropuerto [T2]">
-                Sucursal Express - Aeropuerto [T2]
-              </option>
-              <option value="Sucursal Almacén - San Isidro Norte">
-                Sucursal Almacén - San Isidro Norte
-              </option>
-              <option value="Terminal Móvil de Contingencia (Offline)">
-                Terminal Móvil de Contingencia (Offline)
-              </option>
-            </select>
-            <ChevronDown
-              size={15}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#717783] pointer-events-none"
-            />
           </div>
         </div>
 

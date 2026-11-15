@@ -14,18 +14,23 @@ import {
 interface ForgotPasswordModalProps {
   isOpen: boolean
   onClose: () => void
+  onCodeSent?: (email: string) => void
 }
 
-export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClose }) => {
-  const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
+  isOpen,
+  onClose,
+  onCodeSent
+}) => {
+  const [email, setEmail] = useState('cajero.central@nexuspos.pe')
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!email) return
-    setSubmitted(true)
+    onCodeSent?.(email.trim())
+    onClose()
   }
 
   return (
@@ -53,31 +58,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
           </button>
         </div>
 
-        {submitted ? (
-          <div className="flex flex-col items-center text-center py-4 gap-3">
-            <div className="w-12 h-12 rounded-full bg-[#E8F5E9] text-[#107C41] flex items-center justify-center">
-              <CheckCircle2 size={28} />
-            </div>
-            <h3 className="text-sm font-bold text-[#1B1B1B]">Código de Autorización Emitido</h3>
-            <p className="text-xs text-[#5C5C5C] max-w-xs">
-              Se ha enviado un código OTP de 6 dígitos a <span className="font-semibold text-[#1B1B1B]">{email}</span>. Revise su bandeja y siga las instrucciones.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitted(false)
-                onClose()
-              }}
-              className="mt-2 h-9 px-4 rounded-md bg-[#0067C0] text-white text-xs font-semibold cursor-pointer"
-            >
-              Entendido
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-            <p className="text-xs text-[#5C5C5C]">
-              Ingrese el correo electrónico corporativo registrado para recibir el token de recuperación temporal de un solo uso.
-            </p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <p className="text-xs text-[#5C5C5C]">
+            Ingrese el correo electrónico corporativo registrado para recibir el token de recuperación temporal de un solo uso (OTP).
+          </p>
 
             <div className="flex flex-col gap-1">
               <label htmlFor="corpEmail" className="text-xs font-semibold text-[#1B1B1B]">
@@ -136,9 +120,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
               </button>
             </div>
           </form>
-        )}
+        </div>
       </div>
-    </div>
   )
 }
 

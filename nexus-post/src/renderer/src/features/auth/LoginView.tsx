@@ -5,7 +5,8 @@ import { useAuth } from './hooks/useAuth'
 import AuthHeader from './components/AuthHeader'
 import LoginForm from './components/LoginForm'
 import QuickPinModal from './components/QuickPinModal'
-import ForgotPasswordModal from './components/ForgotPasswordModal'
+import ForgotPasswordView from './components/ForgotPasswordView'
+import VerifyCodeResetPasswordView from './components/VerifyCodeResetPasswordView'
 import AuthFooter from './components/AuthFooter'
 
 interface LoginViewProps {
@@ -18,11 +19,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     errorMessage,
     toast,
     isPinModalOpen,
-    isForgotModalOpen,
+    authStep,
+    resetEmail,
+    setAuthStep,
     setIsPinModalOpen,
-    setIsForgotModalOpen,
     handleLogin,
     handlePinLogin,
+    handleSendOtp,
+    handleResetPassword,
     showToast
   } = useAuth(onLoginSuccess)
 
@@ -43,21 +47,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         </div>
       )}
 
-      {/* 2. Main Login Work Area with Ambient Fluent Lighting */}
+      {/* 2. Main Work Area */}
       <main className="w-full pt-11 flex-1 flex flex-col items-center justify-center relative">
-        <div className="relative w-full min-h-[calc(100vh-6rem)] flex items-center justify-center p-4">
-          {/* Ambient Lighting Spheres (Stitch Design DNA) */}
-          <div className="absolute -top-28 -left-20 w-96 h-96 rounded-full bg-[#0067C0]/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-20 w-96 h-96 rounded-full bg-[#107C41]/15 blur-3xl pointer-events-none" />
-          <div className="absolute top-1/2 left-1/3 -translate-y-1/2 w-64 h-64 rounded-full bg-[#0067C0]/10 blur-2xl pointer-events-none" />
+        {/* Ambient Lighting Spheres */}
+        <div className="absolute -top-28 -left-20 w-96 h-96 rounded-full bg-[#0067C0]/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-20 w-96 h-96 rounded-full bg-[#107C41]/15 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/3 -translate-y-1/2 w-64 h-64 rounded-full bg-[#0067C0]/10 blur-2xl pointer-events-none" />
 
-          {/* Centered Fluent Acrylic Card */}
+        {/* ── SCREEN 1: LOGIN ── */}
+        {authStep === 'LOGIN' && (
           <div className="relative w-full max-w-[490px] bg-white/95 backdrop-blur-2xl rounded-xl shadow-xl flex flex-col overflow-hidden border border-[#E5E5E5] animate-modal">
-            {/* Top Ribbon Accent (Primary Blue to Green Checkout) */}
+            {/* Top Ribbon Accent */}
             <div className="h-1.5 w-full bg-gradient-to-r from-[#0067C0] via-[#0078D4] to-[#107C41]" />
 
             <div className="p-6 pb-5 flex flex-col gap-4">
-              {/* Header & Identity Section */}
+              {/* Header & Identity */}
               <div className="flex flex-col items-center text-center">
                 <div className="relative mb-2">
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-tr from-[#0067C0] to-[#0078D4] flex items-center justify-center text-white shadow-md">
@@ -67,14 +71,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     <span className="w-3 h-3 rounded-full bg-[#107C41] animate-pulse" />
                   </div>
                 </div>
-
                 <h1 className="text-xl font-bold tracking-tight text-[#1B1B1B]">
                   Iniciar Sesión en NexusPOS
                 </h1>
                 <p className="text-xs text-[#5C5C5C] max-w-sm mt-1">
                   Ingrese sus credenciales de dominio o cuenta de operador para acceder al sistema.
                 </p>
-
                 {/* Connectivity Pill */}
                 <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] text-[#107C41] font-mono text-[11px] font-semibold border border-[#C8E6C9]">
                   <span className="w-2 h-2 rounded-full bg-[#107C41]" />
@@ -84,63 +86,75 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Form Component */}
+              {/* Login Form */}
               <LoginForm
                 isLoading={isLoading}
                 errorMessage={errorMessage}
                 onSubmit={handleLogin}
                 onOpenPinModal={() => setIsPinModalOpen(true)}
-                onOpenForgotModal={() => setIsForgotModalOpen(true)}
+                onOpenForgotModal={() => setAuthStep('FORGOT_EMAIL')}
                 onRfidClick={() =>
                   showToast('Acérquese al lector RFID / NFC USB de la estación CAJA-01...', 'info')
                 }
               />
             </div>
 
-            {/* Acrylic Card System Footer */}
+            {/* Card Footer */}
             <div className="px-6 py-2.5 bg-[#F8F9FA] border-t border-[#E5E5E5] flex flex-wrap items-center justify-between text-[#717783] text-[11px]">
               <span className="font-mono">NexusPOS v4.8.2 | Win11</span>
               <div className="flex items-center gap-2 font-mono text-[10px]">
                 <span className="text-[#1B1B1B]">
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
-                    ENTER
-                  </span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">ENTER</span>{' '}
                   Acceder
                 </span>
                 <span>•</span>
                 <span>
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
-                    ESC
-                  </span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">ESC</span>{' '}
                   Salir
                 </span>
                 <span>•</span>
                 <span>
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
-                    F1
-                  </span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">F1</span>{' '}
                   Recuperar
                 </span>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ── SCREEN 2: RECUPERAR CONTRASEÑA — ingreso de correo ── */}
+        {authStep === 'FORGOT_EMAIL' && (
+          <ForgotPasswordView
+            isLoading={isLoading}
+            onBackToLogin={() => setAuthStep('LOGIN')}
+            onCodeSent={async (email) => {
+              await handleSendOtp(email)
+            }}
+          />
+        )}
+
+        {/* ── SCREEN 3: VERIFICAR OTP + NUEVA CONTRASEÑA (split layout) ── */}
+        {(authStep === 'VERIFY_OTP' || authStep === 'RESET_PASSWORD') && (
+          <div className="w-full flex items-center justify-center p-4">
+            <VerifyCodeResetPasswordView
+              email={resetEmail}
+              isLoading={isLoading}
+              onBackToLogin={() => setAuthStep('LOGIN')}
+              onCompleteReset={handleResetPassword}
+            />
+          </div>
+        )}
       </main>
 
       {/* 3. Bottom Terminal Status Footer */}
       <AuthFooter />
 
-      {/* 4. Modals */}
+      {/* 4. Quick PIN Modal (F10) */}
       <QuickPinModal
         isOpen={isPinModalOpen}
         isLoading={isLoading}
         onClose={() => setIsPinModalOpen(false)}
         onSubmitPin={handlePinLogin}
-      />
-
-      <ForgotPasswordModal
-        isOpen={isForgotModalOpen}
-        onClose={() => setIsForgotModalOpen(false)}
       />
     </div>
   )

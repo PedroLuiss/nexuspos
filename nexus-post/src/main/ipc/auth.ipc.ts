@@ -1,6 +1,13 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/contracts'
-import type { LoginInput, PinLoginInput, AuthResponse, User } from '@shared/contracts'
+import type {
+  LoginInput,
+  PinLoginInput,
+  AuthResponse,
+  User,
+  VerifyOtpInput,
+  ResetPasswordInput
+} from '@shared/contracts'
 import type { AuthService } from '../domain/auth/auth.service'
 
 /** Registra los canales IPC del dominio de Autenticación. */
@@ -31,6 +38,27 @@ export function registerAuthIpc(auth: AuthService): void {
     IPC_CHANNELS.auth.getCurrentUser,
     (_event): Promise<User | null> => {
       return Promise.resolve(auth.getCurrentUser())
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.auth.sendOtp,
+    (_event, email: string): Promise<{ success: boolean; error?: string }> => {
+      return Promise.resolve(auth.sendOtp(email))
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.auth.verifyOtp,
+    (_event, input: VerifyOtpInput): Promise<{ success: boolean; error?: string }> => {
+      return Promise.resolve(auth.verifyOtp(input))
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.auth.resetPassword,
+    (_event, input: ResetPasswordInput): Promise<AuthResponse> => {
+      return Promise.resolve(auth.resetPassword(input))
     }
   )
 }

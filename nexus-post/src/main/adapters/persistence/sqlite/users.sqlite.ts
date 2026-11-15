@@ -78,4 +78,14 @@ export class SqliteUserRepository implements UserRepository {
     `)
     return stmt.all().map(mapRow)
   }
+
+  updatePassword(id: string, newPassword: string): void {
+    const now = new Date().toISOString()
+    const stmt = this.db.prepare(`
+      UPDATE users
+      SET password_hash = ?, updated_at = ?
+      WHERE id = ?
+    `)
+    stmt.run(newPassword, now, id)
+  }
 }

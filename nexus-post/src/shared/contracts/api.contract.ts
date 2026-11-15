@@ -31,7 +31,10 @@ export const IPC_CHANNELS = {
     login: 'auth:login',
     loginPin: 'auth:loginPin',
     logout: 'auth:logout',
-    getCurrentUser: 'auth:getCurrentUser'
+    getCurrentUser: 'auth:getCurrentUser',
+    sendOtp: 'auth:sendOtp',
+    verifyOtp: 'auth:verifyOtp',
+    resetPassword: 'auth:resetPassword'
   }
 } as const
 

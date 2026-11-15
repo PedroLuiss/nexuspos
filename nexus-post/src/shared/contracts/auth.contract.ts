@@ -39,9 +39,24 @@ export interface AuthResponse {
   error?: string
 }
 
+export interface VerifyOtpInput {
+  email: string
+  code: string
+}
+
+export interface ResetPasswordInput {
+  email: string
+  code: string
+  newPassword: string
+  logoutOtherSessions?: boolean
+}
+
 export interface AuthApi {
   login(input: LoginInput): Promise<AuthResponse>
   loginWithPin(input: PinLoginInput): Promise<AuthResponse>
   logout(): Promise<void>
   getCurrentUser(): Promise<User | null>
+  sendOtp(email: string): Promise<{ success: boolean; error?: string }>
+  verifyOtp(input: VerifyOtpInput): Promise<{ success: boolean; error?: string }>
+  resetPassword(input: ResetPasswordInput): Promise<AuthResponse>
 }
