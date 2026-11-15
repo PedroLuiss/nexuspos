@@ -4,24 +4,27 @@ import {
   Minus,
   Barcode,
   FileSpreadsheet,
-  Building2,
-  Tags
+  Download,
+  Tags,
+  Sparkles
 } from '../../../shared/icons/Icons'
 
 interface ProductToolbarProps {
   onAdd: () => void
   onOpenAdjustment: (mode: 'IN' | 'OUT') => void
   onOpenBarcode: () => void
-  onOpenBranch: () => void
   onManageCategories: () => void
+  onOpenImportExport: (tab: 'import' | 'export') => void
+  onSeedDemoProducts?: () => void
 }
 
 export const ProductToolbar: React.FC<ProductToolbarProps> = ({
   onAdd,
   onOpenAdjustment,
   onOpenBarcode,
-  onOpenBranch,
-  onManageCategories
+  onManageCategories,
+  onOpenImportExport,
+  onSeedDemoProducts
 }) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -49,13 +52,21 @@ export const ProductToolbar: React.FC<ProductToolbarProps> = ({
         </button>
 
         <button
-          onClick={() =>
-            alert('Seleccione archivo Excel (.xlsx) con columnas: Código, Nombre, Costo, Venta, Stock')
-          }
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
+          onClick={() => onOpenImportExport('import')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
+          title="Importar catálogo desde archivo Excel / CSV"
         >
           <FileSpreadsheet size={14} className="text-[#107C41]" />
           <span>Importar Excel</span>
+        </button>
+
+        <button
+          onClick={() => onOpenImportExport('export')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
+          title="Exportar inventario a Excel / CSV"
+        >
+          <Download size={14} className="text-[#0067C0]" />
+          <span>Exportar Excel</span>
         </button>
 
         <button
@@ -72,17 +83,19 @@ export const ProductToolbar: React.FC<ProductToolbarProps> = ({
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
         >
           <Tags size={14} className="text-[#0067C0]" />
-          <span>Gestionar Categorías</span>
+          <span>Categorías</span>
         </button>
 
-        <button
-          onClick={onOpenBranch}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0067C0] bg-[#EBF0F5] hover:bg-blue-100 border border-[#0067C0]/30 rounded-[4px] transition-colors cursor-pointer"
-        >
-          <Building2 size={14} className="text-[#0067C0]" />
-          <span>Stock Sucursales</span>
-          <span className="kbd-badge text-[#0067C0] bg-white border-[#0067C0]/30">ALT+O</span>
-        </button>
+        {onSeedDemoProducts && (
+          <button
+            onClick={onSeedDemoProducts}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-[4px] transition-colors cursor-pointer"
+            title="Cargar o actualizar los 50 productos de prueba"
+          >
+            <Sparkles size={13} className="text-purple-600" />
+            <span>50 Demos</span>
+          </button>
+        )}
       </div>
 
       <div>

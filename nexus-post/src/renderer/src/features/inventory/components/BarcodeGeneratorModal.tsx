@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Product } from '../../../shared/types/domain'
+import type { Product } from '@shared/contracts'
 import { Barcode, Printer, X } from '../../../shared/icons/Icons'
 
 interface BarcodeGeneratorModalProps {

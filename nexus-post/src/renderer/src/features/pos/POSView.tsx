@@ -8,6 +8,7 @@ import SaleModal from './components/SaleModal'
 import SplitPaymentModal from './components/SplitPaymentModal'
 import SuspendedSalesModal from './components/SuspendedSalesModal'
 import TicketPreviewModal from './components/TicketPreviewModal'
+import ProductAvatar from '../../shared/ui/ProductAvatar'
 import {
   Search,
   Plus,
@@ -479,6 +480,7 @@ export const POSView: React.FC<POSViewProps> = ({
                   className="flex items-center justify-between p-2.5 hover:bg-[#EBF0F5] cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
+                    <ProductAvatar name={prod.name} imageUrl={prod.imageUrl} size="xs" />
                     <span className="font-mono text-xs text-[#5C5C5C] bg-[#F3F3F3] px-1.5 py-0.5 rounded-[2px] border border-[#E5E5E5]">
                       {prod.code}
                     </span>
@@ -555,12 +557,17 @@ export const POSView: React.FC<POSViewProps> = ({
 
                         {/* DESCRIPCIÓN */}
                         <td className="py-2 px-3">
-                          <div className="font-semibold text-xs text-[#1B1B1B]">{item.product.name}</div>
-                          {isOverStock && (
-                            <span className="text-[10px] text-[#C42B1C] font-bold flex items-center gap-1 mt-0.5">
-                              <AlertCircle size={11} /> Stock insuficiente (Solo hay {item.product.stock})
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <ProductAvatar name={item.product.name} imageUrl={item.product.imageUrl} size="xs" />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-xs text-[#1B1B1B] truncate">{item.product.name}</div>
+                              {isOverStock && (
+                                <span className="text-[10px] text-[#C42B1C] font-bold flex items-center gap-1 mt-0.5">
+                                  <AlertCircle size={11} /> Stock insuficiente (Solo hay {item.product.stock})
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
 
                         {/* CANTIDAD (Steppers) */}

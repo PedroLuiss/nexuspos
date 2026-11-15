@@ -20,8 +20,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   initialProduct,
   categories = []
 }) => {
-  const { values, update, generateCode, marginDollar, marginPercent, toInput } =
-    useProductForm(initialProduct, categories)
+  const {
+    values,
+    update,
+    setCostPrice,
+    setProfitMarginPercent,
+    setSalePrice,
+    generateCode,
+    marginDollar,
+    marginPercent,
+    toInput
+  } = useProductForm(initialProduct, categories)
 
   if (!isOpen) return null
 
@@ -78,6 +87,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             <ProductPricingFields
               values={values}
               update={update}
+              setCostPrice={setCostPrice}
+              setProfitMarginPercent={setProfitMarginPercent}
+              setSalePrice={setSalePrice}
               marginDollar={marginDollar}
               marginPercent={marginPercent}
             />

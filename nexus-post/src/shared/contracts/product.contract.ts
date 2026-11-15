@@ -18,6 +18,7 @@ export interface Product {
   active: boolean
   deleted?: boolean
   description?: string
+  imageUrl?: string
   createdAt?: string
   updatedAt?: string
 }

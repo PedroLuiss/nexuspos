@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Product, KardexReason } from '../../../shared/types/domain'
+import type { Product, KardexReason } from '@shared/contracts'
 import { Plus, Minus, X, Check } from '../../../shared/icons/Icons'
 
 interface StockAdjustmentModalProps {

@@ -17,6 +17,7 @@ interface ProductRow {
   active: number
   deleted: number
   description: string
+  image_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -37,6 +38,7 @@ function mapRow(row: ProductRow): Product {
     active: Boolean(row.active),
     deleted: Boolean(row.deleted),
     description: row.description,
+    imageUrl: row.image_url && row.image_url.trim().length > 0 ? row.image_url : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -44,7 +46,7 @@ function mapRow(row: ProductRow): Product {
 
 /** Adaptador SQLite del puerto `ProductRepository`. */
 export class SqliteProductRepository implements ProductRepository {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) { }
 
   findAll(filter?: ProductFilter): Product[] {
     const clauses: string[] = []
@@ -88,10 +90,10 @@ export class SqliteProductRepository implements ProductRepository {
       .prepare(
         `INSERT INTO products (
           id, code, name, category, cost_price, sale_price, stock, min_stock, max_stock,
-          unit, has_tax, active, deleted, description, created_at, updated_at
+          unit, has_tax, active, deleted, description, image_url, created_at, updated_at
         ) VALUES (
           @id, @code, @name, @category, @costPrice, @salePrice, @stock, @minStock, @maxStock,
-          @unit, @hasTax, @active, @deleted, @description, @createdAt, @updatedAt
+          @unit, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
         )`
       )
       .run({
@@ -109,6 +111,7 @@ export class SqliteProductRepository implements ProductRepository {
         active: input.active ? 1 : 0,
         deleted: input.deleted ? 1 : 0,
         description: input.description ?? '',
+        imageUrl: input.imageUrl ?? '',
         createdAt: input.createdAt,
         updatedAt: input.updatedAt
       })
@@ -133,6 +136,7 @@ export class SqliteProductRepository implements ProductRepository {
           active = @active,
           deleted = @deleted,
           description = @description,
+          image_url = @imageUrl,
           updated_at = @updatedAt
         WHERE id = @id`
       )
@@ -151,6 +155,7 @@ export class SqliteProductRepository implements ProductRepository {
         active: product.active ? 1 : 0,
         deleted: product.deleted ? 1 : 0,
         description: product.description ?? '',
+        imageUrl: product.imageUrl ?? '',
         updatedAt: new Date().toISOString()
       })
 

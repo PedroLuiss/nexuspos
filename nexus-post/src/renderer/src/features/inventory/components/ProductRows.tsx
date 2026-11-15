@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Product } from '@shared/contracts'
 import { Package, Power, Edit3, Trash2 } from '../../../shared/icons/Icons'
+import ProductAvatar from '../../../shared/ui/ProductAvatar'
 
 interface ProductRowsProps {
   products: Product[]
@@ -67,12 +68,17 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                   </td>
 
                   <td className="py-2 px-3">
-                    <div className="font-semibold text-xs text-[#1B1B1B]">{p.name}</div>
-                    {p.description && (
-                      <div className="text-[10px] text-[#717783] truncate max-w-sm">
-                        {p.description}
+                    <div className="flex items-center gap-2.5">
+                      <ProductAvatar name={p.name} imageUrl={p.imageUrl} size="sm" />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-xs text-[#1B1B1B] truncate">{p.name}</div>
+                        {p.description && (
+                          <div className="text-[10px] text-[#717783] truncate max-w-sm">
+                            {p.description}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </td>
 
                   <td className="py-2 px-3 text-right font-mono text-[#5C5C5C]">

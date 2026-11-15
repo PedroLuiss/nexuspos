@@ -7,8 +7,8 @@ import { toErrorMessage } from '../api/products.api'
 import AddProductModal from './AddProductModal'
 import BarcodeGeneratorModal from './BarcodeGeneratorModal'
 import StockAdjustmentModal from './StockAdjustmentModal'
-import StockBranchModal from './StockBranchModal'
 import CategoryManagerModal from './CategoryManagerModal'
+import ProductImportExportModal from './ProductImportExportModal'
 import ProductToolbar from './ProductToolbar'
 import ProductFilters from './ProductFilters'
 import ProductRows from './ProductRows'
@@ -18,6 +18,7 @@ export const ProductTable: React.FC = () => {
   const {
     products,
     error,
+    reload,
     createProduct,
     updateProduct,
     deleteProduct,
@@ -34,15 +35,16 @@ export const ProductTable: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
-  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [adjustmentMode, setAdjustmentMode] = useState<'IN' | 'OUT' | null>(null)
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false)
+  const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('export')
 
   const anyModalOpen =
     isModalOpen ||
     isBarcodeModalOpen ||
-    isBranchModalOpen ||
     isCategoryModalOpen ||
+    isImportExportOpen ||
     adjustmentMode !== null
 
   useEffect(() => {
@@ -63,9 +65,6 @@ export const ProductTable: React.FC = () => {
       } else if (key === 'b') {
         e.preventDefault()
         setIsBarcodeModalOpen(true)
-      } else if (key === 'o') {
-        e.preventDefault()
-        setIsBranchModalOpen(true)
       }
     }
 
@@ -82,10 +81,8 @@ export const ProductTable: React.FC = () => {
     try {
       if (editingProduct) {
         await updateProduct({ ...input, id: editingProduct.id })
-        window.alert(`Producto "${input.name}" modificado`)
       } else {
         await createProduct(input)
-        window.alert(`Producto "${input.name}" creado en catálogo`)
       }
     } catch (err) {
       window.alert(toErrorMessage(err))
@@ -122,6 +119,20 @@ export const ProductTable: React.FC = () => {
     }
   }
 
+  const handleImportBatch = async (inputs: ProductInput[]): Promise<number> => {
+    let count = 0
+    for (const input of inputs) {
+      try {
+        await createProduct(input)
+        count++
+      } catch {
+        // Continuar con los siguientes si hay algún duplicado
+      }
+    }
+    await reload()
+    return count
+  }
+
   return (
     <div className="flex flex-col h-full p-3 space-y-2.5 bg-[#F3F3F3]">
       {error && (
@@ -137,8 +148,14 @@ export const ProductTable: React.FC = () => {
         }}
         onOpenAdjustment={(mode) => setAdjustmentMode(mode)}
         onOpenBarcode={() => setIsBarcodeModalOpen(true)}
-        onOpenBranch={() => setIsBranchModalOpen(true)}
         onManageCategories={() => setIsCategoryModalOpen(true)}
+        onOpenImportExport={(tab) => {
+          setImportExportTab(tab)
+          setIsImportExportOpen(true)
+        }}
+        onSeedDemoProducts={async () => {
+          await reload()
+        }}
       />
 
       <ProductFilters
@@ -201,15 +218,12 @@ export const ProductTable: React.FC = () => {
         onConfirmAdjustment={handleStockAdjustment}
       />
 
-      <StockBranchModal
-        isOpen={isBranchModalOpen}
-        products={products}
-        onClose={() => setIsBranchModalOpen(false)}
-        onConfirmTransfer={(details) => {
-          window.alert(
-            `Solicitud de traslado registrada: ${details.quantity} pzas (Motivo: ${details.reason})`
-          )
-        }}
+      <ProductImportExportModal
+        isOpen={isImportExportOpen}
+        initialTab={importExportTab}
+        onClose={() => setIsImportExportOpen(false)}
+        products={filters.filtered}
+        onImportBatch={handleImportBatch}
       />
     </div>
   )
