@@ -62,7 +62,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             <div className="p-6 pb-5 flex flex-col gap-4">
               {/* Header & Identity */}
-              <div className="flex flex-col items-center text-center">
+              <div className="flex flex-col items-center text-center mb-3">
                 <div className="relative mb-2">
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-tr from-[#0067C0] to-[#0078D4] flex items-center justify-center text-white shadow-md">
                     <Store size={28} />
@@ -78,12 +78,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   Ingrese sus credenciales de dominio o cuenta de operador para acceder al sistema.
                 </p>
                 {/* Connectivity Pill */}
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] text-[#107C41] font-mono text-[11px] font-semibold border border-[#C8E6C9]">
+                {/* <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] text-[#107C41] font-mono text-[11px] font-semibold border border-[#C8E6C9]">
                   <span className="w-2 h-2 rounded-full bg-[#107C41]" />
                   <span>Servidor de Autenticación Online</span>
                   <span className="text-[#5C5C5C] opacity-60">|</span>
                   <span className="font-mono text-[10px]">18ms</span>
-                </div>
+                </div> */}
               </div>
 
               {/* Login Form */}
@@ -101,7 +101,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             {/* Card Footer */}
             <div className="px-6 py-2.5 bg-[#F8F9FA] border-t border-[#E5E5E5] flex flex-wrap items-center justify-between text-[#717783] text-[11px]">
-              <span className="font-mono">NexusPOS v4.8.2 | Win11</span>
+              <span className="font-mono">NexusPOS</span>
               <div className="flex items-center gap-2 font-mono text-[10px]">
                 <span className="text-[#1B1B1B]">
                   <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">ENTER</span>{' '}

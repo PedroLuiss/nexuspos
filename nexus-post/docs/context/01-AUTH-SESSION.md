@@ -99,6 +99,10 @@ Canales IPC registrados (`IPC_CHANNELS.auth`):
   - Contraseña: `SecurityKey#2026`
   - PIN: `1234`
   - Código demo OTP: `849215`
+- ✅ **Cierre de sesión resiliente (botón `Salir`):**
+  - `DashboardLayout` dispara `handleLogout` en `App.tsx`, que ejecuta `logoutApi()` (canal `auth:logout`) y luego limpia `cart` y `currentUser`.
+  - `logoutApi()` nunca lanza excepción: si el canal IPC o SQLite aún no está disponible, la sesión local del renderer se cierra de todas formas (los flujos UI no dependen de la BD).
+  - Flag `sessionAutoRestoreBlocked` (en `features/auth/api/auth.api.ts`): tras un logout explícito, `useAuth` no restaura la sesión de `auth:get-current-user` al montar `LoginView`, evitando el rebote inmediato al dashboard. Se rehabilita al autenticarse de nuevo (login, PIN u OTP).
 
 ---
 

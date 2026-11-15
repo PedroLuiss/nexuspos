@@ -21,6 +21,7 @@ import SettingsGrid from './features/settings/SettingsGrid'
 import { CheckCircle2 } from './shared/icons/Icons'
 import type { User } from '@shared/contracts'
 import { LoginView } from './features/auth'
+import { logoutApi } from './features/auth/api/auth.api'
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -556,12 +557,23 @@ function AppContent(): React.JSX.Element {
     showToast(`Turno cerrado exitosamente. Efectivo físico verificado: $${countedCash.toFixed(2)}`)
   }
 
+  // Cierre de sesión: limpia backend + estado local del operador.
+  const handleLogout = async (): Promise<void> => {
+    try {
+      // logoutApi nunca lanza: si el canal IPC/SQLite no está listo, la sesión local se cierra igual.
+      await logoutApi()
+    } finally {
+      setCart([])
+      setCurrentUser(null)
+    }
+  }
+
   if (!currentUser) {
     return <LoginView onLoginSuccess={(user) => setCurrentUser(user)} />
   }
 
   return (
-      <DashboardLayout currentUser={currentUser} onLogout={() => setCurrentUser(null)}>
+      <DashboardLayout currentUser={currentUser} onLogout={handleLogout}>
         {/* Toast Alert Feedback */}
         {notification && (
           <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">

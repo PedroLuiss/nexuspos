@@ -44,10 +44,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             <span className="text-xs font-semibold">Volver al Inicio de Sesión</span>
             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#717783] ml-1">ESC</span>
           </button>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F3F3F3] text-[#5C5C5C] font-mono text-[10px]">
-            <span className="w-2 h-2 rounded-full bg-[#107C41] animate-pulse" />
-            SEC-GATEWAY #09
-          </div>
+
         </div>
 
         {/* Core Content */}
@@ -60,9 +57,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 <Key size={14} />
               </div>
             </div>
-            <span className="font-mono text-[10px] tracking-wider text-[#0067C0] uppercase font-bold">
-              Módulo de Autenticación
-            </span>
+
             <h1 className="text-2xl font-bold text-[#1B1B1B] tracking-tight">
               Recuperar Contraseña de Acceso
             </h1>
@@ -80,7 +75,6 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   Correo Electrónico Registrado
                   <span className="text-[#C42B1C]">*</span>
                 </label>
-                <span className="font-mono text-[10px] text-[#717783]">Sintaxis: RFC 5322</span>
               </div>
 
               {/* Fluent Input with active bottom bar */}
@@ -95,16 +89,9 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nombre.apellido@empresa.com"
-                  className="w-full h-11 pl-10 pr-28 rounded-lg bg-[#F3F3F3] text-sm text-[#1B1B1B] placeholder:text-[#A0A0A0] focus:bg-white focus:outline-none shadow-sm transition-all"
+                  placeholder="nexuspos@gmail.com"
+                  className="w-full h-11 pl-10 rounded-lg bg-[#F3F3F3] text-sm text-[#1B1B1B] placeholder:text-[#A0A0A0] focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
-                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center">
-                  <span className="font-mono text-[10px] px-2 py-1 rounded bg-[#E8E8E8] text-[#5C5C5C]">
-                    @nexuspos.pe
-                  </span>
-                </div>
-                {/* Fluent Active Bottom Bar */}
-                <div className="h-0.5 w-full bg-[#E5E5E5] group-focus-within:bg-[#0067C0] transition-all" />
               </div>
 
               <p className="text-xs text-[#5C5C5C] flex items-center gap-1 mt-0.5">

@@ -271,7 +271,7 @@ function ResetPanel({ enabled, isLoading, onCancel, onSubmit }: ResetPanelProps)
           <div className="h-3 w-72 bg-[#E5E5E5] rounded mb-6" />
           <div className="h-11 w-full bg-[#E5E5E5] rounded-xl mb-3" />
           <div className="grid grid-cols-4 gap-1.5 h-1.5 mb-3">
-            {[0,1,2,3].map(i => <div key={i} className="rounded-full bg-[#E5E5E5]" />)}
+            {[0, 1, 2, 3].map(i => <div key={i} className="rounded-full bg-[#E5E5E5]" />)}
           </div>
           <div className="h-11 w-full bg-[#E5E5E5] rounded-xl" />
         </div>
@@ -357,9 +357,8 @@ function ResetPanel({ enabled, isLoading, onCancel, onSubmit }: ResetPanelProps)
             ].map(({ ok, label }) => (
               <div
                 key={label}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors ${
-                  ok ? 'bg-[#E8F5E9] text-[#107C41] font-semibold' : 'bg-[#F3F3F3] text-[#717783]'
-                }`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors ${ok ? 'bg-[#E8F5E9] text-[#107C41] font-semibold' : 'bg-[#F3F3F3] text-[#717783]'
+                  }`}
               >
                 <Check size={12} className={ok ? 'text-[#107C41]' : 'opacity-30'} />
                 <span>{label}</span>
@@ -401,7 +400,7 @@ function ResetPanel({ enabled, isLoading, onCancel, onSubmit }: ResetPanelProps)
         </div>
 
         {/* Logout Other Sessions */}
-        <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-[#E5E5E5] cursor-pointer hover:bg-[#F8F9FA] transition-colors shadow-sm select-none">
+        {/* <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-[#E5E5E5] cursor-pointer hover:bg-[#F8F9FA] transition-colors shadow-sm select-none">
           <input
             type="checkbox"
             checked={logoutOthers}
@@ -416,7 +415,7 @@ function ResetPanel({ enabled, isLoading, onCancel, onSubmit }: ResetPanelProps)
               Desconectará POS-01, POS-02 y la App Móvil de Almacén inmediatamente
             </span>
           </div>
-        </label>
+        </label> */}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-1">
@@ -434,7 +433,7 @@ function ResetPanel({ enabled, isLoading, onCancel, onSubmit }: ResetPanelProps)
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#0067C0] hover:bg-[#0078D4] text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50 group cursor-pointer"
           >
             <CloudLightning size={15} className="group-hover:scale-110 transition-transform" />
-            <span>{isLoading ? 'Actualizando...' : 'Actualizar Contraseña e Iniciar Sesión'}</span>
+            <span>{isLoading ? 'Actualizando...' : 'Actualizar Contraseña'}</span>
             <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">ENTER</span>
           </button>
         </div>
@@ -525,12 +524,10 @@ export const VerifyCodeResetPasswordView: React.FC<VerifyCodeResetPasswordViewPr
 
           {/* Progress Steps */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className={`flex items-center gap-2.5 p-2.5 rounded-xl shadow-sm border transition-colors ${
-              otpVerified ? 'bg-[#E8F5E9] border-[#C8E6C9]' : 'bg-white border-[#E5E5E5]'
-            }`}>
-              <div className={`w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
-                otpVerified ? 'bg-[#107C41]' : 'bg-[#0067C0]'
+            <div className={`flex items-center gap-2.5 p-2.5 rounded-xl shadow-sm border transition-colors ${otpVerified ? 'bg-[#E8F5E9] border-[#C8E6C9]' : 'bg-white border-[#E5E5E5]'
               }`}>
+              <div className={`w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${otpVerified ? 'bg-[#107C41]' : 'bg-[#0067C0]'
+                }`}>
                 {otpVerified ? <Check size={14} /> : '1'}
               </div>
               <div className="flex flex-col min-w-0">
@@ -541,12 +538,10 @@ export const VerifyCodeResetPasswordView: React.FC<VerifyCodeResetPasswordViewPr
                 </span>
               </div>
             </div>
-            <div className={`flex items-center gap-2.5 p-2.5 rounded-xl border shadow-sm transition-colors ${
-              otpVerified ? 'bg-white border-[#0067C0]/30' : 'bg-[#F3F3F3] border-[#E5E5E5]'
-            }`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
-                otpVerified ? 'bg-[#0067C0] text-white' : 'bg-[#E5E5E5] text-[#717783]'
+            <div className={`flex items-center gap-2.5 p-2.5 rounded-xl border shadow-sm transition-colors ${otpVerified ? 'bg-white border-[#0067C0]/30' : 'bg-[#F3F3F3] border-[#E5E5E5]'
               }`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${otpVerified ? 'bg-[#0067C0] text-white' : 'bg-[#E5E5E5] text-[#717783]'
+                }`}>
                 2
               </div>
               <div className="flex flex-col min-w-0">

@@ -7,7 +7,9 @@ import {
   getCurrentUserApi,
   sendOtpApi,
   verifyOtpApi,
-  resetPasswordApi
+  resetPasswordApi,
+  isSessionAutoRestoreBlocked,
+  resetSessionAutoRestoreBlock
 } from '../api/auth.api'
 
 export type AuthStep = 'LOGIN' | 'FORGOT_EMAIL' | 'VERIFY_OTP' | 'RESET_PASSWORD'
@@ -60,6 +62,9 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
   )
 
   useEffect(() => {
+    // Si el operador acaba de cerrar sesión, no restaurar la sesión previa del backend.
+    if (isSessionAutoRestoreBlocked()) return
+
     let isMounted = true
     getCurrentUserApi()
       .then((user) => {
@@ -104,6 +109,7 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
       showToast('Autenticando credenciales corporativas en Active Directory...', 'info')
       const res = await loginApi(credentials)
       if (res.success && res.user) {
+        resetSessionAutoRestoreBlock()
         setCurrentUser(res.user)
         showToast(`¡Bienvenido, ${res.user.name}! Sesión iniciada.`, 'success')
         onLoginSuccess?.(res.user)
@@ -130,6 +136,7 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
     try {
       const res = await loginPinApi({ pin, station: 'CAJA-01' })
       if (res.success && res.user) {
+        resetSessionAutoRestoreBlock()
         setIsPinModalOpen(false)
         setCurrentUser(res.user)
         showToast(`PIN validado. Sesión abierta para ${res.user.name}.`, 'success')
@@ -201,6 +208,7 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
         logoutOtherSessions: logoutOthers
       })
       if (res.success && res.user) {
+        resetSessionAutoRestoreBlock()
         setCurrentUser(res.user)
         setAuthStep('LOGIN')
         showToast('¡Contraseña actualizada con éxito! Sesión iniciada.', 'success')

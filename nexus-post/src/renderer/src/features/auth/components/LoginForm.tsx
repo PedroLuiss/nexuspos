@@ -61,10 +61,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             htmlFor="emailInput"
             className="text-xs font-semibold text-[#1B1B1B] flex items-center justify-between"
           >
-            <span>Correo Electrónico o Usuario de Dominio</span>
-            <span className="font-mono text-[10px] text-[#5C5C5C] bg-[#E8E8E8] px-1.5 py-0.5 rounded">
-              ID: DOM-01
-            </span>
+            <span>Correo Electrónico</span>
           </label>
           <div className="relative flex items-center">
             <Mail size={16} className="absolute left-3 text-[#717783] pointer-events-none" />
@@ -128,8 +125,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             className="w-4 h-4 rounded text-[#0067C0] accent-[#0067C0] cursor-pointer"
           />
           <span className="text-xs text-[#5C5C5C] group-hover:text-[#1B1B1B] transition-colors">
-            Recordar estación de trabajo (
-            <span className="font-mono font-semibold text-[#1B1B1B]">CAJA-01</span>)
+            Recordar sesión
           </span>
         </label>
 

@@ -55,9 +55,29 @@ export async function loginPinApi(input: PinLoginInput): Promise<AuthResponse> {
   return { success: false, error: 'PIN no reconocido.' }
 }
 
+/**
+ * Bloquea la restauración automática de sesión (`auth:get-current-user`) después de un
+ * cierre de sesión explícito. Así el operador no vuelve al dashboard aunque el canal IPC
+ * o la persistencia SQLite todavía no estén disponibles.
+ */
+let sessionAutoRestoreBlocked = false
+
+export function isSessionAutoRestoreBlocked(): boolean {
+  return sessionAutoRestoreBlocked
+}
+
+export function resetSessionAutoRestoreBlock(): void {
+  sessionAutoRestoreBlocked = false
+}
+
 export async function logoutApi(): Promise<void> {
-  if (window.api?.auth?.logout) {
-    await window.api.auth.logout()
+  sessionAutoRestoreBlocked = true
+  try {
+    if (window.api?.auth?.logout) {
+      await window.api.auth.logout()
+    }
+  } catch {
+    // Fallback: si el backend/SQLite aún no responde, la sesión local se cierra igual.
   }
 }
 
