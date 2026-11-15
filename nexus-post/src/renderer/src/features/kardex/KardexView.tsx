@@ -6,14 +6,23 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Layers,
-  FileSpreadsheet
+  FileSpreadsheet,
+  RefreshCw
 } from '../../shared/icons/Icons'
 
 interface KardexViewProps {
   movements: KardexMovement[]
+  isLoading: boolean
+  error: string | null
+  onRefresh: () => void
 }
 
-export const KardexView: React.FC<KardexViewProps> = ({ movements }) => {
+export const KardexView: React.FC<KardexViewProps> = ({
+  movements,
+  isLoading,
+  error,
+  onRefresh
+}) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<'ALL' | KardexMovementType>('ALL')
   const [reasonFilter, setReasonFilter] = useState<'ALL' | KardexReason>('ALL')
@@ -133,6 +142,14 @@ export const KardexView: React.FC<KardexViewProps> = ({ movements }) => {
           </select>
 
           <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <span>Actualizar</span>
+          </button>
+          <button
             onClick={() => alert('Exportando reporte Kardex a formato Excel/CSV...')}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
           >
@@ -141,6 +158,12 @@ export const KardexView: React.FC<KardexViewProps> = ({ movements }) => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div role="alert" className="px-3 py-2 text-xs text-[#C42B1C] bg-red-50 border border-red-200 rounded-[4px]">
+          No se pudo cargar el Kardex: {error}
+        </div>
+      )}
 
       {/* Main Immutable Audit Ledger Table */}
       <div className="flex-1 overflow-hidden bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] flex flex-col">
@@ -165,7 +188,11 @@ export const KardexView: React.FC<KardexViewProps> = ({ movements }) => {
                 <tr>
                   <td colSpan={9} className="py-20 text-center text-[#717783]">
                     <ClipboardList size={40} className="mx-auto mb-2 text-[#D1D1D1]" />
-                    <p className="text-xs font-semibold text-[#1B1B1B]">No se encontraron movimientos registrados en Kardex</p>
+                    <p className="text-xs font-semibold text-[#1B1B1B]">
+                      {isLoading
+                        ? 'Cargando movimientos desde la base de datos...'
+                        : 'No se encontraron movimientos registrados en Kardex'}
+                    </p>
                   </td>
                 </tr>
               ) : (

@@ -5,6 +5,7 @@ import type { AuthApi } from './auth.contract'
 import type { UsersApi } from './user.contract'
 import type { SettingsApi } from './settings.contract'
 import type { HardwareApi } from './hardware.contract'
+import type { CustomersApi } from './customer.contract'
 
 /**
  * Nombres canónicos de los canales IPC.
@@ -59,6 +60,20 @@ export const IPC_CHANNELS = {
     isConnected: 'hardware:isConnected',
     saveScaleConfig: 'hardware:saveScaleConfig',
     getScaleConfig: 'hardware:getScaleConfig'
+  },
+  customers: {
+    list: 'customers:list',
+    getById: 'customers:getById',
+    create: 'customers:create',
+    update: 'customers:update',
+    delete: 'customers:delete',
+    toggleStatus: 'customers:toggleStatus',
+    getAccountSummary: 'customers:getAccountSummary',
+    recordPayment: 'customers:recordPayment',
+    listDebts: 'customers:listDebts',
+    listPayments: 'customers:listPayments',
+    createCreditSale: 'customers:createCreditSale',
+    applyPaymentToDebt: 'customers:applyPaymentToDebt'
   }
 } as const
 
@@ -93,4 +108,5 @@ export interface NexusApi {
   users: UsersApi
   settings: SettingsApi
   hardware: HardwareApi
+  customers: CustomersApi
 }

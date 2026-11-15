@@ -20,8 +20,10 @@ interface SaleModalProps {
   tax: number
   discount: number
   items: CartItem[]
+  customerId?: string
+  ticketNumber: string
   onClose: () => void
-  onConfirmSale: (details: PaymentDetails) => void
+  onConfirmSale: (details: PaymentDetails) => Promise<boolean | void> | boolean | void
 }
 
 export const SaleModal: React.FC<SaleModalProps> = ({
@@ -31,6 +33,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   tax,
   discount,
   items,
+  customerId,
+  ticketNumber,
   onClose,
   onConfirmSale
 }) => {
@@ -41,15 +45,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const [cardAuth, setCardAuth] = useState<string>('')
   const [mixedCash, setMixedCash] = useState<number>(Math.floor(total / 2))
   const [printReceipt, setPrintReceipt] = useState<boolean>(true)
-
-  // Reset or initialize values when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setCashTendered(total)
-      setMixedCash(Math.floor(total / 2))
-      setCardAuth('')
-    }
-  }, [isOpen, total])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Hotkey listener for F12, Escape, F6, F7, F8 inside modal
   useEffect(() => {
@@ -93,23 +89,31 @@ export const SaleModal: React.FC<SaleModalProps> = ({
     { label: '$1,000', value: 1000 }
   ]
 
-  const handleConfirm = (e: React.FormEvent): void => {
+  const handleConfirm = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
 
     if (method === 'cash' && !isCashSufficient) {
       return
     }
+    if (method === 'credit' && !customerId) return
 
     const details: PaymentDetails = {
       method,
-      amountPaid: method === 'cash' ? cashTendered : total,
+      amountPaid: method === 'cash' ? cashTendered : method === 'credit' ? 0 : total,
       change: method === 'cash' ? changeDue : 0,
       cardReference: method === 'card' ? cardAuth : undefined,
       cashAmount: method === 'mixed' ? mixedCash : undefined,
-      cardAmount: method === 'mixed' ? mixedCardRemainder : undefined
+      cardAmount: method === 'mixed' ? mixedCardRemainder : undefined,
+      customerId,
+      ticketNumber
     }
 
-    onConfirmSale(details)
+    setIsSubmitting(true)
+    try {
+      await onConfirmSale(details)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -175,7 +179,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               <label className="block text-[11px] font-bold text-[#5C5C5C] uppercase tracking-wider mb-2">
                 Método de Pago
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setMethod('cash')}
@@ -216,6 +220,20 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                   <Layers size={18} />
                   <span>Pago Mixto</span>
                   <span className="kbd-badge mt-0.5 text-[10px]">F8</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!customerId}
+                  onClick={() => setMethod('credit')}
+                  className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-[4px] border text-xs font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${
+                    method === 'credit'
+                      ? 'border-[#0067C0] bg-[#EBF0F5] text-[#0067C0] shadow-xs'
+                      : 'border-[#D1D1D1] bg-white text-[#5C5C5C] hover:bg-[#F9F9F9]'
+                  }`}
+                >
+                  <CreditCard size={18} />
+                  <span>Crédito</span>
+                  <span className="kbd-badge mt-0.5 text-[10px]">Cliente</span>
                 </button>
               </div>
             </div>
@@ -331,6 +349,13 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               </div>
             )}
 
+            {method === 'credit' && (
+              <div className="rounded-[4px] border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+                La venta se asociará al cliente seleccionado y se registrará en su cuenta por cobrar.
+                El sistema validará el límite de crédito antes de confirmar.
+              </div>
+            )}
+
             {/* Print receipt checkbox */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -364,11 +389,15 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={method === 'cash' && !isCashSufficient}
+              disabled={
+                isSubmitting ||
+                (method === 'cash' && !isCashSufficient) ||
+                (method === 'credit' && !customerId)
+              }
               className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#107C41] hover:bg-[#0F7B0F] active:bg-[#005228] disabled:bg-slate-300 rounded-[4px] shadow-xs transition-colors cursor-pointer"
             >
               <Check size={15} />
-              <span>Confirmar Venta (${total.toFixed(2)})</span>
+              <span>{isSubmitting ? 'Procesando…' : `Confirmar Venta ($${total.toFixed(2)})`}</span>
               <span className="kbd-badge bg-[#005228]/50 text-white border-emerald-700/50">
                 F12
               </span>

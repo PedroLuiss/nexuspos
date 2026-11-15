@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import {
-  Product,
   PaymentDetails,
-  Customer
 } from '../../shared/types/domain'
 import SaleModal from './components/SaleModal'
 import SplitPaymentModal from './components/SplitPaymentModal'
@@ -34,6 +32,9 @@ import {
   X
 } from '../../shared/icons/Icons'
 import { POSViewProps } from './types'
+import type { Customer } from '@shared/contracts'
+
+const createTicketNumber = (): string => `TK-${Date.now()}`
 
 export const POSView: React.FC<POSViewProps> = ({
   products,
@@ -53,7 +54,6 @@ export const POSView: React.FC<POSViewProps> = ({
 }) => {
   const { config: businessConfig } = useBusinessConfig()
   const [searchInput, setSearchInput] = useState('')
-  const [searchMatches, setSearchMatches] = useState<Product[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -75,6 +75,9 @@ export const POSView: React.FC<POSViewProps> = ({
   const [newCustEmail, setNewCustEmail] = useState('')
   const [newCustAddress, setNewCustAddress] = useState('')
   const [newCustCreditLimit, setNewCustCreditLimit] = useState(5000)
+  const [customerError, setCustomerError] = useState<string | null>(null)
+  const [ticketNumber, setTicketNumber] = useState(createTicketNumber)
+  const [lastTicketNumber, setLastTicketNumber] = useState<string | null>(null)
 
   // Modals state
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
@@ -107,24 +110,18 @@ export const POSView: React.FC<POSViewProps> = ({
   // Detección de déficit de stock
   const hasStockDeficit = cart.some((item) => item.quantity > item.product.stock)
 
-  // Live product search
-  useEffect(() => {
-    if (!searchInput.trim()) {
-      setSearchMatches([])
-      setShowSearchResults(false)
-      return
-    }
-
+  const searchMatches = useMemo(() => {
+    if (!searchInput.trim()) return []
     const query = searchInput.toLowerCase().trim()
-    const matches = products.filter(
+    return products
+      .filter(
       (p) =>
         p.active &&
         (p.name.toLowerCase().includes(query) ||
           p.code.toLowerCase().includes(query) ||
           p.category.toLowerCase().includes(query))
-    )
-    setSearchMatches(matches.slice(0, 6))
-    setShowSearchResults(matches.length > 0)
+      )
+      .slice(0, 6)
   }, [searchInput, products])
 
   // Customer search by Cédula / RFC / Name
@@ -200,7 +197,7 @@ export const POSView: React.FC<POSViewProps> = ({
   }
 
   // Save new customer and associate directly to invoice
-  const handleSaveNewCustomer = (e: React.FormEvent): void => {
+  const handleSaveNewCustomer = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!newCustName.trim()) return
 
@@ -215,17 +212,17 @@ export const POSView: React.FC<POSViewProps> = ({
       creditLimit: Number(newCustCreditLimit) || 5000
     }
 
+    if (!onAddCustomer) {
+      setCustomerError('No está disponible la conexión para guardar clientes.')
+      return
+    }
+
     let created: Customer
-    if (onAddCustomer) {
-      created = onAddCustomer(customerPayload)
-    } else {
-      created = {
-        ...customerPayload,
-        id: `cust-${Date.now()}`,
-        currentDebt: 0,
-        debts: [],
-        payments: []
-      }
+    try {
+      created = await onAddCustomer(customerPayload)
+    } catch (error) {
+      setCustomerError(error instanceof Error ? error.message : 'No se pudo guardar el cliente.')
+      return
     }
 
     setSelectedCustomer(created)
@@ -233,6 +230,7 @@ export const POSView: React.FC<POSViewProps> = ({
     setCustomerCedulaInput('')
     setShowCustomerDropdown(false)
     setIsCreateCustomerModalOpen(false)
+    setCustomerError(null)
 
     // Reset fields
     setNewCustName('')
@@ -242,15 +240,20 @@ export const POSView: React.FC<POSViewProps> = ({
   }
 
   // Quick cash checkout [ALT+Q]
-  const handleQuickCash = (): void => {
+  const handleQuickCash = async (): Promise<void> => {
     if (cart.length === 0) return
     const details: PaymentDetails = {
       method: 'cash',
       amountPaid: finalTotal,
-      change: 0
+      change: 0,
+      customerId: assignCustomer ? selectedCustomer?.id : undefined,
+      ticketNumber
     }
+    const completed = await onCompleteSale(details)
+    if (completed === false) return
     setLastPaymentDetails(details)
-    onCompleteSale(details)
+    setLastTicketNumber(ticketNumber)
+    setTicketNumber(createTicketNumber())
   }
 
   // Global hotkeys listener for keyboard-first POS flow
@@ -379,16 +382,21 @@ export const POSView: React.FC<POSViewProps> = ({
   ])
 
   // Split payment confirmation
-  const handleConfirmSplit = (cashAmount: number, cardAmount: number): void => {
+  const handleConfirmSplit = async (cashAmount: number, cardAmount: number): Promise<void> => {
     const details: PaymentDetails = {
       method: 'mixed',
       amountPaid: finalTotal,
       change: 0,
       cashAmount,
-      cardAmount
+      cardAmount,
+      customerId: assignCustomer ? selectedCustomer?.id : undefined,
+      ticketNumber
     }
+    const completed = await onCompleteSale(details)
+    if (completed === false) return
     setLastPaymentDetails(details)
-    onCompleteSale(details)
+    setLastTicketNumber(ticketNumber)
+    setTicketNumber(createTicketNumber())
     setIsSplitModalOpen(false)
   }
 
@@ -418,7 +426,10 @@ export const POSView: React.FC<POSViewProps> = ({
                 autoFocus
                 placeholder="Escanear código de barras o buscar producto [F2]..."
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => {
+                  setSearchInput(e.target.value)
+                  setShowSearchResults(true)
+                }}
                 onKeyDown={handleSearchKeyDown}
                 className="w-full pl-9 pr-24 py-2 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] focus:bg-white focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] font-medium text-[#1B1B1B] placeholder:text-[#717783]"
               />
@@ -471,7 +482,7 @@ export const POSView: React.FC<POSViewProps> = ({
           </div>
 
           {/* Search Dropdown Results */}
-          {showSearchResults && (
+          {showSearchResults && searchMatches.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-[#D1D1D1] rounded-[4px] shadow-lg max-h-60 overflow-y-auto divide-y divide-[#E5E5E5]">
               {searchMatches.map((prod) => (
                 <div
@@ -872,7 +883,7 @@ export const POSView: React.FC<POSViewProps> = ({
                           <div className="text-xs text-[#5C5C5C]">
                             No existe cliente con cédula:{' '}
                             <strong className="font-mono text-[#1B1B1B]">
-                              "{customerCedulaInput.trim()}"
+                              &quot;{customerCedulaInput.trim()}&quot;
                             </strong>
                           </div>
                           <button
@@ -897,7 +908,7 @@ export const POSView: React.FC<POSViewProps> = ({
                         className="w-full flex items-center justify-center gap-1.5 py-1 px-2.5 bg-white hover:bg-blue-50 text-[#0067C0] border border-[#0067C0]/30 font-semibold text-xs rounded-[4px] transition-colors cursor-pointer"
                       >
                         <UserPlus size={13} />
-                        <span>Crear cliente con cédula "{customerCedulaInput.trim()}"</span>
+                        <span>Crear cliente con cédula &quot;{customerCedulaInput.trim()}&quot;</span>
                       </button>
                     </div>
                   )}
@@ -1047,20 +1058,26 @@ export const POSView: React.FC<POSViewProps> = ({
       </div>
 
       {/* Sale Modal (F12) */}
-      <SaleModal
+      {isSaleModalOpen && <SaleModal
         isOpen={isSaleModalOpen}
         total={finalTotal}
         subtotal={subtotal}
         tax={taxTotal}
         discount={discountTotal}
         items={cart}
+        customerId={assignCustomer ? selectedCustomer?.id : undefined}
+        ticketNumber={ticketNumber}
         onClose={() => setIsSaleModalOpen(false)}
-        onConfirmSale={(details) => {
+        onConfirmSale={async (details) => {
+          const completed = await onCompleteSale(details)
+          if (completed === false) return false
           setLastPaymentDetails(details)
-          onCompleteSale(details)
+          setLastTicketNumber(ticketNumber)
+          setTicketNumber(`TK-${Date.now()}`)
           setIsSaleModalOpen(false)
+          return true
         }}
-      />
+      />}
 
       {/* Split Payment Modal (F8) */}
       <SplitPaymentModal
@@ -1092,7 +1109,7 @@ export const POSView: React.FC<POSViewProps> = ({
         discount={discountTotal}
         total={finalTotal}
         payment={lastPaymentDetails}
-        ticketNumber="TK-00824"
+        ticketNumber={cart.length > 0 ? ticketNumber : lastTicketNumber ?? ticketNumber}
         cashierName="Carlos Morales"
         customerName={activeCustomerDisplayName}
       />
@@ -1130,6 +1147,11 @@ export const POSView: React.FC<POSViewProps> = ({
             {/* Modal Form */}
             <form onSubmit={handleSaveNewCustomer}>
               <div className="p-5 space-y-3.5 text-xs">
+                {customerError && (
+                  <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-[#C42B1C]">
+                    {customerError}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-[#1B1B1B] mb-1">

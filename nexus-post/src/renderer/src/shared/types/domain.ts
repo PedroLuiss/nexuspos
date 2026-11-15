@@ -25,6 +25,7 @@ export interface PaymentDetails {
   cashAmount?: number
   cardAmount?: number
   customerId?: string
+  ticketNumber?: string
 }
 
 export interface SaleSummary {

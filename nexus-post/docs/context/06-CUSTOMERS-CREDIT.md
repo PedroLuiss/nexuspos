@@ -66,3 +66,14 @@ nexus-post/src/
 ## 5. Tareas Pendientes / Deuda Técnica
 
 - ⚠️ **Refactorización de Líneas:** `CustomersView.tsx` supera las 600 líneas. Debe subdividirse en `CustomerTable.tsx`, `AddCustomerModal.tsx`, `CustomerDebtModal.tsx` y `CustomerPaymentModal.tsx` para cumplir con la norma de $\le 300$ líneas.
+
+## 6. Estado de Integración con SQLite y POS
+
+- Clientes, deudas y pagos se guardan en SQLite mediante la migración `011_customers` y los canales `customers:*` expuestos por el preload.
+- El POS carga los clientes registrados, permite crear un cliente persistente y asociarlo al ticket.
+- El método **Crédito** del modal de cobro requiere cliente seleccionado. Al confirmar, crea una deuda con el folio del ticket y valida que el saldo no exceda el límite de crédito; un error deja la venta sin completar.
+- Los abonos se registran en una transacción SQLite, se aplican primero a las deudas más antiguas y reducen el saldo del cliente. Tras confirmarse, el POS agrega el importe a los ingresos del turno/caja.
+- El listado y el estado de cuenta se cargan desde SQLite; los datos de clientes que antes vivían únicamente en el estado de React fueron retirados de `App.tsx`.
+- Los cobros regulares (efectivo/tarjeta/mixto) muestran al cliente en el ticket del POS, pero la persistencia general de ventas y facturas sigue perteneciendo a la implementación futura del módulo de ventas.
+- El listado principal muestra solo clientes activos. El botón **Clientes desactivados** carga desde SQLite y muestra en una vista separada los clientes inactivos; estos no se ofrecen para asociar a ventas en el POS.
+- No se permite desactivar clientes con deuda pendiente: el botón se deshabilita en la interfaz y `CustomerService.toggleStatus` vuelve a validar la regla antes de modificar el estado en SQLite.

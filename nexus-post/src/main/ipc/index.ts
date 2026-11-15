@@ -5,6 +5,7 @@ import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/st
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
 import { SqliteSettingsRepository } from '../adapters/persistence/sqlite/settings.sqlite'
+import { SqliteCustomerRepository } from '../adapters/persistence/sqlite/customers.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
@@ -16,6 +17,7 @@ import { AuthService } from '../domain/auth/auth.service'
 import { UserService } from '../domain/users/user.service'
 import { SettingsService } from '../domain/settings/settings.service'
 import { ScaleService } from '../domain/hardware/scale.service'
+import { CustomerService } from '../domain/customers/customer.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
@@ -23,6 +25,7 @@ import { registerAuthIpc } from './auth.ipc'
 import { registerUsersIpc } from './users.ipc'
 import { registerSettingsIpc } from './settings.ipc'
 import { registerHardwareIpc } from './hardware.ipc'
+import { registerCustomerIpc } from './customers.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -52,6 +55,8 @@ export function registerIpcHandlers(): void {
   const userService = new UserService(userRepository, authService)
   const settingsService = new SettingsService(settingsRepository, authService)
   const scaleService = new ScaleService(scaleRepository, authService)
+  const customerRepository = new SqliteCustomerRepository(db)
+  const customerService = new CustomerService(customerRepository, authService)
 
   // Conectar el adaptador serial al servicio de dominio
   const serialAdapter = new SerialScaleAdapter()
@@ -64,4 +69,5 @@ export function registerIpcHandlers(): void {
   registerUsersIpc(userService)
   registerSettingsIpc(settingsService)
   registerHardwareIpc(scaleService)
+  registerCustomerIpc(customerService)
 }

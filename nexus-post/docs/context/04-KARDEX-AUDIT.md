@@ -17,7 +17,13 @@ El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos
 
 ---
 
-## 2. Mapa de Archivos del Módulo
+## 2. Persistencia e integración actual
+
+Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryService.adjustStock()` actualiza el stock y agrega el movimiento en una misma transacción; `InventoryService.listMovements()` consulta el historial. Ambos flujos están disponibles mediante los canales IPC `inventory:adjustStock` e `inventory:listMovements`, expuestos en `window.api.inventory`.
+
+La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; el listado vacío ya no se sustituye por registros de demostración. Las salidas originadas por el POS no se persisten todavía: los productos y las ventas de ese flujo siguen siendo datos de demostración, así que no deben presentarse como movimientos contables reales.
+
+## 3. Mapa de Archivos del Módulo
 
 ```text
 nexus-post/src/
@@ -25,20 +31,20 @@ nexus-post/src/
 │   ├── domain/inventory/                    # KardexMovement entity, reglas de auditoría
 │   ├── ports/inventory.repository.ts        # Puerto de persistencia de movimientos
 │   ├── adapters/persistence/sqlite/
-│   │   ├── movements.sqlite.ts              # Inserción de movimientos inmutables (APPEND-ONLY)
-│   │   └── migrations/                      # Tabla 'inventory_movements'
+│   │   ├── stock-movements.sqlite.ts         # Persistencia y consulta de movimientos
+│   │   └── migrations/002_stock_movements.ts # Tabla 'stock_movements'
 │   └── ipc/inventory.ipc.ts                 # Handler 'inventory:list-movements'
 │
 ├── shared/contracts/
-│   └── products.contract.ts                 # Interfaces KardexMovement, KardexReason, etc.
+│   └── inventory.contract.ts                # Interfaces KardexMovement, KardexReason, etc.
 │
 └── renderer/src/features/kardex/
-    └── KardexView.tsx                       # Vista principal con tabla densa y KPI summary
+    ├── api/kardex.api.ts                    # Lectura a través del puente IPC
+    ├── hooks/useKardex.ts                   # Carga, actualización y errores
+    └── KardexView.tsx                       # Vista con tabla densa y KPI summary
 ```
 
----
-
-## 3. Atajos de Teclado del Módulo
+## 4. Atajos de Teclado del Módulo
 
 | Atajo | Acción |
 | :---: | :--- |
@@ -47,7 +53,7 @@ nexus-post/src/
 
 ---
 
-## 4. Reglas Críticas de Integridad
+## 5. Reglas Críticas de Integridad
 
 1. **Inmutabilidad Absoluta (Append-Only):** La tabla de movimientos de Kardex **NUNCA** permite operaciones de `UPDATE` ni `DELETE`. Todo registro es un hecho histórico inalterable. Si hubo un error en un movimiento, se compensa con un nuevo registro de sentido inverso y motivo de ajuste.
 2. **Registro Obligatorio en Cada Transacción:** Ningún módulo puede alterar el campo `stock` de `products` sin registrar el evento correspondiente en `inventory_movements`.

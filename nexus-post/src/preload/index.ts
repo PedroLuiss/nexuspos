@@ -18,10 +18,13 @@ import type {
   UpdateUserInput,
   BusinessConfigInput,
   ScaleConfigInput,
-  SerialPortInfo,
-  ScaleReading,
-  ScaleConnectionStatus,
-  BaudRate
+  BaudRate,
+  CustomerInput,
+  CustomerUpdateInput,
+  CustomerFilter,
+  CustomerPaymentInput,
+  CreateCreditSaleInput,
+  ApplyPaymentToDebtInput
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -81,6 +84,32 @@ const api: NexusApi = {
     saveScaleConfig: (input: ScaleConfigInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.hardware.saveScaleConfig, input),
     getScaleConfig: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.getScaleConfig)
+  },
+  customers: {
+    list: (filter?: CustomerFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.list, filter),
+    getById: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.getById, id),
+    create: (input: CustomerInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.create, input),
+    update: (input: CustomerUpdateInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.update, input),
+    delete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.delete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.toggleStatus, id),
+    getAccountSummary: (customerId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.getAccountSummary, customerId),
+    recordPayment: (input: CustomerPaymentInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.recordPayment, input),
+    listDebts: (customerId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.listDebts, customerId),
+    listPayments: (customerId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.listPayments, customerId),
+    createCreditSale: (input: CreateCreditSaleInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.createCreditSale, input),
+    applyPaymentToDebt: (input: ApplyPaymentToDebtInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.customers.applyPaymentToDebt, input)
   }
 }
 

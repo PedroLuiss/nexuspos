@@ -1,12 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Product,
   CartItem,
   PaymentDetails,
-  KardexMovement,
   CashMovement,
   ShiftState,
-  Customer,
   SuspendedSale
 } from './shared/types/domain'
 import { HotkeysProvider, useRouter } from './app/providers/HotkeysProvider'
@@ -20,12 +18,14 @@ import CustomersView from './features/customers/CustomersView'
 import ReportsView from './features/reports/ReportsView'
 import SettingsGrid from './features/settings/SettingsGrid'
 import { CheckCircle2 } from './shared/icons/Icons'
-import type { User } from '@shared/contracts'
+import type { Customer, CustomerPayment, User } from '@shared/contracts'
 import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
 import { computeGrandTotal } from './shared/lib/businessConfig'
+import { useCustomers } from './features/customers/hooks/useCustomers'
+import { useKardex } from './features/kardex/hooks/useKardex'
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -150,123 +150,30 @@ const INITIAL_PRODUCTS: Product[] = [
   }
 ]
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'cust-1',
-    code: 'CLI-101',
-    name: 'Don Pancho Abarrotes San José',
-    taxId: 'FRP780512-AB2',
-    phone: '55-4433-2211',
-    email: 'pancho.sanjose@gmail.com',
-    address: 'Av. Hidalgo #45, Col. Centro',
-    creditLimit: 12000,
-    currentDebt: 3450.0,
-    debts: [
-      { id: 'd-1', ticketNumber: 'TK-00810', date: '04/10/2026', total: 2150.0, balance: 1450.0 },
-      { id: 'd-2', ticketNumber: 'TK-00819', date: '06/10/2026', total: 2000.0, balance: 2000.0 }
-    ],
-    payments: [
-      { id: 'p-1', date: '05/10/2026', amount: 700.0, concept: 'Abono en efectivo', cashier: 'Carlos Morales' }
-    ]
-  },
-  {
-    id: 'cust-2',
-    code: 'CLI-102',
-    name: 'Carnicería & Cremería El Güero',
-    taxId: 'GUE850920-K19',
-    phone: '55-8899-7766',
-    email: 'elguero.carnes@outlook.com',
-    address: 'Calle Juárez #112',
-    creditLimit: 8000,
-    currentDebt: 1800.0,
-    debts: [
-      { id: 'd-3', ticketNumber: 'TK-00815', date: '05/10/2026', total: 1800.0, balance: 1800.0 }
-    ],
-    payments: []
-  },
-  {
-    id: 'cust-3',
-    code: 'CLI-103',
-    name: 'Sra. Rosaura Martínez (Vecina Frecuente)',
-    taxId: 'XAXX010101000',
-    phone: '55-1122-3344',
-    email: 'rosaura.mtz@gmail.com',
-    address: 'Privada Los Álamos #8',
-    creditLimit: 3000,
-    currentDebt: 0.0,
-    debts: [],
-    payments: [
-      { id: 'p-2', date: '07/10/2026', amount: 450.0, concept: 'Liquidación total', cashier: 'Carlos Morales' }
-    ]
-  }
-]
-
-const INITIAL_KARDEX: KardexMovement[] = [
-  {
-    id: 'k-1',
-    timestamp: '08/10/2026 08:30:15',
-    productId: 'prod-1',
-    productName: 'Refresco Coca-Cola 600ml Desechable',
-    productCode: '7501055300075',
-    type: 'ENTRADA',
-    reason: 'INVENTARIO_INICIAL',
-    previousStock: 0,
-    quantity: 50,
-    newStock: 50,
-    responsibleUser: 'Admin Sistema',
-    notes: 'Apertura inicial de inventario'
-  },
-  {
-    id: 'k-2',
-    timestamp: '08/10/2026 09:14:02',
-    productId: 'prod-1',
-    productName: 'Refresco Coca-Cola 600ml Desechable',
-    productCode: '7501055300075',
-    type: 'SALIDA',
-    reason: 'VENTA',
-    previousStock: 50,
-    quantity: 2,
-    newStock: 48,
-    responsibleUser: 'Carlos Morales',
-    notes: 'Ticket #TK-00820'
-  },
-  {
-    id: 'k-3',
-    timestamp: '08/10/2026 09:45:20',
-    productId: 'prod-5',
-    productName: 'Detergente Polvo Ariel Doble Poder 1Kg',
-    productCode: '7501006543210',
-    type: 'SALIDA',
-    reason: 'MERMA',
-    previousStock: 10,
-    quantity: 2,
-    newStock: 8,
-    responsibleUser: 'Carlos Morales',
-    notes: 'Bolsa rota en transporte'
-  },
-  {
-    id: 'k-4',
-    timestamp: '08/10/2026 10:12:44',
-    productId: 'prod-2',
-    productName: 'Leche Entera Alpura 1 Litro Tetrapak',
-    productCode: '7501020512341',
-    type: 'ENTRADA',
-    reason: 'ENTRADA_MASIVA',
-    previousStock: 12,
-    quantity: 12,
-    newStock: 24,
-    responsibleUser: 'Carlos Morales',
-    notes: 'Factura F-4581 Proveedor Alpura'
-  }
-]
-
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
   const { config: businessConfig } = useBusinessConfig()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS)
-  const [kardex, setKardex] = useState<KardexMovement[]>(INITIAL_KARDEX)
+  const {
+    movements: kardexMovements,
+    isLoading: isKardexLoading,
+    error: kardexError,
+    reload: reloadKardex
+  } = useKardex(Boolean(currentUser) && activeTab === 'kardex')
+  const {
+    customers,
+    error: customersError,
+    reload: reloadCustomers,
+    createCustomer,
+    createCreditSale
+  } = useCustomers(Boolean(currentUser))
+
+  useEffect(() => {
+    if (currentUser && activeTab === 'pos') {
+      void reloadCustomers()
+    }
+  }, [activeTab, currentUser, reloadCustomers])
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([
@@ -332,11 +239,14 @@ function AppContent(): React.JSX.Element {
     }
   ])
 
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(
+  const [notification, setNotification] = useState<{
+    message: string
+    type: 'success' | 'info' | 'error'
+  } | null>(
     null
   )
 
-  const showToast = (message: string, type: 'success' | 'info' = 'success'): void => {
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success'): void => {
     setNotification({ message, type })
     setTimeout(() => {
       setNotification(null)
@@ -415,7 +325,8 @@ function AppContent(): React.JSX.Element {
   }
 
   // Complete Sale -> Deducts stock and logs to Kardex
-  const handleCompleteSale = (details: PaymentDetails): void => {
+  const handleCompleteSale = async (details: PaymentDetails): Promise<boolean> => {
+    if (cart.length === 0) return false
     const netTotal = cart.reduce(
       (acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100),
       0
@@ -429,27 +340,32 @@ function AppContent(): React.JSX.Element {
     // Importe realmente cobrado según la configuración de IVA vigente en Ajustes.
     const saleTotal = computeGrandTotal(netTotal, taxableBase, businessConfig)
 
-    // Log each cart item in Kardex and deduct product stock
+    if (details.method === 'credit') {
+      if (!details.customerId) {
+        showToast('Seleccione un cliente antes de registrar una venta a crédito.', 'error')
+        return false
+      }
+      try {
+        await createCreditSale({
+          customerId: details.customerId,
+          ticketNumber: details.ticketNumber ?? `TK-${Date.now()}`,
+          totalAmount: saleTotal,
+          date: new Date().toISOString()
+        })
+        await reloadCustomers()
+      } catch (error) {
+        showToast(
+          error instanceof Error ? error.message : 'No se pudo registrar la venta a crédito.',
+          'error'
+        )
+        return false
+      }
+    }
+
+    // POS products are currently demo data; do not write false audit records to SQLite.
     cart.forEach((item) => {
       const prevStock = item.product.stock
       const newStock = Math.max(0, prevStock - item.quantity)
-
-      // Add to Kardex
-      const mov: KardexMovement = {
-        id: `k-${Date.now()}-${item.product.id}`,
-        timestamp: new Date().toLocaleString('es-MX'),
-        productId: item.product.id,
-        productName: item.product.name,
-        productCode: item.product.code,
-        type: 'SALIDA',
-        reason: 'VENTA',
-        previousStock: prevStock,
-        quantity: item.quantity,
-        newStock: newStock,
-        responsibleUser: shift.cashier,
-        notes: `Cobro en caja (${details.method})`
-      }
-      setKardex((kPrev) => [mov, ...kPrev])
 
       // Deduct stock in catalog
       setProducts((pPrev) =>
@@ -469,10 +385,13 @@ function AppContent(): React.JSX.Element {
         totalCardSales: s.totalCardSales + (details.cardAmount || 0),
         totalMixedSales: s.totalMixedSales + saleTotal
       }))
+    } else if (details.method === 'credit') {
+      setShift((s) => ({ ...s, totalCreditSales: s.totalCreditSales + saleTotal }))
     }
 
     showToast(`¡Venta cobrada con éxito! ($${saleTotal.toFixed(2)})`)
     setCart([])
+    return true
   }
 
   // Suspend current sale
@@ -504,51 +423,34 @@ function AppContent(): React.JSX.Element {
     showToast('Venta en espera descartada', 'info')
   }
 
-  // Customer Management & Abonos
-  const handleAddCustomer = (
-    customerData: Omit<Customer, 'id' | 'currentDebt' | 'debts' | 'payments'>
-  ): Customer => {
-    const newCust: Customer = {
-      ...customerData,
-      id: `cust-${Date.now()}`,
-      currentDebt: 0,
-      debts: [],
-      payments: []
-    }
-    setCustomers((prev) => [newCust, ...prev])
-    showToast(`Cliente "${newCust.name}" registrado`)
-    return newCust
+  const handleAddCustomer = async (
+    customerData: Omit<Customer, 'id' | 'currentDebt' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'>
+  ): Promise<Customer> => {
+    const newCustomer = await createCustomer(customerData)
+    showToast(`Cliente "${newCustomer.name}" registrado`)
+    return newCustomer
   }
 
-  const handleAddCustomerPayment = (customerId: string, amount: number, concept: string): void => {
-    setCustomers((prev) =>
-      prev.map((c) => {
-        if (c.id === customerId) {
-          const newDebt = Math.max(0, c.currentDebt - amount)
-          const newPay = {
-            id: `p-${Date.now()}`,
-            date: new Date().toLocaleDateString('es-MX'),
-            amount,
-            concept,
-            cashier: shift.cashier
-          }
-          return {
-            ...c,
-            currentDebt: newDebt,
-            payments: [newPay, ...c.payments]
-          }
-        }
-        return c
-      })
-    )
-
-    // Add to cash drawer extra incomes
-    setShift((s) => ({
-      ...s,
-      extraIncomes: s.extraIncomes + amount
+  const handleCustomerPaymentReceived = (payment: CustomerPayment): void => {
+    setShift((current) => ({
+      ...current,
+      extraIncomes: current.extraIncomes + payment.amount
     }))
-
-    showToast(`Abono de $${amount.toFixed(2)} registrado e ingresado a gaveta de caja`)
+    setCashMovements((current) => [
+      {
+        id: payment.id,
+        timestamp: new Date(payment.date).toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        type: 'INGRESO',
+        amount: payment.amount,
+        concept: payment.concept,
+        user: payment.cashierName
+      },
+      ...current
+    ])
+    showToast(`Abono de $${payment.amount.toFixed(2)} registrado e ingresado a gaveta de caja`)
   }
 
   // Cash shift manual entries/exits
@@ -594,7 +496,17 @@ function AppContent(): React.JSX.Element {
         {notification && (
           <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
             <CheckCircle2 size={16} className="text-emerald-400" />
-            <span className="font-semibold">{notification.message}</span>
+            <span className={`font-semibold ${notification.type === 'error' ? 'text-red-300' : ''}`}>
+              {notification.message}
+            </span>
+          </div>
+        )}
+        {customersError && (
+          <div
+            role="alert"
+            className="absolute top-14 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
+          >
+            No se pudieron cargar los clientes: {customersError}
           </div>
         )}
 
@@ -622,7 +534,14 @@ function AppContent(): React.JSX.Element {
         {activeTab === 'products' && canAccessTab(currentUser, 'products') && <ProductTable />}
 
         {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
-        {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && <KardexView movements={kardex} />}
+        {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && (
+          <KardexView
+            movements={kardexMovements}
+            isLoading={isKardexLoading}
+            error={kardexError}
+            onRefresh={() => void reloadKardex()}
+          />
+        )}
 
         {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
         {activeTab === 'cash' && canAccessTab(currentUser, 'cash') && (
@@ -637,9 +556,7 @@ function AppContent(): React.JSX.Element {
         {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
         {activeTab === 'customers' && canAccessTab(currentUser, 'customers') && (
           <CustomersView
-            customers={customers}
-            onAddCustomer={handleAddCustomer}
-            onAddPayment={handleAddCustomerPayment}
+            onPaymentReceived={handleCustomerPaymentReceived}
           />
         )}
 
