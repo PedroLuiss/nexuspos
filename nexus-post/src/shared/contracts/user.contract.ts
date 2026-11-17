@@ -67,7 +67,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     'CAN_MANUAL_CASH_MOVEMENTS',
     'CAN_OVERRIDE_NO_STOCK'
   ],
-  CASHIER: ['pos', 'cash', 'CAN_APPLY_DISCOUNT']
+  CASHIER: ['pos', 'cash', 'CAN_APPLY_DISCOUNT', 'CAN_MANUAL_CASH_MOVEMENTS']
 }
 
 export function isValidPermissionKey(key: string): key is PermissionKey {

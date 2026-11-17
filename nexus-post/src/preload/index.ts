@@ -26,7 +26,10 @@ import type {
   CreateCreditSaleInput,
   ApplyPaymentToDebtInput,
   CreateSaleInput,
-  SuspendedSale
+  SuspendedSale,
+  OpenCashShiftInput,
+  CloseCashShiftInput,
+  CreateCashMovementInput
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -56,6 +59,14 @@ const api: NexusApi = {
   },
   exchangeRate: {
     getUsdVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getUsdVes)
+  },
+  cash: {
+    getRegister: (shiftId?: string) => ipcRenderer.invoke(IPC_CHANNELS.cash.getRegister, shiftId),
+    openShift: (input: OpenCashShiftInput) => ipcRenderer.invoke(IPC_CHANNELS.cash.openShift, input),
+    closeShift: (input: CloseCashShiftInput) => ipcRenderer.invoke(IPC_CHANNELS.cash.closeShift, input),
+    addMovement: (input: CreateCashMovementInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.cash.addMovement, input),
+    returnSale: (saleId: string) => ipcRenderer.invoke(IPC_CHANNELS.cash.returnSale, saleId)
   },
   categories: {
     list: (filter?: CategoryFilter) => ipcRenderer.invoke(IPC_CHANNELS.categories.list, filter),

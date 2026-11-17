@@ -9,6 +9,7 @@ import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
+import type { CashRepository } from '../../ports/cash.repository'
 import type { SettingsRepository } from '../../ports/settings.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { ValidationError } from '../shared/errors'
@@ -21,6 +22,7 @@ export class SalesService {
     private readonly products: ProductRepository,
     private readonly movements: StockMovementRepository,
     private readonly sales: SalesRepository,
+    private readonly cash: CashRepository,
     private readonly customers: CustomerService,
     private readonly settings: SettingsRepository,
     private readonly auth: AuthService,
@@ -35,6 +37,8 @@ export class SalesService {
     if (!input.ticketNumber?.trim() || !input.items.length) {
       throw new ValidationError('El folio y al menos un producto son obligatorios.')
     }
+    const activeShift = this.cash.getActiveShift(user.id)
+    if (!activeShift) throw new ValidationError('Debe abrir su caja antes de cobrar una venta.')
 
     const config = this.settings.getBusiness()
     const seenProducts = new Set<string>()
@@ -81,6 +85,7 @@ export class SalesService {
         productCode: product.code,
         quantity,
         unitPrice: product.salePrice,
+        unitCost: product.costPrice,
         discountPercent,
         lineTotal
       })
@@ -120,6 +125,7 @@ export class SalesService {
     const id = `sale-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const result: SaleResult = {
       id,
+      cashShiftId: activeShift.id,
       ticketNumber: input.ticketNumber.trim(),
       soldAt: now,
       subtotal,
@@ -137,6 +143,10 @@ export class SalesService {
     }
 
     return this.tx.run(() => {
+      const currentShift = this.cash.getActiveShift(user.id)
+      if (!currentShift || currentShift.id !== activeShift.id) {
+        throw new ValidationError('La caja cambió de estado. Actualice la pantalla antes de cobrar.')
+      }
       for (const item of items) {
         const product = this.products.findById(item.productId)
         if (
@@ -175,17 +185,41 @@ export class SalesService {
         )
       }
       this.sales.insertSale(sale, items)
+      const cashReceived = input.payment.method === 'cash'
+        ? total
+        : input.payment.method === 'mixed'
+          ? input.payment.cashAmount ?? 0
+          : 0
+      if (cashReceived > 0) {
+        this.cash.insertMovement({
+          shiftId: activeShift.id,
+          type: 'INGRESO',
+          amount: cashReceived,
+          cashEffect: cashReceived,
+          concept: `Venta en efectivo - ticket ${result.ticketNumber}`,
+          cashierName: user.name,
+          source: 'SALE',
+          paymentMethod: input.payment.method,
+          sourceId: sale.id
+        })
+      }
       return result
     })
   }
 
   listSuspended(): SuspendedSale[] {
-    this.requirePosSession()
-    return this.sales.listSuspended()
+    const user = this.requirePosSession()
+    if (!this.cash.getActiveShift(user.id)) {
+      throw new ValidationError('Debe abrir su caja para consultar ventas en espera.')
+    }
+    return this.sales.listSuspended(user.id)
   }
 
   suspend(sale: SuspendedSale): void {
-    this.requirePosSession()
+    const user = this.requirePosSession()
+    if (!this.cash.getActiveShift(user.id)) {
+      throw new ValidationError('Debe abrir su caja para pausar una venta.')
+    }
     if (!sale.id || !Array.isArray(sale.items) || !sale.items.length || !sale.name) {
       throw new ValidationError('No se puede pausar una venta vacía.')
     }
@@ -201,13 +235,16 @@ export class SalesService {
         throw new ValidationError('La venta en espera contiene un producto no válido.')
       }
     }
-    this.sales.saveSuspended(sale)
+    this.sales.saveSuspended(sale, user.id)
   }
 
   deleteSuspended(id: string): void {
-    this.requirePosSession()
+    const user = this.requirePosSession()
+    if (!this.cash.getActiveShift(user.id)) {
+      throw new ValidationError('Debe abrir su caja para gestionar ventas en espera.')
+    }
     if (!id.trim()) throw new ValidationError('El ticket pausado no es válido.')
-    this.sales.deleteSuspended(id)
+    this.sales.deleteSuspended(id, user.id)
   }
 
   private validatePayment(input: CreateSaleInput, total: number): void {
@@ -252,10 +289,11 @@ export class SalesService {
     }
   }
 
-  private requirePosSession(): void {
+  private requirePosSession(): NonNullable<ReturnType<AuthService['getSessionUser']>> {
     const user = this.auth.getSessionUser()
     if (!user || !user.permissions?.includes('pos')) {
       throw new Error('Se requiere una sesión con permiso para acceder a las ventas.')
     }
+    return user
   }
 }

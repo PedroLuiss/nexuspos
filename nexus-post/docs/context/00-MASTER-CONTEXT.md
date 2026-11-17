@@ -8,7 +8,7 @@
 
 - **Nombre:** NexusPOS Desktop Enterprise
 - **Tipo:** Sistema nativo de Punto de Venta (POS), Facturación rápida, Control de Inventarios, Auditoría Kardex inmutable y Administración de Caja para Windows.
-- **Filosofía Operativa:** **Offline-First & Local-First**. Todo cálculo transaccional se procesa en memoria en el cliente React y se persiste de manera síncrona/asíncrona en una base de datos local SQLite embebida mediante `better-sqlite3`. Opera sin caídas ante desconexión de red.
+- **Filosofía Operativa:** **Offline-First & Local-First**. React presenta la interfaz; las reglas de negocio y validaciones transaccionales viven en `src/main` y la persistencia local se realiza en SQLite mediante `better-sqlite3`. Los servicios externos (por ejemplo, la tasa USD/VES y el primer acceso remoto) son auxiliares y deben exponer claramente sus errores/fallbacks.
 - **Diseño Visual:** **Windows 11 Fluent Design / WinUI 3 ("Fluent POS Engine")**:
   - Paleta: Fondo `#F3F3F3`, Acento primario Windows Blue `#0067C0`, Éxito / Cobro `#107C41`, Error / Merma `#C42B1C`, Texto principal `#1B1B1B`, Subtexto `#5C5C5C`.
   - Tipografía: Monospace tabular para números (`JetBrains Mono` / monospace), sans-serif nativa para UI (`Segoe UI` / `Hanken Grotesk`).
@@ -115,6 +115,21 @@ Para trabajar de manera eficiente sin saturar la ventana de contexto de la IA, c
 | **06** | [`06-CUSTOMERS-CREDIT.md`](./06-CUSTOMERS-CREDIT.md) | Cuentas por cobrar, estados de deuda, abonos automáticos a gaveta | `[F5]` / `[ALT+C]` |
 | **07** | [`07-REPORTS-ANALYTICS.md`](./07-REPORTS-ANALYTICS.md) | Métricas gerenciales, KPIs de rentabilidad, ranking top ventas, gráficos SVG | `[F6]` |
 | **08** | [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md) | Conexión serial RS-232 básculas, impresoras ESC/POS, backup SQLite, permisos | `[F7]` / `[ALT+U]` |
+
+### Estado operativo conocido de los módulos
+
+Este resumen distingue integración persistida de prototipos visuales; no sustituye el contexto específico de cada módulo.
+
+| Módulo | Funcionamiento actual y límites relevantes |
+| :--- | :--- |
+| **01 Auth** | Usuarios locales se autentican sin red; si no existen localmente, el flujo puede consultar Laravel. Sesión en memoria. Revisar deuda de hash y almacenamiento seguro de tokens en el contexto. |
+| **02 POS** | Ventas y pausas se persisten en SQLite. El cobro requiere turno propio abierto y actualiza stock, Kardex, cliente/crédito y caja dentro del flujo transaccional. La impresión física sigue pendiente. |
+| **03 Inventario** | Catálogo, categorías y ajustes de existencias están conectados a SQLite; productos utilizan baja lógica. Las ventas y devoluciones también generan sus movimientos de inventario/Kardex. |
+| **04 Kardex** | Consulta historial SQLite; ajustes, ventas y devoluciones agregan movimientos desde sus flujos transaccionales. Los movimientos se tratan como append-only. |
+| **05 Caja** | Turnos y libro de efectivo persistidos por cajero; historial administrativo de turnos cerrados de todos los cajeros solo para ADMIN, con detalle, tickets y devoluciones sujetas a las reglas del contexto 05. |
+| **06 Clientes** | Directorio, créditos y abonos persistidos. Los abonos se asocian al turno; la devolución a crédito cancela deuda pendiente y convierte abonos previos en saldo a favor. |
+| **07 Reportes** | La vista todavía usa KPIs, serie temporal y top de productos de demostración; no hay repositorio/servicio/IPC de reportes conectado a SQLite. |
+| **08 Ajustes** | Usuarios/RBAC, datos del negocio e impuestos usan SQLite. Configuración y lectura de báscula serial tienen servicio e IPC; impresoras y respaldo/restauración real siguen pendientes. |
 
 ---
 

@@ -162,6 +162,7 @@ export const customersApi = {
       totalDebt,
       totalPaid,
       availableCredit: Math.max(0, customer.creditLimit - totalDebt),
+      customerCreditBalance: customer.creditBalance ?? 0,
       debts,
       payments
     }

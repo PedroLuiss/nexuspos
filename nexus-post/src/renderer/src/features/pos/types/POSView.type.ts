@@ -26,6 +26,7 @@ export interface POSViewProps {
   exchangeRateError: string | null
   onRefreshExchangeRate: () => void
   cashierName: string
+  cashShiftOpen: boolean
   canOverrideNoStock: boolean
   canApplyDiscount: boolean
 }

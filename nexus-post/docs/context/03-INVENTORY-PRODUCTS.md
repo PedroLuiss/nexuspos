@@ -104,3 +104,11 @@ nexus-post/src/
 3. **División de Componentes:** Todos los modales y formularios deben seguir subdivididos en archivos independientes para garantizar que ninguno supere **300 líneas de código** y los hooks **200 líneas**.
 4. **Formato CSV con BOM:** Al exportar a Excel, el archivo debe comenzar con el byte order mark `\uFEFF` para asegurar compatibilidad total con Excel en Windows.
 5. **Persistencia de Imágenes:** El campo `image_url` almacena cadenas base64 (`data:image/...`) para archivos subidos localmente o URLs HTTP/HTTPS seguras para productos de catálogo web o demostración.
+
+## 5. Estado de integración operativa
+
+- El catálogo y las categorías se consultan y modifican mediante servicios SQLite e IPC; el POS usa productos persistidos y vuelve a validar disponibilidad, precio y permisos al cobrar.
+- Los ajustes manuales de existencias actualizan producto y Kardex en una transacción. Las ventas registran salidas y las devoluciones registran entradas desde el servicio de Caja.
+- Los productos se desactivan/eliminan mediante baja lógica para conservar referencias de ventas y auditoría.
+- El lector USB/Bluetooth se comporta como teclado: el POS busca el código recibido y agrega la coincidencia exacta al confirmar con Enter; no requiere un canal de hardware dedicado.
+- El costo por artículo guardado en cada venta es un snapshot histórico para reportes/devoluciones; cambiar el costo actual del producto no debe modificar tickets anteriores.

@@ -10,10 +10,10 @@
 El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos y contables de stock:
 - **Trazabilidad Completa:** Cada incremento o decremento de stock queda grabado permanentemente con fecha/hora exacta, usuario responsable, stock previo, cantidad movida y stock resultante.
 - **Tipos de Movimiento:**
-  - `ENTRADA (+)`: Compras a proveedores, inventario inicial, recepciones entre sucursales, devoluciones de clientes.
-  - `SALIDA (-)`: Ventas en caja, mermas, roturas, productos caducados, envíos a otras sucursales.
+  - `ENTRADA (+)`: Actualmente soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION`.
+  - `SALIDA (-)`: Actualmente soporta `VENTA`, `SALIDA_AJUSTE` y `MERMA`.
 - **Filtrado Avanzado:** Búsqueda reactiva por nombre de producto, SKU o usuario responsable; filtros por tipo (`ENTRADA`/`SALIDA`) y motivo específico.
-- **Exportación Contable:** Capacidad de exportar la sábana de auditoría a hojas de cálculo (`.xlsx`).
+- **Exportación Contable:** El botón de exportación está presente como placeholder visual; la generación real de `.xlsx`/`.csv` sigue pendiente.
 
 ---
 
@@ -21,7 +21,9 @@ El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos
 
 Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryService.adjustStock()` actualiza el stock y agrega el movimiento en una misma transacción; `InventoryService.listMovements()` consulta el historial. Ambos flujos están disponibles mediante los canales IPC `inventory:adjustStock` e `inventory:listMovements`, expuestos en `window.api.inventory`.
 
-La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; el listado vacío ya no se sustituye por registros de demostración. Las salidas originadas por el POS no se persisten todavía: los productos y las ventas de ese flujo siguen siendo datos de demostración, así que no deben presentarse como movimientos contables reales.
+La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; un listado vacío no se sustituye por registros de demostración.
+
+La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. `CashService.returnSale()` repone existencias e inserta una entrada `DEVOLUCION` en la misma transacción de devolución. Por lo tanto, el Kardex refleja ajustes manuales, cobros y devoluciones vinculados a operaciones persistidas.
 
 ## 3. Mapa de Archivos del Módulo
 
@@ -56,5 +58,13 @@ nexus-post/src/
 ## 5. Reglas Críticas de Integridad
 
 1. **Inmutabilidad Absoluta (Append-Only):** La tabla de movimientos de Kardex **NUNCA** permite operaciones de `UPDATE` ni `DELETE`. Todo registro es un hecho histórico inalterable. Si hubo un error en un movimiento, se compensa con un nuevo registro de sentido inverso y motivo de ajuste.
-2. **Registro Obligatorio en Cada Transacción:** Ningún módulo puede alterar el campo `stock` de `products` sin registrar el evento correspondiente en `inventory_movements`.
+2. **Registro Obligatorio en Cada Transacción:** Ningún módulo puede alterar el campo `stock` de `products` sin registrar el evento correspondiente en `stock_movements`.
 3. **Mantenimiento del Límite de Líneas:** Si `KardexView.tsx` supera las **300 líneas** al añadir exportación Excel o filtros de fechas, se debe dividir en `KardexTable.tsx` y `KardexToolbar.tsx`.
+
+## 6. Límites y dependencias
+
+- La fuente persistida es `stock_movements`; los nombres y códigos de producto se guardan como snapshot del movimiento para mantener trazabilidad.
+- Un error de movimiento se corrige con otro movimiento compensatorio; no se reescribe el historial.
+- La devolución completa crea entradas por cada artículo del ticket y se restringe a facturas del turno abierto que las generó. No hay devolución parcial.
+- Esta integración no implica que exista exportación `.xlsx`: cualquier exportación debe verificarse por separado antes de documentarla como operativa.
+- El botón actual muestra un mensaje de exportación, pero no genera ni descarga un archivo.

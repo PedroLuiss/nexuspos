@@ -69,3 +69,11 @@ Toda IA debe verificar antes de entregar cualquier cambio:
 Cuando termines de implementar o modificar una característica:
 1. **Actualiza el archivo de contexto modular** correspondiente en `docs/context/` (agrega nuevas props, canales IPC añadidos o marca tareas completadas).
 2. De esta forma, la siguiente IA que continúe el trabajo comprenderá el estado exacto sin tener que reescanear todo el código fuente.
+
+### Regla de veracidad del estado modular
+
+- Documenta el comportamiento que existe en el código, no la intención del diseño. Distingue explícitamente entre **persistido/operativo**, **prototipo o datos demo** y **pendiente**.
+- Cuando un flujo cruza módulos, actualiza el contexto de cada módulo afectado y describe quién inicia la operación y qué datos se sincronizan. Ejemplo: POS → ventas/stock/Kardex/caja/clientes; devolución → caja/inventario/Kardex/crédito.
+- Registra migraciones, contratos IPC relevantes, restricciones de negocio y límites de historial/compatibilidad. No declares una función completa solo porque exista un botón o modal.
+- Antes de editar un contexto, lee `00-MASTER-CONTEXT.md` y el contexto modular específico. Al terminar, comprueba que las afirmaciones no contradigan código actual y conserva los pendientes como pendientes.
+- El contexto maestro lleva un resumen breve de estado por módulo; el detalle y las limitaciones viven en el archivo numerado de cada módulo.

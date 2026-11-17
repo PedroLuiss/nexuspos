@@ -8,6 +8,8 @@ import type {
   CustomerAccountSummary
 } from '@shared/contracts'
 import type { CustomerRepository } from '../../ports/customer.repository'
+import type { CashRepository } from '../../ports/cash.repository'
+import type { TransactionRunner } from '../../ports/transaction'
 import type { AuthService } from '../auth/auth.service'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -27,7 +29,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 export class CustomerService {
   constructor(
     private readonly repository: CustomerRepository,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
+    private readonly cash: CashRepository,
+    private readonly tx: TransactionRunner
   ) {}
 
   private requireAdminSession(): { name: string } {
@@ -43,7 +47,7 @@ export class CustomerService {
     return { name: session.name }
   }
 
-  private requireCashierOrAdmin(): { name: string } {
+  private requireCashierOrAdmin(): { id: string; name: string } {
     const session = this.auth.getSessionUser()
     if (!session) {
       throw new Error('No hay una sesión activa. Inicie sesión nuevamente.')
@@ -53,7 +57,7 @@ export class CustomerService {
         'Acceso denegado: solo el Administrador o Cajero pueden registrar pagos y ventas a crédito.'
       )
     }
-    return { name: session.name }
+    return { id: session.id, name: session.name }
   }
 
   /** Lista clientes aplicando filtros. */
@@ -220,7 +224,28 @@ export class CustomerService {
       throw new Error('El abono no puede ser mayor que la deuda actual del cliente.')
     }
 
-    return this.repository.recordPayment(customerId, amount, concept, session.name)
+    const shift = this.cash.getActiveShift(session.id)
+    if (!shift) throw new Error('Debe abrir su caja antes de registrar un abono de cliente.')
+    return this.tx.run(() => {
+      const payment = this.repository.recordPayment(
+        customerId,
+        amount,
+        concept,
+        session.name,
+        shift.id
+      )
+      this.cash.insertMovement({
+        shiftId: shift.id,
+        type: 'INGRESO',
+        amount,
+        cashEffect: amount,
+        concept: `Abono de cliente: ${concept.trim() || customerId}`,
+        cashierName: session.name,
+        source: 'CUSTOMER_PAYMENT',
+        sourceId: payment.id
+      })
+      return payment
+    })
   }
 
   /** Crea una venta a crédito para un cliente (cajero o admin). */
@@ -262,6 +287,26 @@ export class CustomerService {
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('El monto del abono debe ser mayor a 0.')
     }
-    return this.repository.applyPaymentToDebt(debtId, amount, session.name)
+    const shift = this.cash.getActiveShift(session.id)
+    if (!shift) throw new Error('Debe abrir su caja antes de registrar un abono de cliente.')
+    return this.tx.run(() => {
+      const debt = this.repository.applyPaymentToDebt(debtId, amount, session.name, shift.id)
+      this.cash.insertMovement({
+        shiftId: shift.id,
+        type: 'INGRESO',
+        amount,
+        cashEffect: amount,
+        concept: `Abono a ticket ${debt.ticketNumber}`,
+        cashierName: session.name,
+        source: 'CUSTOMER_PAYMENT',
+        sourceId: debt.id
+      })
+      return debt
+    })
+  }
+
+  refundCreditSale(customerId: string, ticketNumber: string, totalAmount: number): void {
+    this.requireCashierOrAdmin()
+    this.repository.refundCreditSale(customerId, ticketNumber, totalAmount)
   }
 }

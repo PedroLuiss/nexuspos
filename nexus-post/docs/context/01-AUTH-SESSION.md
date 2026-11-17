@@ -172,3 +172,11 @@ VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 - ⚠️ **Hash de contraseñas:** `users.password_hash` guarda texto plano; migrar a `scrypt`/`argon2`.
 - ⚠️ **Tokens persistentes:** el Bearer de Laravel vive solo en memoria del proceso `main`; falta almacenamiento seguro (`safeStorage`).
 - ⚠️ **Multi-caja LAN:** cuando exista Caja Maestra, la sesión deberá validarse contra el servidor maestro reutilizando estos mismos contratos.
+
+## 8. Estado operativo actual
+
+- El login consulta primero SQLite local; las credenciales se comparan contra el registro local y la sesión queda en memoria en `AuthService`.
+- Si no se encuentra el identificador local, el adaptador Laravel puede realizar el bootstrap remoto. El PIN también resuelve primero contra los usuarios locales.
+- La gestión de usuarios y la autorización por rol/permisos se documentan junto con Ajustes en [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md).
+- El inicio de sesión no requiere red para usuarios ya materializados localmente. Recuperación OTP y bootstrap remoto sí requieren el servicio externo.
+- Las limitaciones de almacenamiento de credenciales/token siguen pendientes; la presencia de controles UI no sustituye las guardias de autorización en main.

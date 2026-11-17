@@ -81,7 +81,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 
 - ➡️ **Módulo 03 (Inventario):** El catálogo se carga desde SQLite. La venta descuenta existencias de forma atómica; `CAN_OVERRIDE_NO_STOCK` permite vender y registrar saldo negativo.
 - ➡️ **Módulo 04 (Kardex):** Cada venta genera un movimiento `SALIDA`/`VENTA` dentro de la misma transacción de venta y stock.
-- ➡️ **Módulo 05 (Caja y Turno):** El resumen/arqueo mostrado actualmente en el POS aún se mantiene en memoria y no se reconcilia al reiniciar.
+- ➡️ **Módulo 05 (Caja y Turno):** El cobro y la pausa de ventas requieren que el usuario tenga un turno abierto. Cada venta se asocia a ese turno y su componente en efectivo se registra como movimiento; los detalles están en [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md).
 - ➡️ **Módulo 06 (Clientes):** El cliente asociado queda guardado en la venta. El pago a crédito registra la deuda y valida el límite dentro del flujo transaccional.
 - ➡️ **Módulo 08 (Ajustes y Hardware):** La configuración tributaria se lee de `business_settings`. La impresión térmica y el pulso de gaveta todavía no están integrados; la previsualización no equivale a imprimir.
 
@@ -91,8 +91,11 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 - `SalesService` recalcula precios e impuestos con los datos persistidos, valida el medio de pago y ejecuta venta, decremento de stock, Kardex y deuda de crédito en una transacción SQLite.
 - Las ventas pausadas se serializan en SQLite y pueden restaurarse o eliminarse desde el modal. Restaurar requiere un carrito activo vacío.
 - Los cuatro medios registrados son efectivo, tarjeta, mixto y crédito. Los montos de cobro se expresan exclusivamente en USD; la conversión VES es informativa.
+- La venta persiste el cliente y el turno asociados, guarda el costo histórico por artículo y sincroniza venta, stock, Kardex, crédito y movimiento de efectivo dentro de la transacción.
+- Las ventas en espera se guardan por cajero y requieren caja abierta para listar, pausar o recuperar. Reanudar requiere carrito vacío; los registros históricos sin cajero asignado no se exponen como ventas de espera del usuario.
 - La tasa USD/VES se consulta desde `https://ve.dolarapi.com/v1/dolares/oficial`, se refresca al iniciar el POS y cada 30 minutos, y se almacena localmente. Si el proveedor falla, se usa la última tasa cacheada con indicador de desactualización; sin caché se informa el error sin bloquear ventas USD.
 - El pago con tarjeta se confirma manualmente por el cajero; no existe conexión con pinpad o procesador de pagos. La opción de impresión automática del modal de cobro aún no está conectada.
+- La consulta y devolución de tickets se realiza desde el contexto de Caja. La devolución disponible es total, no parcial, y está restringida al turno abierto que generó la factura.
 
 ---
 

@@ -536,7 +536,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </div>
 
                 <div className="p-5 space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3 p-3 bg-[#F9F9F9] rounded-[4px] border border-[#E5E5E5]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-[#F9F9F9] rounded-[4px] border border-[#E5E5E5]">
                     <div>
                       <span className="text-[#5C5C5C] block">Límite Autorizado:</span>
                       <span className="text-base font-bold font-mono text-[#1B1B1B]">
@@ -547,6 +547,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                       <span className="text-[#5C5C5C] block">Deuda Pendiente Actual:</span>
                       <span className="text-base font-bold font-mono text-[#C42B1C]">
                         ${selectedCustomer.currentDebt.toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#5C5C5C] block">Saldo a Favor:</span>
+                      <span className="text-base font-bold font-mono text-[#107C41]">
+                        ${(selectedCustomer.creditBalance ?? 0).toFixed(2)}
                       </span>
                     </div>
                   </div>

@@ -13,8 +13,8 @@ El módulo de Clientes administra el directorio de compradores y la cartera de c
 - **Estados de Cartera:** Clasificación automática en badges visuales:
   - **DEUDOR** (en rojo con badge `#FDE8E8`): Posee saldo pendiente vencido o por pagar.
   - **AL DÍA** (en verde con badge `#E8F5E9`): Sin deudas activas.
-- **Detalle de Cuenta Corriente (`CustomerDebtModal`):** Desglose de compras a crédito pendientes con folio de ticket, fecha y monto original.
-- **Recepción de Abonos a Cuenta (`CustomerPaymentModal`):**
+- **Detalle de Cuenta Corriente:** Desglose de compras a crédito pendientes con folio de ticket, fecha y monto original, mostrado desde `CustomersView.tsx`.
+- **Recepción de Abonos a Cuenta:**
   - Registro de pagos parciales o liquidación total con un clic.
   - **Efecto Contable Inmediato:** El dinero abonado se resta del saldo deudor del cliente y **se registra automáticamente como entrada de efectivo en la gaveta de caja del turno activo**.
 
@@ -36,12 +36,9 @@ nexus-post/src/
 │   └── customers.contract.ts                # Interfaces Customer, DebtItem, PaymentInput
 │
 └── renderer/src/features/customers/
-    ├── CustomersView.tsx                    # Vista principal con tabla y filtros
-    └── components/ (Pendiente de modularización):
-        ├── CustomerTable.tsx                # Tabla de clientes y saldos
-        ├── AddCustomerModal.tsx             # Modal de alta de cliente [ALT+C]
-        ├── CustomerDebtModal.tsx            # Historial de tickets a crédito
-        └── CustomerPaymentModal.tsx         # Modal de cobro de abonos
+    ├── CustomersView.tsx                    # Vista, estados de cuenta, pagos y clientes inactivos
+    ├── api/customers.api.ts                 # Operaciones por window.api
+    └── hooks/useCustomers.ts                # Carga/CRUD, deudas y pagos
 ```
 
 ---
@@ -65,7 +62,7 @@ nexus-post/src/
 
 ## 5. Tareas Pendientes / Deuda Técnica
 
-- ⚠️ **Refactorización de Líneas:** `CustomersView.tsx` supera las 600 líneas. Debe subdividirse en `CustomerTable.tsx`, `AddCustomerModal.tsx`, `CustomerDebtModal.tsx` y `CustomerPaymentModal.tsx` para cumplir con la norma de $\le 300$ líneas.
+- ⚠️ **Refactorización de Líneas:** `CustomersView.tsx` sigue concentrando listado, deuda y abonos en un componente extenso. Modularizarlo sin mover la lógica del feature a otros módulos y respetando el máximo de 300 líneas por componente.
 
 ## 6. Estado de Integración con SQLite y POS
 
@@ -74,6 +71,9 @@ nexus-post/src/
 - El método **Crédito** del modal de cobro requiere cliente seleccionado. Al confirmar, crea una deuda con el folio del ticket y valida que el saldo no exceda el límite de crédito; un error deja la venta sin completar.
 - Los abonos se registran en una transacción SQLite, se aplican primero a las deudas más antiguas y reducen el saldo del cliente. Tras confirmarse, el POS agrega el importe a los ingresos del turno/caja.
 - El listado y el estado de cuenta se cargan desde SQLite; los datos de clientes que antes vivían únicamente en el estado de React fueron retirados de `App.tsx`.
-- Los cobros regulares (efectivo/tarjeta/mixto) muestran al cliente en el ticket del POS, pero la persistencia general de ventas y facturas sigue perteneciendo a la implementación futura del módulo de ventas.
+- Las ventas regulares (efectivo/tarjeta/mixto/crédito) y facturas se persisten en SQLite por el módulo POS/Ventas; el cliente seleccionado queda asociado a la venta. No hay que recrear ventas desde Clientes.
 - El listado principal muestra solo clientes activos. El botón **Clientes desactivados** carga desde SQLite y muestra en una vista separada los clientes inactivos; estos no se ofrecen para asociar a ventas en el POS.
 - No se permite desactivar clientes con deuda pendiente: el botón se deshabilita en la interfaz y `CustomerService.toggleStatus` vuelve a validar la regla antes de modificar el estado en SQLite.
+- Una devolución de venta a crédito cancela la deuda pendiente; los abonos ya registrados para esa venta no se eliminan, se convierten en saldo a favor del cliente (`credit_balance`). El saldo a favor se expone en el estado de cuenta del cliente.
+- Los abonos requieren un turno abierto del usuario y se persisten junto con su movimiento de ingreso en caja; el flujo transaccional coordina `CustomerService`, `CashRepository` y SQLite.
+- La UI del feature está actualmente concentrada en `CustomersView.tsx`; el mapa de archivos no presupone componentes modales separados que aún no existen.

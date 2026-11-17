@@ -7,7 +7,7 @@
 
 ## 1. Responsabilidad del Módulo
 
-El módulo de Reportes proporciona al administrador y gerencia visibilidad en tiempo real del desempeño del negocio:
+El módulo de Reportes presenta una maqueta visual de indicadores para el futuro panel gerencial. Las cifras actuales son datos estáticos de muestra y no representan el desempeño real del negocio:
 - **Tarjetas de KPIs Financieros:**
   - *Ventas Totales* (con comparativo porcentual de crecimiento).
   - *Ganancia Neta Real* (deduciendo costo de mercancía y márgenes de impuestos).
@@ -26,22 +26,8 @@ El módulo de Reportes proporciona al administrador y gerencia visibilidad en ti
 
 ```text
 nexus-post/src/
-├── main/
-│   ├── domain/reports/                      # Métricas, agregaciones SQL
-│   ├── ports/reports.repository.ts          # Puerto de consultas analíticas
-│   ├── adapters/persistence/sqlite/
-│   │   └── reports.sqlite.ts                # Queries con GROUP BY (días, cajeros, productos)
-│   └── ipc/reports.ipc.ts                   # Handlers 'reports:*'
-│
-├── shared/contracts/
-│   └── reports.contract.ts                  # Interfaces ReportKPI, SalesChartPoint, TopProduct
-│
-└── renderer/src/features/reports/
-    ├── ReportsView.tsx                      # Vista analítica completa
-    └── components/ (Sugerido para modularización):
-        ├── ReportKpiCards.tsx               # 4 tarjetas de indicadores superiores
-        ├── SalesLineChart.tsx               # Gráfico SVG nativo con tooltips
-        └── TopProductsTable.tsx             # Tabla top 5 de ventas
+renderer/src/features/reports/
+└── ReportsView.tsx                          # Vista única con datos mock locales
 ```
 
 ---
@@ -56,5 +42,12 @@ nexus-post/src/
 
 ## 4. Conexiones con Otros Módulos
 
-- ➡️ **Módulo 01 (Auth / RBAC):** Solo usuarios con permiso `CAN_SEE_REPORTS` pueden ver los importes y márgenes.
+- ➡️ **Módulo 01 (Auth / RBAC):** El acceso a la pestaña se controla con el permiso modular `reports` (`canAccessTab`); no existe un permiso de acción `CAN_SEE_REPORTS`.
 - ➡️ **Módulo 02 (POS) y 05 (Caja):** Consolida los datos históricos de tickets y turnos para proyectar las tendencias de ingresos.
+
+## 5. Estado de implementación
+
+- **Aún es una vista de demostración.** `ReportsView.tsx` contiene constantes locales (`DEFAULT_KPIS`, `MOCK_CHART_DATA` y `TOP_PRODUCTS`); los botones de rango temporal solo cambian la selección visual y no consultan períodos distintos.
+- En el proceso `main` no hay actualmente dominio, puerto, repositorio SQLite, contrato ni handler IPC de reportes. No utilizar estas cifras para operación contable o decisiones de negocio.
+- POS y Caja ya persisten ventas, costos históricos por línea, pagos y turnos, por lo que existe una fuente local para implementar reportes reales posteriormente; falta construir las consultas agregadas, contratos y filtros.
+- Hasta que se conecte la fuente real, los KPIs, el gráfico y el ranking deben etiquetarse como datos de muestra y no presentarse como métricas reales.

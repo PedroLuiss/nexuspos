@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { SuspendedSale } from '@shared/contracts'
+import type { CashTicket, SalePayment, SuspendedSale } from '@shared/contracts'
 import type {
   SaleItemRecord,
   SaleRecord,
@@ -10,17 +10,46 @@ interface SuspendedSaleRow {
   payload: string
 }
 
+interface TicketRow {
+  id: string
+  cash_shift_id: string
+  ticket_number: string
+  sold_at: string
+  cashier_name: string
+  customer_id: string | null
+  customer_name: string | null
+  subtotal: number
+  discount: number
+  tax: number
+  total: number
+  payment_json: string
+  returned_at: string | null
+  return_payment_json: string | null
+  return_cash_amount: number
+}
+
+interface TicketItemRow {
+  product_id: string
+  product_name: string
+  product_code: string
+  quantity: number
+  unit_price: number
+  unit_cost: number
+  discount_percent: number
+  line_total: number
+}
+
 export class SqliteSalesRepository implements SalesRepository {
   constructor(private readonly db: Database.Database) {}
 
   insertSale(sale: SaleRecord, items: SaleItemRecord[]): void {
     this.db.prepare(`
       INSERT INTO sales (
-        id, ticket_number, sold_at, customer_id, cashier_name,
+        id, ticket_number, sold_at, customer_id, cashier_name, cash_shift_id,
         subtotal, discount, tax, total, payment_json,
         exchange_rate, exchange_rate_updated_at
       ) VALUES (
-        @id, @ticketNumber, @soldAt, @customerId, @cashierName,
+        @id, @ticketNumber, @soldAt, @customerId, @cashierName, @cashShiftId,
         @subtotal, @discount, @tax, @total, @paymentJson,
         @exchangeRate, @exchangeRateUpdatedAt
       )
@@ -30,6 +59,7 @@ export class SqliteSalesRepository implements SalesRepository {
       soldAt: sale.soldAt,
       customerId: sale.customerId ?? null,
       cashierName: sale.cashierName,
+      cashShiftId: sale.cashShiftId,
       subtotal: sale.subtotal,
       discount: sale.discount,
       tax: sale.tax,
@@ -42,10 +72,10 @@ export class SqliteSalesRepository implements SalesRepository {
     const insertItem = this.db.prepare(`
       INSERT INTO sale_items (
         id, sale_id, product_id, product_name, product_code,
-        quantity, unit_price, discount_percent, line_total
+        quantity, unit_price, unit_cost, discount_percent, line_total
       ) VALUES (
         @id, @saleId, @productId, @productName, @productCode,
-        @quantity, @unitPrice, @discountPercent, @lineTotal
+        @quantity, @unitPrice, @unitCost, @discountPercent, @lineTotal
       )
     `)
     for (const item of items) {
@@ -57,30 +87,89 @@ export class SqliteSalesRepository implements SalesRepository {
     }
   }
 
-  listSuspended(): SuspendedSale[] {
+  findTicket(id: string): CashTicket | null {
+    const row = this.db.prepare(`
+      SELECT s.*, c.name AS customer_name
+      FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+      WHERE s.id = ?
+    `).get(id) as TicketRow | undefined
+    if (!row) return null
+    const items = this.db.prepare(`
+      SELECT product_id, product_name, product_code, quantity, unit_price,
+        unit_cost, discount_percent, line_total
+      FROM sale_items WHERE sale_id = ? ORDER BY rowid
+    `).all(id) as TicketItemRow[]
+    return {
+      id: row.id,
+      shiftId: row.cash_shift_id,
+      ticketNumber: row.ticket_number,
+      soldAt: row.sold_at,
+      cashierName: row.cashier_name,
+      customerId: row.customer_id ?? undefined,
+      customerName: row.customer_name ?? undefined,
+      subtotal: row.subtotal,
+      discount: row.discount,
+      tax: row.tax,
+      total: row.total,
+      payment: JSON.parse(row.payment_json) as SalePayment,
+      items: items.map((item) => ({
+        productId: item.product_id,
+        productName: item.product_name,
+        productCode: item.product_code,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        unitCost: item.unit_cost,
+        discountPercent: item.discount_percent,
+        lineTotal: item.line_total
+      })),
+      returnedAt: row.returned_at ?? undefined,
+      returnPayment: row.return_payment_json
+        ? (JSON.parse(row.return_payment_json) as SalePayment)
+        : undefined,
+      returnCashAmount: row.return_cash_amount
+    }
+  }
+
+  markReturned(
+    saleId: string,
+    returnedAt: string,
+    payment: SalePayment,
+    cashAmount: number
+  ): void {
+    const result = this.db.prepare(`
+      UPDATE sales
+      SET returned_at = ?, return_payment_json = ?, return_cash_amount = ?
+      WHERE id = ? AND returned_at IS NULL
+    `).run(returnedAt, JSON.stringify(payment), cashAmount, saleId)
+    if (result.changes !== 1) throw new Error('La factura ya fue devuelta o no existe.')
+  }
+
+  listSuspended(cashierId: string): SuspendedSale[] {
     const rows = this.db
-      .prepare('SELECT payload FROM suspended_sales ORDER BY created_at DESC')
-      .all() as SuspendedSaleRow[]
+      .prepare('SELECT payload FROM suspended_sales WHERE cashier_id = ? ORDER BY created_at DESC')
+      .all(cashierId) as SuspendedSaleRow[]
     return rows.map(({ payload }) => JSON.parse(payload) as SuspendedSale)
   }
 
-  saveSuspended(sale: SuspendedSale): void {
+  saveSuspended(sale: SuspendedSale, cashierId: string): void {
     this.db.prepare(`
-      INSERT INTO suspended_sales (id, ticket_number, payload, created_at)
-      VALUES (@id, @ticketNumber, @payload, @createdAt)
+      INSERT INTO suspended_sales (id, ticket_number, payload, created_at, cashier_id)
+      VALUES (@id, @ticketNumber, @payload, @createdAt, @cashierId)
       ON CONFLICT(id) DO UPDATE SET
         ticket_number = excluded.ticket_number,
         payload = excluded.payload,
-        created_at = excluded.created_at
+        created_at = excluded.created_at,
+        cashier_id = excluded.cashier_id
     `).run({
       id: sale.id,
       ticketNumber: sale.name,
-      payload: JSON.stringify(sale),
-      createdAt: new Date().toISOString()
+      payload: JSON.stringify({ ...sale, cashierId }),
+      createdAt: new Date().toISOString(),
+      cashierId
     })
   }
 
-  deleteSuspended(id: string): void {
-    this.db.prepare('DELETE FROM suspended_sales WHERE id = ?').run(id)
+  deleteSuspended(id: string, cashierId: string): void {
+    this.db.prepare('DELETE FROM suspended_sales WHERE id = ? AND cashier_id = ?').run(id, cashierId)
   }
 }

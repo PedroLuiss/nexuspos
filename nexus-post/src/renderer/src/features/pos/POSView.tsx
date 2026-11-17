@@ -57,6 +57,7 @@ export const POSView: React.FC<POSViewProps> = ({
   exchangeRateError,
   onRefreshExchangeRate,
   cashierName,
+  cashShiftOpen,
   canOverrideNoStock,
   canApplyDiscount
 }) => {
@@ -261,7 +262,7 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Quick cash checkout [ALT+Q]
   const handleQuickCash = async (): Promise<void> => {
-    if (cart.length === 0) return
+    if (cart.length === 0 || !cashShiftOpen) return
     const details: PaymentDetails = {
       method: 'cash',
       amountPaid: finalTotal,
@@ -343,7 +344,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [F12]: Open Checkout modal
       if (e.key === 'F12') {
         e.preventDefault()
-        if (cart.length > 0) {
+        if (cart.length > 0 && cashShiftOpen) {
           setInitialPaymentMethod('cash')
           setIsSaleModalOpen(true)
         }
@@ -353,7 +354,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [F6]: Fast Cash checkout
       if (e.key === 'F6') {
         e.preventDefault()
-        if (cart.length > 0) {
+        if (cart.length > 0 && cashShiftOpen) {
           setInitialPaymentMethod('cash')
           setIsSaleModalOpen(true)
         }
@@ -363,7 +364,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [F7]: Fast Card checkout
       if (e.key === 'F7') {
         e.preventDefault()
-        if (cart.length > 0) {
+        if (cart.length > 0 && cashShiftOpen) {
           setInitialPaymentMethod('card')
           setIsSaleModalOpen(true)
         }
@@ -373,7 +374,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [F8]: Split payment modal
       if (e.key === 'F8') {
         e.preventDefault()
-        if (cart.length > 0) setIsSplitModalOpen(true)
+        if (cart.length > 0 && cashShiftOpen) setIsSplitModalOpen(true)
         return
       }
 
@@ -398,7 +399,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [ALT+P]: Pause / suspend sale
       if (e.altKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault()
-        if (cart.length > 0) void handleSuspendCurrentSale()
+        if (cart.length > 0 && cashShiftOpen) void handleSuspendCurrentSale()
         return
       }
 
@@ -413,7 +414,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [ALT+E]: Open suspended sales
       if (e.altKey && (e.key === 'e' || e.key === 'E')) {
         e.preventDefault()
-        setIsSuspendedModalOpen(true)
+        if (cashShiftOpen) setIsSuspendedModalOpen(true)
         return
       }
 
@@ -470,6 +471,11 @@ export const POSView: React.FC<POSViewProps> = ({
       {/* PRIMARY LEFT WORKSPACE (62% width): Búsqueda + Ticket Grid */}
       {/* ========================================================= */}
       <div className="flex-[62] flex flex-col p-3 pr-1.5 overflow-hidden space-y-2.5">
+        {!cashShiftOpen && (
+          <div role="alert" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+            Abre tu caja desde el módulo Caja antes de cobrar o pausar ventas.
+          </div>
+        )}
         {/* Top Command Bar & Search (Fluent Box) */}
         <div className="relative bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-2.5">
           <div className="flex items-center gap-2">
@@ -511,7 +517,7 @@ export const POSView: React.FC<POSViewProps> = ({
             {/* Pausar Venta [ALT+P] */}
             <button
               onClick={() => void handleSuspendCurrentSale()}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || !cashShiftOpen}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-amber-50 disabled:opacity-40 border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
             >
               <Pause size={13} className="text-amber-600" />
@@ -524,6 +530,7 @@ export const POSView: React.FC<POSViewProps> = ({
             {/* Tickets en Espera [ALT+E] */}
             <button
               onClick={() => setIsSuspendedModalOpen(true)}
+              disabled={!cashShiftOpen}
               className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
             >
               <Clock size={13} className="text-[#5C5C5C]" />
@@ -1064,7 +1071,7 @@ export const POSView: React.FC<POSViewProps> = ({
                 setInitialPaymentMethod('cash')
                 setIsSaleModalOpen(true)
               }}
-              disabled={cart.length === 0 || cannotCompleteSale}
+              disabled={cart.length === 0 || cannotCompleteSale || !cashShiftOpen}
               className="w-full flex items-center justify-between py-3.5 px-4 bg-[#107C41] hover:bg-[#0F7B0F] active:bg-[#005228] disabled:bg-slate-300 text-white font-bold text-sm rounded-[4px] shadow-sm transition-all cursor-pointer select-none"
             >
               <div className="flex items-center gap-2">
@@ -1087,7 +1094,7 @@ export const POSView: React.FC<POSViewProps> = ({
                   setInitialPaymentMethod('cash')
                   setIsSaleModalOpen(true)
                 }}
-                disabled={cart.length === 0 || cannotCompleteSale}
+                disabled={cart.length === 0 || cannotCompleteSale || !cashShiftOpen}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <Banknote size={16} className="text-[#107C41] mb-0.5" />
@@ -1103,7 +1110,7 @@ export const POSView: React.FC<POSViewProps> = ({
                   setInitialPaymentMethod('card')
                   setIsSaleModalOpen(true)
                 }}
-                disabled={cart.length === 0 || cannotCompleteSale}
+                disabled={cart.length === 0 || cannotCompleteSale || !cashShiftOpen}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <CreditCard size={16} className="text-[#0067C0] mb-0.5" />
@@ -1116,7 +1123,7 @@ export const POSView: React.FC<POSViewProps> = ({
               {/* Pago Mixto F8 */}
               <button
                 onClick={() => setIsSplitModalOpen(true)}
-                disabled={cart.length === 0 || cannotCompleteSale}
+                disabled={cart.length === 0 || cannotCompleteSale || !cashShiftOpen}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <Layers size={16} className="text-purple-700 mb-0.5" />
@@ -1131,7 +1138,7 @@ export const POSView: React.FC<POSViewProps> = ({
             <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
               <button
                 onClick={handleQuickCash}
-                disabled={cart.length === 0 || cannotCompleteSale}
+                disabled={cart.length === 0 || cannotCompleteSale || !cashShiftOpen}
                 className="flex items-center justify-center gap-1.5 py-2 px-2 bg-[#107C41]/10 hover:bg-[#107C41]/20 active:bg-[#107C41]/30 disabled:opacity-40 text-[#107C41] font-bold border border-[#107C41]/30 rounded-[4px] transition-colors cursor-pointer"
               >
                 <Zap size={14} className="text-[#107C41]" />

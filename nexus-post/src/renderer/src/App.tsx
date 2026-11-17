@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Product,
   CartItem,
   PaymentDetails,
-  CashMovement,
-  ShiftState,
   SuspendedSale
 } from './shared/types/domain'
 import { HotkeysProvider, useRouter } from './app/providers/HotkeysProvider'
@@ -18,7 +16,14 @@ import CustomersView from './features/customers/CustomersView'
 import ReportsView from './features/reports/ReportsView'
 import SettingsGrid from './features/settings/SettingsGrid'
 import { CheckCircle2 } from './shared/icons/Icons'
-import type { Customer, CustomerPayment, User } from '@shared/contracts'
+import type {
+  CashRegisterData,
+  CloseCashShiftInput,
+  CreateCashMovementInput,
+  Customer,
+  OpenCashShiftInput,
+  User
+} from '@shared/contracts'
 import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
@@ -29,6 +34,7 @@ import { useKardex } from './features/kardex/hooks/useKardex'
 import { useProducts } from './features/inventory/hooks/useProducts'
 import { useUsdVesRate } from './features/pos/hooks/useUsdVesRate'
 import { salesApi, salesErrorMessage } from './features/pos/api/sales.api'
+import { cashApi, cashErrorMessage } from './features/cash-shift/api/cash.api'
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
@@ -71,37 +77,14 @@ function AppContent(): React.JSX.Element {
   const [cart, setCart] = useState<CartItem[]>([])
 
   // Cash shift state
-  const [shift, setShift] = useState<ShiftState>({
-    isOpen: true,
-    openedAt: '08/10/2026 08:00 AM',
-    initialAmount: 1500.0,
-    cashier: 'Carlos Morales',
-    totalCashSales: 4850.0,
-    totalCardSales: 3200.0,
-    totalMixedSales: 1100.0,
-    totalCreditSales: 1800.0,
-    extraIncomes: 400.0,
-    extraExpenses: 180.0
+  const [cashRegister, setCashRegister] = useState<CashRegisterData>({
+    shift: null,
+    shiftOptions: [],
+    movements: [],
+    tickets: []
   })
-
-  const [cashMovements, setCashMovements] = useState<CashMovement[]>([
-    {
-      id: 'cm-1',
-      timestamp: '09:20 AM',
-      type: 'EGRESO',
-      amount: 180.0,
-      concept: 'Compra de bolsas plásticas para empaque',
-      user: 'Carlos Morales'
-    },
-    {
-      id: 'cm-2',
-      timestamp: '10:05 AM',
-      type: 'INGRESO',
-      amount: 400.0,
-      concept: 'Ingreso de monedas y cambio de bóveda',
-      user: 'Carlos Morales'
-    }
-  ])
+  const [isCashLoading, setIsCashLoading] = useState(false)
+  const [cashError, setCashError] = useState<string | null>(null)
 
   const [notification, setNotification] = useState<{
     message: string
@@ -117,8 +100,23 @@ function AppContent(): React.JSX.Element {
     }, 3500)
   }
 
+  const reloadCashRegister = useCallback(async (shiftId?: string): Promise<void> => {
+    setIsCashLoading(true)
+    try {
+      const register = await cashApi.getRegister(shiftId)
+      setCashRegister(register)
+      setCashError(null)
+    } catch (error: unknown) {
+      const message = cashErrorMessage(error)
+      setCashError(message)
+      showToast(`No se pudo cargar la caja: ${message}`, 'error')
+    } finally {
+      setIsCashLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUser || !cashRegister.activeShiftId) return
 
     let cancelled = false
     void salesApi
@@ -134,7 +132,7 @@ function AppContent(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [currentUser])
+  }, [currentUser, cashRegister.activeShiftId])
 
   // Cart operations
   const handleAddToCart = (product: Product, quantity = 1): void => {
@@ -271,25 +269,10 @@ function AppContent(): React.JSX.Element {
       })
       await reloadProducts()
       if (payment.method === 'credit') await reloadCustomers()
+      await reloadCashRegister()
     } catch (error: unknown) {
       showToast(`No se pudo completar la venta: ${salesErrorMessage(error)}`, 'error')
       return false
-    }
-
-    // Update shift cash totals
-    if (details.method === 'cash') {
-      setShift((s) => ({ ...s, totalCashSales: s.totalCashSales + saleTotal }))
-    } else if (details.method === 'card') {
-      setShift((s) => ({ ...s, totalCardSales: s.totalCardSales + saleTotal }))
-    } else if (details.method === 'mixed') {
-      setShift((s) => ({
-        ...s,
-        totalCashSales: s.totalCashSales + (details.cashAmount || 0),
-        totalCardSales: s.totalCardSales + (details.cardAmount || 0),
-        totalMixedSales: s.totalMixedSales + saleTotal
-      }))
-    } else if (details.method === 'credit') {
-      setShift((s) => ({ ...s, totalCreditSales: s.totalCreditSales + saleTotal }))
     }
 
     showToast(`¡Venta cobrada con éxito! ($${saleTotal.toFixed(2)})`)
@@ -349,48 +332,59 @@ function AppContent(): React.JSX.Element {
     return newCustomer
   }
 
-  const handleCustomerPaymentReceived = (payment: CustomerPayment): void => {
-    setShift((current) => ({
-      ...current,
-      extraIncomes: current.extraIncomes + payment.amount
-    }))
-    setCashMovements((current) => [
-      {
-        id: payment.id,
-        timestamp: new Date(payment.date).toLocaleTimeString('es-MX', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        type: 'INGRESO',
-        amount: payment.amount,
-        concept: payment.concept,
-        user: payment.cashierName
-      },
-      ...current
-    ])
-    showToast(`Abono de $${payment.amount.toFixed(2)} registrado e ingresado a gaveta de caja`)
+  const handleCustomerPaymentReceived = (): void => {
+    void reloadCashRegister()
+    showToast('Abono de cliente registrado en el turno y la gaveta de caja.')
   }
 
-  // Cash shift manual entries/exits
-  const handleAddCashMovement = (movement: Omit<CashMovement, 'id' | 'timestamp'>): void => {
-    const newMov: CashMovement = {
-      ...movement,
-      id: `cm-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+  const handleOpenCashShift = async (input: OpenCashShiftInput): Promise<boolean> => {
+    try {
+      setCashRegister(await cashApi.openShift(input))
+      setCashError(null)
+      showToast(`Caja abierta con fondo de $${input.openingAmount.toFixed(2)}.`)
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo abrir la caja: ${cashErrorMessage(error)}`, 'error')
+      return false
     }
-    setCashMovements((prev) => [newMov, ...prev])
-
-    if (movement.type === 'INGRESO') {
-      setShift((s) => ({ ...s, extraIncomes: s.extraIncomes + movement.amount }))
-    } else {
-      setShift((s) => ({ ...s, extraExpenses: s.extraExpenses + movement.amount }))
-    }
-
-    showToast(`Movimiento de caja (${movement.type}): $${movement.amount.toFixed(2)}`)
   }
 
-  const handleCloseShift = (countedCash: number): void => {
-    showToast(`Turno cerrado exitosamente. Efectivo físico verificado: $${countedCash.toFixed(2)}`)
+  const handleCloseShift = async (input: CloseCashShiftInput): Promise<boolean> => {
+    try {
+      setCashRegister(await cashApi.closeShift(input))
+      setSuspendedSales([])
+      showToast(`Caja cerrada. Efectivo contado: $${input.countedCash.toFixed(2)}.`)
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo cerrar la caja: ${cashErrorMessage(error)}`, 'error')
+      return false
+    }
+  }
+
+  const handleAddCashMovement = async (input: CreateCashMovementInput): Promise<boolean> => {
+    try {
+      setCashRegister(await cashApi.addMovement(input))
+      showToast(`Movimiento ${input.type.toLowerCase()} registrado por $${input.amount.toFixed(2)}.`)
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo registrar el movimiento: ${cashErrorMessage(error)}`, 'error')
+      return false
+    }
+  }
+
+  const handleReturnSale = async (saleId: string): Promise<boolean> => {
+    try {
+      await cashApi.returnSale(saleId)
+      await reloadCashRegister()
+      await reloadProducts()
+      await reloadKardex()
+      await reloadCustomers()
+      showToast('Factura devuelta: se repuso el inventario y se registró el movimiento de caja/Kardex.')
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo devolver la factura: ${cashErrorMessage(error)}`, 'error')
+      return false
+    }
   }
 
   // Cierre de sesión: limpia backend + estado local del operador.
@@ -401,13 +395,21 @@ function AppContent(): React.JSX.Element {
     } finally {
       setCart([])
       setSuspendedSales([])
+      setCashRegister({ shift: null, shiftOptions: [], movements: [], tickets: [] })
       setCurrentUser(null)
     }
   }
 
   if (!currentUser) {
-    return <LoginView onLoginSuccess={(user) => setCurrentUser(user)} />
-  }
+      return (
+        <LoginView
+          onLoginSuccess={(user) => {
+            setCurrentUser(user)
+            void reloadCashRegister()
+          }}
+        />
+      )
+    }
 
   return (
       <DashboardLayout currentUser={currentUser} onLogout={handleLogout}>
@@ -459,6 +461,7 @@ function AppContent(): React.JSX.Element {
             exchangeRateError={exchangeRateError}
             onRefreshExchangeRate={() => void refreshExchangeRate()}
             cashierName={currentUser.name}
+            cashShiftOpen={Boolean(cashRegister.activeShiftId)}
             canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}
             canApplyDiscount={currentUser.permissions?.includes('CAN_APPLY_DISCOUNT') ?? false}
           />
@@ -480,10 +483,19 @@ function AppContent(): React.JSX.Element {
         {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
         {activeTab === 'cash' && canAccessTab(currentUser, 'cash') && (
           <CashShiftView
-            shift={shift}
-            cashMovements={cashMovements}
+            register={cashRegister}
+            isLoading={isCashLoading}
+            error={cashError}
+            isAdmin={currentUser.role === 'ADMIN'}
+            canManageMovements={
+              currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
+            }
+            onRefresh={() => void reloadCashRegister(cashRegister.shift?.id)}
+            onSelectShift={(shiftId) => void reloadCashRegister(shiftId)}
+            onOpenShift={handleOpenCashShift}
             onAddCashMovement={handleAddCashMovement}
             onCloseShift={handleCloseShift}
+            onReturnSale={handleReturnSale}
           />
         )}
 

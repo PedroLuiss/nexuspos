@@ -21,6 +21,7 @@ export interface SaleCartItem {
 
 export interface SuspendedSale {
   id: string
+  cashierId?: string
   ticketNumber?: string
   name: string
   timestamp: string
@@ -52,6 +53,7 @@ export interface CreateSaleInput {
 
 export interface SaleResult {
   id: string
+  cashShiftId: string
   ticketNumber: string
   soldAt: string
   subtotal: number

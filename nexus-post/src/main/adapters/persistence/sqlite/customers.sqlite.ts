@@ -20,6 +20,7 @@ interface CustomerRow {
   address: string
   credit_limit: number
   current_debt: number
+  credit_balance: number
   active: number
   deleted: number
   created_at: string
@@ -58,6 +59,7 @@ function mapRow(row: CustomerRow): Customer {
     address: row.address,
     creditLimit: row.credit_limit,
     currentDebt: row.current_debt,
+    creditBalance: row.credit_balance,
     active: Boolean(row.active),
     deleted: Boolean(row.deleted),
     createdAt: row.created_at,
@@ -234,6 +236,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
       totalDebt,
       totalPaid,
       availableCredit,
+      customerCreditBalance: customer.creditBalance ?? 0,
       debts,
       payments
     }
@@ -243,7 +246,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
     customerId: string,
     amount: number,
     concept: string,
-    cashierName: string
+    cashierName: string,
+    cashShiftId: string
   ): CustomerPayment {
     return this.db.transaction(() => {
       const customer = this.getById(customerId)
@@ -259,9 +263,9 @@ export class SqliteCustomerRepository implements CustomerRepository {
       this.db
         .prepare(
           `INSERT INTO customer_payments (
-            id, customer_id, date, amount, concept, cashier_name, created_at
+            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id
           ) VALUES (
-            @id, @customerId, @date, @amount, @concept, @cashierName, @createdAt
+            @id, @customerId, @date, @amount, @concept, @cashierName, @createdAt, @cashShiftId
           )`
         )
         .run({
@@ -271,7 +275,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
           amount,
           concept,
           cashierName,
-          createdAt: now
+          createdAt: now,
+          cashShiftId
         })
 
       this.applyPaymentToDebts(customerId, amount)
@@ -286,6 +291,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
         amount,
         concept,
         cashierName,
+        cashShiftId,
         createdAt: now
       }
     })()
@@ -356,7 +362,12 @@ export class SqliteCustomerRepository implements CustomerRepository {
     })()
   }
 
-  applyPaymentToDebt(debtId: string, amount: number, cashierName: string): CustomerDebt {
+  applyPaymentToDebt(
+    debtId: string,
+    amount: number,
+    cashierName: string,
+    cashShiftId: string
+  ): CustomerDebt {
     return this.db.transaction(() => {
       const row = this.db
         .prepare<[string], CustomerDebtRow>('SELECT * FROM customer_debts WHERE id = ?')
@@ -391,8 +402,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
       this.db
         .prepare(
           `INSERT INTO customer_payments (
-            id, customer_id, date, amount, concept, cashier_name, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -401,7 +412,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
           amount,
           `Abono a ticket ${row.ticket_number}`,
           cashierName,
-          now
+          now,
+          cashShiftId
         )
 
       return {
@@ -414,6 +426,27 @@ export class SqliteCustomerRepository implements CustomerRepository {
         status: newStatus
       }
     })()
+  }
+
+  refundCreditSale(customerId: string, ticketNumber: string, totalAmount: number): void {
+    const debt = this.db.prepare(`
+      SELECT id, balance FROM customer_debts WHERE customer_id = ? AND ticket_number = ?
+    `).get(customerId, ticketNumber) as { id: string; balance: number } | undefined
+    if (!debt) throw new Error('No se encontró la deuda asociada a la factura a crédito.')
+    const customer = this.getById(customerId)
+    if (!customer) throw new Error('El cliente asociado a la factura no existe.')
+
+    const credited = Math.max(0, totalAmount - debt.balance)
+    const now = new Date().toISOString()
+    this.db.prepare(`
+      UPDATE customer_debts SET balance = 0, status = 'CANCELLED'
+      WHERE id = ? AND status != 'CANCELLED'
+    `).run(debt.id)
+    this.db.prepare(`
+      UPDATE customers
+      SET current_debt = ?, credit_balance = credit_balance + ?, updated_at = ?
+      WHERE id = ?
+    `).run(Math.max(0, customer.currentDebt - debt.balance), credited, now, customerId)
   }
 
   /** Aplica un monto de pago a las deudas pendientes (más antiguas primero). */

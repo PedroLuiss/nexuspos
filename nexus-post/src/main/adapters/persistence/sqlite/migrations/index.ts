@@ -18,6 +18,8 @@ import { migration009BusinessSettingsColumns } from './009_business_settings_col
 import { migration010ScaleConfig } from './010_scale_config'
 import { migration011Customers } from './011_customers'
 import { migration012SalesExchangeRates } from './012_sales_exchange_rates'
+import { migration013CashRegister } from './013_cash_register'
+import { migration014CashSaleMovementSource } from './014_cash_sale_movement_source'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -31,7 +33,9 @@ const MIGRATIONS: Migration[] = [
   migration009BusinessSettingsColumns,
   migration010ScaleConfig,
   migration011Customers,
-  migration012SalesExchangeRates
+  migration012SalesExchangeRates,
+  migration013CashRegister,
+  migration014CashSaleMovementSource
 ]
 
 /** Ejecuta de forma idempotente las migraciones pendientes. */

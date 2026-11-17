@@ -8,6 +8,7 @@ import { SqliteSettingsRepository } from '../adapters/persistence/sqlite/setting
 import { SqliteCustomerRepository } from '../adapters/persistence/sqlite/customers.sqlite'
 import { SqliteSalesRepository } from '../adapters/persistence/sqlite/sales.sqlite'
 import { SqliteExchangeRateRepository } from '../adapters/persistence/sqlite/exchange-rates.sqlite'
+import { SqliteCashRepository } from '../adapters/persistence/sqlite/cash.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
@@ -23,6 +24,7 @@ import { ScaleService } from '../domain/hardware/scale.service'
 import { CustomerService } from '../domain/customers/customer.service'
 import { SalesService } from '../domain/sales/sales.service'
 import { ExchangeRateService } from '../domain/exchange-rate/exchange-rate.service'
+import { CashService } from '../domain/cash/cash.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
@@ -33,6 +35,7 @@ import { registerHardwareIpc } from './hardware.ipc'
 import { registerCustomerIpc } from './customers.ipc'
 import { registerSalesIpc } from './sales.ipc'
 import { registerExchangeRateIpc } from './exchange-rate.ipc'
+import { registerCashIpc } from './cash.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -48,6 +51,7 @@ export function registerIpcHandlers(): void {
   const userRepository = new SqliteUserRepository(db)
   const settingsRepository = new SqliteSettingsRepository(db)
   const scaleRepository = new SqliteScaleRepository(db)
+  const cashRepository = new SqliteCashRepository(db)
   const transactionRunner = new SqliteTransactionRunner(db)
 
   const productService = new ProductService(productRepository)
@@ -63,12 +67,18 @@ export function registerIpcHandlers(): void {
   const settingsService = new SettingsService(settingsRepository, authService)
   const scaleService = new ScaleService(scaleRepository, authService)
   const customerRepository = new SqliteCustomerRepository(db)
-  const customerService = new CustomerService(customerRepository, authService)
+  const customerService = new CustomerService(
+    customerRepository,
+    authService,
+    cashRepository,
+    transactionRunner
+  )
   const salesRepository = new SqliteSalesRepository(db)
   const salesService = new SalesService(
     productRepository,
     stockMovementRepository,
     salesRepository,
+    cashRepository,
     customerService,
     settingsRepository,
     authService,
@@ -77,6 +87,15 @@ export function registerIpcHandlers(): void {
   const exchangeRateService = new ExchangeRateService(
     new SqliteExchangeRateRepository(db),
     new BcvExchangeRateAdapter()
+  )
+  const cashService = new CashService(
+    cashRepository,
+    salesRepository,
+    productRepository,
+    stockMovementRepository,
+    customerService,
+    authService,
+    transactionRunner
   )
 
   // Conectar el adaptador serial al servicio de dominio
@@ -93,4 +112,5 @@ export function registerIpcHandlers(): void {
   registerCustomerIpc(customerService)
   registerSalesIpc(salesService)
   registerExchangeRateIpc(exchangeRateService)
+  registerCashIpc(cashService)
 }

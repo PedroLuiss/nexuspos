@@ -15,6 +15,7 @@ export interface Customer {
   address: string
   creditLimit: number
   currentDebt: number
+  creditBalance?: number
   active: boolean
   deleted?: boolean
   createdAt?: string
@@ -57,6 +58,7 @@ export interface CustomerPayment {
   amount: number
   concept: string
   cashierName: string
+  cashShiftId?: string
   createdAt: string
 }
 
@@ -66,6 +68,7 @@ export interface CustomerAccountSummary {
   totalDebt: number
   totalPaid: number
   availableCredit: number
+  customerCreditBalance: number
   debts: CustomerDebt[]
   payments: CustomerPayment[]
 }

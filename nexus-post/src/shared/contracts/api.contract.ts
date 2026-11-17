@@ -8,6 +8,7 @@ import type { HardwareApi } from './hardware.contract'
 import type { CustomersApi } from './customer.contract'
 import type { SalesApi } from './sales.contract'
 import type { ExchangeRateApi } from './exchange-rate.contract'
+import type { CashApi } from './cash.contract'
 
 /**
  * Nombres canónicos de los canales IPC.
@@ -34,6 +35,13 @@ export const IPC_CHANNELS = {
   },
   exchangeRate: {
     getUsdVes: 'exchangeRate:getUsdVes'
+  },
+  cash: {
+    getRegister: 'cash:getRegister',
+    openShift: 'cash:openShift',
+    closeShift: 'cash:closeShift',
+    addMovement: 'cash:addMovement',
+    returnSale: 'cash:returnSale'
   },
   categories: {
     list: 'categories:list',
@@ -122,4 +130,5 @@ export interface NexusApi {
   customers: CustomersApi
   sales: SalesApi
   exchangeRate: ExchangeRateApi
+  cash: CashApi
 }

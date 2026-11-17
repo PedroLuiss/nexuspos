@@ -32,17 +32,16 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - Plantilla de ticket 80mm: encabezado, pie, leyenda legal (ej. "Documento no fiscal. Sujeto a regulación del SENIAT") y toggles para imprimir RIF, domicilio y cajero.
 - **Impuestos (IVA) gestionados desde Ajustes:**
   - `taxEnabled`, `taxName` (por defecto "IVA"), `taxRate` (porcentaje 0–100, configurable, por defecto 16%) y `pricesIncludeTax`.
-  - La configuración se aplica realmente en el POS, el cobro rápido, el corte de caja y el ticket térmico.
+  - La configuración se aplica en los cálculos del POS, cobro rápido y datos del ticket/previsualización; no implica impresión térmica física.
   - Modo "impuesto incluido": el impuesto se desagrega del precio sin sumarse al total; en caso contrario se suma al subtotal.
   - El IVA es totalmente configurable desde el módulo de Ajustes (tarjeta "Impuestos y Facturación").
 - **Conexión de Báscula por Puerto Serial (RS-232 / COM):**
   - Comunicación con balanzas de peso comercial (Torrey, Rhino, Dibal) mediante lectura de buffer serial.
   - Parámetros: Puerto (`COM1` a `COM4`), velocidad en baudios (9600, 19200 bps), lectura en vivo de peso estabilizado.
-- **Configuración de Impresoras Térmicas y Periféricos:**
-  - Selección de driver ESC/POS, ancho de papel (58mm o 80mm), corte automático y pulso de cajón de dinero.
-- **Mantenimiento y Respaldo de Base de Datos SQLite:**
-  - Exportación de copias de seguridad locales (`.sqlite`) con sello de fecha.
-  - Asistente de restauración de base de datos con verificación previa.
+- **Impresoras Térmicas y Periféricos (pendiente):**
+  - La configuración/impresión ESC/POS, ancho de papel, corte automático y pulso de gaveta todavía no están conectados a un adaptador de hardware.
+- **Mantenimiento y Respaldo de Base de Datos SQLite (pendiente):**
+  - La interfaz del asistente existe, pero no genera ni restaura una copia SQLite real.
 
 ---
 
@@ -138,8 +137,10 @@ nexus-post/src/
 │   │   └── migrations/
 │   │       ├── 007_user_permissions.ts      # Columna `permissions` y presets iniciales
 │   │       └── 008_business_settings.ts     # Tabla `business_settings` y seed demostrativo (Venezuela, RIF, VES)
-│   ├── adapters/hardware/                   # Conectores seriales y sockets térmicos (pendiente)
-│   ├── ports/hardware.port.ts               # Interfaces de hardware (pendiente)
+│   ├── adapters/hardware/
+│   │   ├── scale.serial.ts                  # Puerto serial para báscula (SerialPort)
+│   │   └── scale.sqlite.ts                  # Persistencia de configuración
+│   ├── ports/hardware.port.ts               # Puertos de báscula/configuración
 │   └── ipc/
 │       ├── users.ipc.ts                     # Handlers 'users:*' delegando en UserService
 │       ├── settings.ipc.ts                  # Handlers 'settings:getBusiness' / 'settings:updateBusiness'
@@ -194,8 +195,17 @@ nexus-post/src/
 
 ## 6. Tareas Pendientes / Deuda Técnica
 
-- ⚠️ **Báscula e impresoras:** sus parámetros aún viven en estado de React; deben persistirse en tablas propias con sus canales IPC.
-- ⚠️ **Backup real:** `DatabaseBackupModal` solo simula la copia; debe invocar `db.backup()` de `better-sqlite3` vía IPC.
+- ⚠️ **Impresora y gaveta:** no existe integración física ESC/POS ni pulso de gaveta; la previsualización del ticket no imprime.
+- ⚠️ **Backup real:** `DatabaseBackupModal` solo muestra confirmaciones simuladas; debe invocar una operación segura de backup/restauración vía IPC y validar el archivo antes de reemplazar la base.
+- ⚠️ **Validación con hardware físico:** el adaptador serial y el flujo IPC existen, pero la integración debe probarse con los modelos y protocolos reales de báscula soportados antes de certificarla para producción.
 - ⚠️ **Contraseñas:** se comparan en texto plano en `users.password_hash`; migrar a hash con `scrypt`/`argon2` (requiere migración de credenciales).
 - ⚠️ **Impuesto por producto:** `hasTax` decide si el producto es gravable, pero la tasa es global; evaluar tasas múltiples (exento / tasa reducida) en una fase posterior.
 - ⚠️ **Multi-caja LAN:** los contratos `UsersApi` y `SettingsApi` ya están desacoplados; la fase maestro-satélite solo debe cambiar los adaptadores de repositorio, sin tocar UI ni dominio.
+
+## 7. Estado de integración
+
+- Usuarios, roles/permisos, identidad comercial, plantilla de ticket e impuestos se leen/guardan mediante servicios e IPC conectados a SQLite; las guardias de administración se validan en `main`.
+- La configuración de báscula está persistida y expuesta por IPC. `ScaleService` controla permisos para configurar/abrir/cerrar el puerto, y `SerialScaleAdapter` implementa enumeración de puertos y lectura serial.
+- `SettingsGrid` todavía conserva parte del estado de conexión de la báscula en React para presentar el estado de UI; la configuración persistente es la fuente de parámetros.
+- El modal de respaldo/restauración no tiene efecto sobre SQLite: sus acciones son simuladas. No ofrecerlo como respaldo real hasta completar backend y pruebas de restauración.
+- El cajero recibe `CAN_MANUAL_CASH_MOVEMENTS` por el preset de rol y la migración de Caja, mientras que la administración de usuarios y permisos permanece exclusiva de ADMIN.
