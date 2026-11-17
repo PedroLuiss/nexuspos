@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/types/domain'
+import type { UsdVesExchangeRate } from '@shared/contracts'
+import { formatVesAmount } from '../../../shared/lib/currency'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { getTaxLabel } from '../../../shared/lib/businessConfig'
 import {
@@ -22,6 +24,8 @@ interface SaleModalProps {
   items: CartItem[]
   customerId?: string
   ticketNumber: string
+  initialMethod: PaymentMethodType
+  exchangeRate: UsdVesExchangeRate | null
   onClose: () => void
   onConfirmSale: (details: PaymentDetails) => Promise<boolean | void> | boolean | void
 }
@@ -35,12 +39,14 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   items,
   customerId,
   ticketNumber,
+  initialMethod,
+  exchangeRate,
   onClose,
   onConfirmSale
 }) => {
   const { config: businessConfig } = useBusinessConfig()
   const taxLabel = getTaxLabel(businessConfig)
-  const [method, setMethod] = useState<PaymentMethodType>('cash')
+  const [method, setMethod] = useState<PaymentMethodType>(initialMethod)
   const [cashTendered, setCashTendered] = useState<number>(total)
   const [cardAuth, setCardAuth] = useState<string>('')
   const [mixedCash, setMixedCash] = useState<number>(Math.floor(total / 2))
@@ -154,6 +160,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             </span>
             <div className="text-3xl font-extrabold font-mono text-[#1B1B1B] tracking-tight">
               ${total.toFixed(2)}
+            </div>
+            <div className="mt-1 text-[11px] text-[#5C5C5C]">
+              {exchangeRate
+                ? `≈ ${formatVesAmount(total * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}${exchangeRate.isStale ? ' (tasa desactualizada)' : ''}`
+                : 'Tasa BCV no disponible'}
             </div>
           </div>
           <div className="text-right text-xs text-[#5C5C5C] space-y-0.5 font-medium">
@@ -301,7 +312,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               <div className="space-y-3 bg-[#F9F9F9] p-3.5 rounded-[4px] border border-[#E5E5E5] text-xs">
                 <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-[4px] text-emerald-800">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span className="font-medium">Terminal Bancaria Pinpad Lista para inserción o contactless</span>
+                  <span className="font-medium">Registre el cobro aprobado en su terminal bancaria.</span>
                 </div>
 
                 <div>

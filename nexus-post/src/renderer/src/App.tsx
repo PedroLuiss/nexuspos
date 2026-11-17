@@ -23,138 +23,28 @@ import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
-import { computeGrandTotal } from './shared/lib/businessConfig'
+import { computeGrandTotal, computeTaxAmount } from './shared/lib/businessConfig'
 import { useCustomers } from './features/customers/hooks/useCustomers'
 import { useKardex } from './features/kardex/hooks/useKardex'
-
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: 'prod-1',
-    code: '7501055300075',
-    name: 'Refresco Coca-Cola 600ml Desechable',
-    category: 'Bebidas y Refrescos',
-    costPrice: 13.5,
-    salePrice: 18.0,
-    stock: 48,
-    minStock: 10,
-    maxStock: 120,
-    unit: 'Pieza (pza)',
-    hasTax: true,
-    active: true,
-    description: 'Bebida carbonatada botella PET'
-  },
-  {
-    id: 'prod-2',
-    code: '7501020512341',
-    name: 'Leche Entera Alpura 1 Litro Tetrapak',
-    category: 'Lácteos y Quesos',
-    costPrice: 21.0,
-    salePrice: 27.0,
-    stock: 24,
-    minStock: 8,
-    maxStock: 80,
-    unit: 'Litro (lt)',
-    hasTax: false,
-    active: true,
-    description: 'Leche 100% pura de vaca ultrapasteurizada'
-  },
-  {
-    id: 'prod-3',
-    code: '7501000111209',
-    name: 'Pan Blanco Bimbo Grande 680g',
-    category: 'Alimentos y Abarrotes',
-    costPrice: 36.0,
-    salePrice: 45.0,
-    stock: 15,
-    minStock: 5,
-    maxStock: 50,
-    unit: 'Paquete (paq)',
-    hasTax: false,
-    active: true,
-    description: 'Pan de caja tradicional con ajonjolí'
-  },
-  {
-    id: 'prod-4',
-    code: '7501011122334',
-    name: 'Papas Sabritas Clásicas Sal 45g',
-    category: 'Snacks y Golosinas',
-    costPrice: 15.0,
-    salePrice: 21.0,
-    stock: 35,
-    minStock: 12,
-    maxStock: 90,
-    unit: 'Pieza (pza)',
-    hasTax: true,
-    active: true,
-    description: 'Papas fritas con sal de grano'
-  },
-  {
-    id: 'prod-5',
-    code: '7501006543210',
-    name: 'Detergente Polvo Ariel Doble Poder 1Kg',
-    category: 'Limpieza y Hogar',
-    costPrice: 32.5,
-    salePrice: 42.0,
-    stock: 8,
-    minStock: 10,
-    maxStock: 40,
-    unit: 'Kilogramo (kg)',
-    hasTax: true,
-    active: true,
-    description: 'Detergente concentrado multiusos para ropa'
-  },
-  {
-    id: 'prod-6',
-    code: '7501030405060',
-    name: 'Agua Purificada Bonafont 1.5L',
-    category: 'Bebidas y Refrescos',
-    costPrice: 9.0,
-    salePrice: 15.0,
-    stock: 60,
-    minStock: 15,
-    maxStock: 150,
-    unit: 'Pieza (pza)',
-    hasTax: false,
-    active: true,
-    description: 'Agua ligera natural sin sodio'
-  },
-  {
-    id: 'prod-7',
-    code: '7501077889900',
-    name: 'Jabón de Tocador Palmolive Neutro 120g',
-    category: 'Cuidado Personal',
-    costPrice: 12.0,
-    salePrice: 17.5,
-    stock: 3,
-    minStock: 6,
-    maxStock: 30,
-    unit: 'Pieza (pza)',
-    hasTax: true,
-    active: true,
-    description: 'Jabón hipoalergénico barra'
-  },
-  {
-    id: 'prod-8',
-    code: '7501099887766',
-    name: 'Galletas Marías Gamesa 170g',
-    category: 'Snacks y Golosinas',
-    costPrice: 11.5,
-    salePrice: 16.0,
-    stock: 0,
-    minStock: 10,
-    maxStock: 60,
-    unit: 'Paquete (paq)',
-    hasTax: true,
-    active: false,
-    description: 'Galletas tradicionales paquete'
-  }
-]
+import { useProducts } from './features/inventory/hooks/useProducts'
+import { useUsdVesRate } from './features/pos/hooks/useUsdVesRate'
+import { salesApi, salesErrorMessage } from './features/pos/api/sales.api'
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
   const { config: businessConfig } = useBusinessConfig()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
+  const {
+    products,
+    error: productsError,
+    reload: reloadProducts
+  } = useProducts()
+  const {
+    rate: usdVesRate,
+    isLoading: isExchangeRateLoading,
+    error: exchangeRateError,
+    refresh: refreshExchangeRate
+  } = useUsdVesRate(Boolean(currentUser))
   const {
     movements: kardexMovements,
     isLoading: isKardexLoading,
@@ -165,46 +55,20 @@ function AppContent(): React.JSX.Element {
     customers,
     error: customersError,
     reload: reloadCustomers,
-    createCustomer,
-    createCreditSale
+    createCustomer
   } = useCustomers(Boolean(currentUser))
+
+  const [suspendedSales, setSuspendedSales] = useState<SuspendedSale[]>([])
 
   useEffect(() => {
     if (currentUser && activeTab === 'pos') {
+      void reloadProducts()
       void reloadCustomers()
     }
-  }, [activeTab, currentUser, reloadCustomers])
+  }, [activeTab, currentUser, reloadCustomers, reloadProducts])
 
   // Cart
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      product: INITIAL_PRODUCTS[0],
-      quantity: 2,
-      discountPercent: 0,
-      total: 36.0
-    },
-    {
-      product: INITIAL_PRODUCTS[1],
-      quantity: 1,
-      discountPercent: 0,
-      total: 27.0
-    }
-  ])
-
-  // Suspended Sales
-  const [suspendedSales, setSuspendedSales] = useState<SuspendedSale[]>([
-    {
-      id: 'susp-1',
-      name: 'Ticket #00822 (Cliente en Coche)',
-      timestamp: '08/10/2026 10:45 AM',
-      items: [
-        { product: INITIAL_PRODUCTS[3], quantity: 2, discountPercent: 0, total: 42.0 },
-        { product: INITIAL_PRODUCTS[5], quantity: 1, discountPercent: 0, total: 15.0 }
-      ],
-      subtotal: 57.0,
-      total: 57.0
-    }
-  ])
+  const [cart, setCart] = useState<CartItem[]>([])
 
   // Cash shift state
   const [shift, setShift] = useState<ShiftState>({
@@ -253,10 +117,41 @@ function AppContent(): React.JSX.Element {
     }, 3500)
   }
 
+  useEffect(() => {
+    if (!currentUser) return
 
+    let cancelled = false
+    void salesApi
+      .listSuspended()
+      .then((sales) => {
+        if (!cancelled) setSuspendedSales(sales)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          showToast(`No se pudieron cargar las ventas en espera: ${salesErrorMessage(error)}`, 'error')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser])
 
   // Cart operations
   const handleAddToCart = (product: Product, quantity = 1): void => {
+    const catalogProduct = products.find((item) => item.id === product.id)
+    if (!catalogProduct || !catalogProduct.active || catalogProduct.deleted) {
+      showToast('El producto ya no está disponible en el catálogo.', 'error')
+      return
+    }
+    const alreadyInCart = cart.find((item) => item.product.id === product.id)?.quantity ?? 0
+    if (
+      !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+      alreadyInCart + quantity > catalogProduct.stock
+    ) {
+      showToast(`Stock insuficiente para "${catalogProduct.name}".`, 'error')
+      return
+    }
+
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id)
       if (existing) {
@@ -267,7 +162,7 @@ function AppContent(): React.JSX.Element {
               quantity: item.quantity + quantity,
               total:
                 (item.quantity + quantity) *
-                item.product.salePrice *
+                catalogProduct.salePrice *
                 (1 - item.discountPercent / 100)
             }
             : item
@@ -276,10 +171,10 @@ function AppContent(): React.JSX.Element {
         return [
           ...prev,
           {
-            product,
+            product: catalogProduct,
             quantity,
             discountPercent: 0,
-            total: quantity * product.salePrice
+            total: quantity * catalogProduct.salePrice
           }
         ]
       }
@@ -288,6 +183,19 @@ function AppContent(): React.JSX.Element {
   }
 
   const handleUpdateQuantity = (productId: string, quantity: number): void => {
+    const currentItem = cart.find((item) => item.product.id === productId)
+    if (
+      !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+      currentItem &&
+      quantity > currentItem.product.stock
+    ) {
+      showToast(`Stock insuficiente para "${currentItem.product.name}".`, 'error')
+      return
+    }
+    if (quantity <= 0) {
+      handleRemoveFromCart(productId)
+      return
+    }
     setCart((prev) =>
       prev.map((item) =>
         item.product.id === productId
@@ -324,54 +232,49 @@ function AppContent(): React.JSX.Element {
     showToast('Venta cancelada y ticket limpiado', 'info')
   }
 
-  // Complete Sale -> Deducts stock and logs to Kardex
   const handleCompleteSale = async (details: PaymentDetails): Promise<boolean> => {
     if (cart.length === 0) return false
-    const netTotal = cart.reduce(
-      (acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100),
+    const subtotal = cart.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0)
+    const discount = cart.reduce(
+      (acc, item) =>
+        acc + item.product.salePrice * item.quantity * item.discountPercent / 100,
       0
     )
+    const netTotal = subtotal - discount
     const taxableBase = cart
       .filter((item) => item.product.hasTax)
       .reduce(
-        (acc, i) => acc + i.product.salePrice * i.quantity * (1 - i.discountPercent / 100),
+        (acc, item) =>
+          acc + item.product.salePrice * item.quantity * (1 - item.discountPercent / 100),
         0
       )
-    // Importe realmente cobrado según la configuración de IVA vigente en Ajustes.
+    const tax = computeTaxAmount(taxableBase, businessConfig)
     const saleTotal = computeGrandTotal(netTotal, taxableBase, businessConfig)
 
-    if (details.method === 'credit') {
-      if (!details.customerId) {
-        showToast('Seleccione un cliente antes de registrar una venta a crédito.', 'error')
-        return false
-      }
-      try {
-        await createCreditSale({
-          customerId: details.customerId,
-          ticketNumber: details.ticketNumber ?? `TK-${Date.now()}`,
-          totalAmount: saleTotal,
-          date: new Date().toISOString()
-        })
-        await reloadCustomers()
-      } catch (error) {
-        showToast(
-          error instanceof Error ? error.message : 'No se pudo registrar la venta a crédito.',
-          'error'
-        )
-        return false
-      }
+    try {
+      const { customerId, ticketNumber, ...payment } = details
+      await salesApi.complete({
+        ticketNumber: ticketNumber ?? `TK-${Date.now()}`,
+        customerId,
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          discountPercent: item.discountPercent
+        })),
+        subtotal,
+        discount,
+        tax,
+        total: saleTotal,
+        payment,
+        exchangeRate: usdVesRate?.rate,
+        exchangeRateUpdatedAt: usdVesRate?.updatedAt
+      })
+      await reloadProducts()
+      if (payment.method === 'credit') await reloadCustomers()
+    } catch (error: unknown) {
+      showToast(`No se pudo completar la venta: ${salesErrorMessage(error)}`, 'error')
+      return false
     }
-
-    // POS products are currently demo data; do not write false audit records to SQLite.
-    cart.forEach((item) => {
-      const prevStock = item.product.stock
-      const newStock = Math.max(0, prevStock - item.quantity)
-
-      // Deduct stock in catalog
-      setProducts((pPrev) =>
-        pPrev.map((p) => (p.id === item.product.id ? { ...p, stock: newStock } : p))
-      )
-    })
 
     // Update shift cash totals
     if (details.method === 'cash') {
@@ -394,33 +297,48 @@ function AppContent(): React.JSX.Element {
     return true
   }
 
-  // Suspend current sale
-  const handleSuspendSale = (): void => {
-    if (cart.length === 0) return
-    const sub = cart.reduce((acc, i) => acc + i.product.salePrice * i.quantity, 0)
-    const newSuspended: SuspendedSale = {
-      id: `susp-${Date.now()}`,
-      name: `Ticket #${1000 + suspendedSales.length} (${cart[0].product.name.slice(0, 15)}...)`,
-      timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-      items: [...cart],
-      subtotal: sub,
-      total: sub * 1.16
+  const handleSuspendSale = async (sale: SuspendedSale): Promise<boolean> => {
+    try {
+      await salesApi.suspend(sale)
+      setSuspendedSales((prev) => [sale, ...prev.filter((item) => item.id !== sale.id)])
+      setCart([])
+      showToast('Venta pausada y guardada en espera', 'info')
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo pausar la venta: ${salesErrorMessage(error)}`, 'error')
+      return false
     }
-    setSuspendedSales((prev) => [newSuspended, ...prev])
-    setCart([])
-    showToast('Venta pausada y guardada en espera', 'info')
   }
 
-  // Resume suspended sale
-  const handleResumeSale = (sale: SuspendedSale): void => {
-    setCart(sale.items)
-    setSuspendedSales((prev) => prev.filter((s) => s.id !== sale.id))
-    showToast(`Venta "${sale.name}" recuperada a caja`)
+  const handleResumeSale = async (sale: SuspendedSale): Promise<boolean> => {
+    if (cart.length > 0) {
+      showToast('Pausa o limpia la venta actual antes de recuperar otra.', 'error')
+      return false
+    }
+    try {
+      await salesApi.deleteSuspended(sale.id)
+      const items = sale.items.map((item) => ({
+        ...item,
+        product: products.find((product) => product.id === item.product.id) ?? item.product
+      }))
+      setCart(items)
+      setSuspendedSales((prev) => prev.filter((item) => item.id !== sale.id))
+      showToast(`Venta "${sale.name}" recuperada a caja`)
+      return true
+    } catch (error: unknown) {
+      showToast(`No se pudo recuperar la venta: ${salesErrorMessage(error)}`, 'error')
+      return false
+    }
   }
 
-  const handleDeleteSuspendedSale = (id: string): void => {
-    setSuspendedSales((prev) => prev.filter((s) => s.id !== id))
-    showToast('Venta en espera descartada', 'info')
+  const handleDeleteSuspendedSale = async (id: string): Promise<void> => {
+    try {
+      await salesApi.deleteSuspended(id)
+      setSuspendedSales((prev) => prev.filter((sale) => sale.id !== id))
+      showToast('Venta en espera descartada', 'info')
+    } catch (error: unknown) {
+      showToast(`No se pudo eliminar la venta en espera: ${salesErrorMessage(error)}`, 'error')
+    }
   }
 
   const handleAddCustomer = async (
@@ -482,6 +400,7 @@ function AppContent(): React.JSX.Element {
       await logoutApi()
     } finally {
       setCart([])
+      setSuspendedSales([])
       setCurrentUser(null)
     }
   }
@@ -509,6 +428,14 @@ function AppContent(): React.JSX.Element {
             No se pudieron cargar los clientes: {customersError}
           </div>
         )}
+        {productsError && (
+          <div
+            role="alert"
+            className="absolute top-24 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
+          >
+            No se pudo cargar el catálogo de productos: {productsError}
+          </div>
+        )}
 
         {/* 1. MÓDULO DE VENTAS (POS) */}
         {activeTab === 'pos' && (
@@ -527,6 +454,13 @@ function AppContent(): React.JSX.Element {
             onSuspendSale={handleSuspendSale}
             onResumeSale={handleResumeSale}
             onDeleteSuspendedSale={handleDeleteSuspendedSale}
+            exchangeRate={usdVesRate}
+            exchangeRateLoading={isExchangeRateLoading}
+            exchangeRateError={exchangeRateError}
+            onRefreshExchangeRate={() => void refreshExchangeRate()}
+            cashierName={currentUser.name}
+            canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}
+            canApplyDiscount={currentUser.permissions?.includes('CAN_APPLY_DISCOUNT') ?? false}
           />
         )}
 

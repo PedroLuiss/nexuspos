@@ -6,10 +6,13 @@ import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categor
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
 import { SqliteSettingsRepository } from '../adapters/persistence/sqlite/settings.sqlite'
 import { SqliteCustomerRepository } from '../adapters/persistence/sqlite/customers.sqlite'
+import { SqliteSalesRepository } from '../adapters/persistence/sqlite/sales.sqlite'
+import { SqliteExchangeRateRepository } from '../adapters/persistence/sqlite/exchange-rates.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
 import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
+import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
 import { ProductService } from '../domain/products/product.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
@@ -18,6 +21,8 @@ import { UserService } from '../domain/users/user.service'
 import { SettingsService } from '../domain/settings/settings.service'
 import { ScaleService } from '../domain/hardware/scale.service'
 import { CustomerService } from '../domain/customers/customer.service'
+import { SalesService } from '../domain/sales/sales.service'
+import { ExchangeRateService } from '../domain/exchange-rate/exchange-rate.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
@@ -26,6 +31,8 @@ import { registerUsersIpc } from './users.ipc'
 import { registerSettingsIpc } from './settings.ipc'
 import { registerHardwareIpc } from './hardware.ipc'
 import { registerCustomerIpc } from './customers.ipc'
+import { registerSalesIpc } from './sales.ipc'
+import { registerExchangeRateIpc } from './exchange-rate.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -57,6 +64,20 @@ export function registerIpcHandlers(): void {
   const scaleService = new ScaleService(scaleRepository, authService)
   const customerRepository = new SqliteCustomerRepository(db)
   const customerService = new CustomerService(customerRepository, authService)
+  const salesRepository = new SqliteSalesRepository(db)
+  const salesService = new SalesService(
+    productRepository,
+    stockMovementRepository,
+    salesRepository,
+    customerService,
+    settingsRepository,
+    authService,
+    transactionRunner
+  )
+  const exchangeRateService = new ExchangeRateService(
+    new SqliteExchangeRateRepository(db),
+    new BcvExchangeRateAdapter()
+  )
 
   // Conectar el adaptador serial al servicio de dominio
   const serialAdapter = new SerialScaleAdapter()
@@ -70,4 +91,6 @@ export function registerIpcHandlers(): void {
   registerSettingsIpc(settingsService)
   registerHardwareIpc(scaleService)
   registerCustomerIpc(customerService)
+  registerSalesIpc(salesService)
+  registerExchangeRateIpc(exchangeRateService)
 }

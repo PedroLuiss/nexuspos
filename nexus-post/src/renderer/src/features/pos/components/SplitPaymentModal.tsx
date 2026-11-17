@@ -1,31 +1,44 @@
 import React, { useState } from 'react'
-import { Banknote, CreditCard, Layers, X, Check, AlertCircle } from '../../../shared/icons/Icons'
+import { Banknote, CreditCard, Layers, X, Check } from '../../../shared/icons/Icons'
+import type { UsdVesExchangeRate } from '@shared/contracts'
+import { formatVesAmount } from '../../../shared/lib/currency'
 
 interface SplitPaymentModalProps {
   isOpen: boolean
   total: number
+  exchangeRate: UsdVesExchangeRate | null
   onClose: () => void
-  onConfirmSplit: (cashAmount: number, cardAmount: number) => void
+  onConfirmSplit: (cashAmount: number, cardAmount: number) => void | Promise<void>
 }
 
 export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   isOpen,
   total,
+  exchangeRate,
   onClose,
   onConfirmSplit
 }) => {
-  const [cashAmount, setCashAmount] = useState<number>(Math.floor(total / 2))
-  const [cardAuth, setCardAuth] = useState('')
+  const [cashAmount, setCashAmount] = useState<number>(total / 2)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
   const cardRemainder = Math.max(0, total - cashAmount)
-  const isComplete = cashAmount + cardRemainder === total && total > 0
+  const isComplete =
+    total > 0 &&
+    cashAmount >= 0 &&
+    cashAmount <= total &&
+    Math.abs(cashAmount + cardRemainder - total) < 0.011
 
-  const handleConfirm = (e: React.FormEvent): void => {
+  const handleConfirm = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
-    if (!isComplete) return
-    onConfirmSplit(cashAmount, cardRemainder)
+    if (!isComplete || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onConfirmSplit(cashAmount, cardRemainder)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -57,6 +70,11 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
           <div className="text-3xl font-extrabold font-tabular text-[#0078D4]">
             ${total.toFixed(2)}
           </div>
+          <div className="mt-1 text-[11px] text-slate-500">
+            {exchangeRate
+              ? `≈ ${formatVesAmount(total * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}${exchangeRate.isStale ? ' (tasa desactualizada)' : ''}`
+              : 'Tasa BCV no disponible'}
+          </div>
         </div>
 
         <form onSubmit={handleConfirm}>
@@ -70,7 +88,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCashAmount(Math.floor(total / 2))}
+                  onClick={() => setCashAmount(total / 2)}
                   className="text-[11px] text-[#0078D4] hover:underline"
                 >
                   50% / 50%
@@ -85,7 +103,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 required
                 autoFocus
                 value={cashAmount || ''}
-                onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setCashAmount(Number(e.target.value))}
                 className="w-full px-3 py-2 text-lg font-bold font-tabular bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
               />
             </div>
@@ -126,10 +144,11 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
             </button>
             <button
               type="submit"
+              disabled={!isComplete || isSubmitting}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#0078D4] hover:bg-[#106EBE] rounded-sm"
             >
               <Check size={15} />
-              <span>Confirmar Pago Mixto</span>
+              <span>{isSubmitting ? 'Procesando…' : 'Confirmar Pago Mixto'}</span>
             </button>
           </div>
         </form>

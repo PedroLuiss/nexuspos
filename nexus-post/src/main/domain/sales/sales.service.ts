@@ -1,0 +1,261 @@
+import type {
+  CreateSaleInput,
+  SaleResult,
+  SuspendedSale,
+  KardexMovement
+} from '@shared/contracts'
+import type { CustomerService } from '../customers/customer.service'
+import type { AuthService } from '../auth/auth.service'
+import type { ProductRepository } from '../../ports/product.repository'
+import type { StockMovementRepository } from '../../ports/stock-movement.repository'
+import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
+import type { SettingsRepository } from '../../ports/settings.repository'
+import type { TransactionRunner } from '../../ports/transaction'
+import { ValidationError } from '../shared/errors'
+
+const roundMoney = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100
+const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - roundMoney(b)) < 0.011
+
+export class SalesService {
+  constructor(
+    private readonly products: ProductRepository,
+    private readonly movements: StockMovementRepository,
+    private readonly sales: SalesRepository,
+    private readonly customers: CustomerService,
+    private readonly settings: SettingsRepository,
+    private readonly auth: AuthService,
+    private readonly tx: TransactionRunner
+  ) {}
+
+  complete(input: CreateSaleInput): SaleResult {
+    const user = this.auth.getSessionUser()
+    if (!user || !user.permissions?.includes('pos')) {
+      throw new Error('El usuario no tiene permiso para registrar ventas.')
+    }
+    if (!input.ticketNumber?.trim() || !input.items.length) {
+      throw new ValidationError('El folio y al menos un producto son obligatorios.')
+    }
+
+    const config = this.settings.getBusiness()
+    const seenProducts = new Set<string>()
+    const items: SaleItemRecord[] = []
+    let subtotal = 0
+    let discount = 0
+    let taxableBase = 0
+    const now = new Date().toISOString()
+
+    for (const line of input.items) {
+      const quantity = Number(line.quantity)
+      const discountPercent = Number(line.discountPercent)
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new ValidationError('La cantidad debe ser mayor a cero.')
+      }
+      if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+        throw new ValidationError('El descuento debe estar entre 0 y 100%.')
+      }
+      if (discountPercent > 0 && !user.permissions?.includes('CAN_APPLY_DISCOUNT')) {
+        throw new ValidationError('El usuario no tiene permiso para aplicar descuentos.')
+      }
+      if (seenProducts.has(line.productId)) {
+        throw new ValidationError('El carrito contiene productos duplicados.')
+      }
+      seenProducts.add(line.productId)
+
+      const product = this.products.findById(line.productId)
+      if (!product || !product.active || product.deleted) {
+        throw new ValidationError('Un producto del carrito ya no está disponible.')
+      }
+      if (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
+        throw new ValidationError(`Stock insuficiente para "${product.name}".`)
+      }
+
+      const lineSubtotal = product.salePrice * quantity
+      const lineDiscount = lineSubtotal * discountPercent / 100
+      const lineTotal = roundMoney(lineSubtotal - lineDiscount)
+      subtotal += lineSubtotal
+      discount += lineDiscount
+      if (product.hasTax) taxableBase += lineSubtotal - lineDiscount
+      items.push({
+        productId: product.id,
+        productName: product.name,
+        productCode: product.code,
+        quantity,
+        unitPrice: product.salePrice,
+        discountPercent,
+        lineTotal
+      })
+    }
+
+    subtotal = roundMoney(subtotal)
+    discount = roundMoney(discount)
+    const taxable = config.taxEnabled && config.taxRate > 0
+    const tax = taxable
+      ? roundMoney(
+          config.pricesIncludeTax
+            ? taxableBase - taxableBase / (1 + config.taxRate / 100)
+            : taxableBase * config.taxRate / 100
+        )
+      : 0
+    const total = roundMoney(
+      subtotal - discount + (taxable && !config.pricesIncludeTax ? tax : 0)
+    )
+    if (total <= 0) throw new ValidationError('El total de la venta debe ser mayor a cero.')
+
+    if (
+      !sameMoney(input.subtotal, subtotal) ||
+      !sameMoney(input.discount, discount) ||
+      !sameMoney(input.tax, tax) ||
+      !sameMoney(input.total, total)
+    ) {
+      throw new ValidationError('El total del carrito cambió. Revise la venta antes de cobrar.')
+    }
+    this.validatePayment(input, total)
+    if (
+      input.exchangeRate !== undefined &&
+      (!Number.isFinite(input.exchangeRate) || input.exchangeRate <= 0)
+    ) {
+      throw new ValidationError('La tasa de cambio guardada en la venta no es válida.')
+    }
+
+    const id = `sale-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const result: SaleResult = {
+      id,
+      ticketNumber: input.ticketNumber.trim(),
+      soldAt: now,
+      subtotal,
+      discount,
+      tax,
+      total,
+      customerId: input.customerId
+    }
+    const sale: SaleRecord = {
+      ...result,
+      cashierName: user.name,
+      payment: input.payment,
+      exchangeRate: input.exchangeRate,
+      exchangeRateUpdatedAt: input.exchangeRateUpdatedAt
+    }
+
+    return this.tx.run(() => {
+      for (const item of items) {
+        const product = this.products.findById(item.productId)
+        if (
+          !product ||
+          !product.active ||
+          product.deleted ||
+          (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && item.quantity > product.stock)
+        ) {
+          throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
+        }
+        const newStock = product.stock - item.quantity
+        this.products.setStock(product.id, newStock)
+        const movement: KardexMovement = {
+          id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          timestamp: now,
+          productId: product.id,
+          productName: product.name,
+          productCode: product.code,
+          type: 'SALIDA',
+          reason: 'VENTA',
+          previousStock: product.stock,
+          quantity: item.quantity,
+          newStock,
+          responsibleUser: user.name,
+          notes: `Ticket ${result.ticketNumber}`
+        }
+        this.movements.insert(movement)
+      }
+
+      if (input.payment.method === 'credit') {
+        this.customers.createCreditSale(
+          input.customerId!,
+          result.ticketNumber,
+          total,
+          now
+        )
+      }
+      this.sales.insertSale(sale, items)
+      return result
+    })
+  }
+
+  listSuspended(): SuspendedSale[] {
+    this.requirePosSession()
+    return this.sales.listSuspended()
+  }
+
+  suspend(sale: SuspendedSale): void {
+    this.requirePosSession()
+    if (!sale.id || !Array.isArray(sale.items) || !sale.items.length || !sale.name) {
+      throw new ValidationError('No se puede pausar una venta vacía.')
+    }
+    for (const item of sale.items) {
+      const product = this.products.findById(item.product.id)
+      if (
+        !product ||
+        !product.active ||
+        product.deleted ||
+        !Number.isFinite(item.quantity) ||
+        item.quantity <= 0
+      ) {
+        throw new ValidationError('La venta en espera contiene un producto no válido.')
+      }
+    }
+    this.sales.saveSuspended(sale)
+  }
+
+  deleteSuspended(id: string): void {
+    this.requirePosSession()
+    if (!id.trim()) throw new ValidationError('El ticket pausado no es válido.')
+    this.sales.deleteSuspended(id)
+  }
+
+  private validatePayment(input: CreateSaleInput, total: number): void {
+    const payment = input.payment
+    if (!payment || !['cash', 'card', 'mixed', 'credit'].includes(payment.method)) {
+      throw new ValidationError('El método de pago no es válido.')
+    }
+    if (payment.method === 'credit') {
+      if (!input.customerId || payment.amountPaid !== 0 || payment.change !== 0) {
+        throw new ValidationError('Las ventas a crédito requieren un cliente y no reciben pago inmediato.')
+      }
+      return
+    }
+    if (payment.method === 'cash') {
+      if (
+        !Number.isFinite(payment.amountPaid) ||
+        payment.amountPaid < total ||
+        !sameMoney(payment.change, payment.amountPaid - total)
+      ) {
+        throw new ValidationError('El efectivo recibido o el cambio no coincide con el total.')
+      }
+      return
+    }
+    if (payment.method === 'card') {
+      if (!sameMoney(payment.amountPaid, total) || payment.change !== 0) {
+        throw new ValidationError('El monto pagado con tarjeta debe coincidir con el total.')
+      }
+      return
+    }
+    const cash = Number(payment.cashAmount)
+    const card = Number(payment.cardAmount)
+    if (
+      !Number.isFinite(cash) ||
+      !Number.isFinite(card) ||
+      cash < 0 ||
+      card < 0 ||
+      !sameMoney(cash + card, total) ||
+      !sameMoney(payment.amountPaid, total) ||
+      payment.change !== 0
+    ) {
+      throw new ValidationError('La suma de los pagos mixtos debe coincidir con el total.')
+    }
+  }
+
+  private requirePosSession(): void {
+    const user = this.auth.getSessionUser()
+    if (!user || !user.permissions?.includes('pos')) {
+      throw new Error('Se requiere una sesión con permiso para acceder a las ventas.')
+    }
+  }
+}

@@ -1,18 +1,22 @@
 import React from 'react'
 import { SuspendedSale } from '../../../shared/types/domain'
 import { Clock, Play, Trash2, X, ShoppingCart } from '../../../shared/icons/Icons'
+import type { UsdVesExchangeRate } from '@shared/contracts'
+import { formatVesAmount } from '../../../shared/lib/currency'
 
 interface SuspendedSalesModalProps {
   isOpen: boolean
   suspendedSales: SuspendedSale[]
+  exchangeRate: UsdVesExchangeRate | null
   onClose: () => void
-  onResumeSale: (sale: SuspendedSale) => void
-  onDeleteSuspendedSale: (id: string) => void
+  onResumeSale: (sale: SuspendedSale) => Promise<boolean>
+  onDeleteSuspendedSale: (id: string) => Promise<void>
 }
 
 export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
   isOpen,
   suspendedSales,
+  exchangeRate,
   onClose,
   onResumeSale,
   onDeleteSuspendedSale
@@ -83,11 +87,18 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
                     <div className="text-sm font-extrabold font-tabular text-[#0067C0]">
                       ${sale.total.toFixed(2)}
                     </div>
+                    {exchangeRate && (
+                      <div className="text-[10px] text-[#717783]">
+                        ≈ {formatVesAmount(sale.total * exchangeRate.rate)}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => onResumeSale(sale)}
+                      onClick={async () => {
+                        if (await onResumeSale(sale)) onClose()
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#107C41] hover:bg-[#0F7B0F] active:bg-[#005228] rounded-[4px] transition-colors cursor-pointer shadow-xs"
                     >
                       <Play size={13} />
@@ -95,7 +106,7 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
                     </button>
 
                     <button
-                      onClick={() => onDeleteSuspendedSale(sale.id)}
+                      onClick={() => void onDeleteSuspendedSale(sale.id)}
                       className="p-1.5 text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 rounded transition-colors cursor-pointer"
                       title="Eliminar ticket pausado"
                     >

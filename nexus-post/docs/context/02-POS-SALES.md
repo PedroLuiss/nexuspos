@@ -8,14 +8,14 @@
 ## 1. Responsabilidad del Módulo
 
 El módulo POS es el núcleo transaccional de atención rápida:
-- Búsqueda reactiva de productos por código de barras (lector USB/Bluetooth) o descripción en vivo (`[ALT + L]`).
-- Carrito de compras con steppers de cantidad (`+`/`-`), cálculo de descuentos en línea y validación inmediata de existencias (prevención de sobreventa).
-- Panel de cobro inferior con desglose de subtotal, descuentos, impuesto IVA (tasa configurable en Ajustes) y visor total en `#0078D4`. Los montos se muestran en la moneda configurada (VES / USD / EUR).
+- Búsqueda reactiva de productos por nombre o código; lectores USB/Bluetooth tipo teclado agregan el código al presionar Enter.
+- Carrito conectado al catálogo SQLite, descuentos sujetos al permiso `CAN_APPLY_DISCOUNT` y validación de stock conforme a `CAN_OVERRIDE_NO_STOCK`.
+- Los importes se manejan en USD. Bajo el total se muestra la conversión informativa a bolívares con tasa oficial BCV.
 - Modal de Cobro Estándar (`[F12]`): Métodos de pago en Efectivo, Tarjeta, Mixto y Crédito.
 - Cobro Rápido en Efectivo (`[ALT + Q]`): Liquidación inmediata con un solo toque.
-- Pago Dividido / Mixto (`[F11]`): Distribución exacta de montos entre múltiples formas de pago.
-- Suspensión y reanudación de ventas en espera (`[ALT + P]`).
-- Generación y previsualización de ticket térmico de 80mm en estándar ESC/POS (`[ALT + V]`).
+- Pago mixto (`[F8]`): Distribución exacta entre efectivo y tarjeta.
+- Suspensión y reanudación de ventas en espera persistidas en SQLite (`[ALT + P]`).
+- Previsualización del ticket de 80mm. La impresión física ESC/POS aún no está conectada.
 
 ---
 
@@ -24,31 +24,36 @@ El módulo POS es el núcleo transaccional de atención rápida:
 ```text
 nexus-post/src/
 ├── main/
-│   ├── domain/sales/                        # Entidades Sale, SaleItem, PaymentMethod
-│   ├── ports/sales.repository.ts            # Puerto persistencia de ventas
+│   ├── domain/sales/sales.service.ts         # Validación y transacción de ventas
+│   ├── domain/exchange-rate/                 # Consulta y fallback de tasa BCV
+│   ├── ports/sales.repository.ts             # Puerto de persistencia de ventas
 │   ├── adapters/persistence/sqlite/
-│   │   ├── sales.sqlite.ts                  # Transacción atómica SQLite (Venta + Kardex + Stock)
-│   │   └── migrations/002_sales.ts          # Tablas 'sales' y 'sale_items'
-│   └── ipc/sales.ipc.ts                     # Handlers IPC de ventas
+│   │   ├── sales.sqlite.ts                   # Ventas y ventas en espera
+│   │   ├── exchange-rates.sqlite.ts          # Caché de tasa
+│   │   └── migrations/012_sales_exchange_rates.ts # Ventas, pausas y tasa
+│   ├── adapters/remote/bcv-exchange-rate.adapter.ts
+│   └── ipc/{sales,exchange-rate}.ipc.ts       # Handlers IPC
 │
 ├── shared/contracts/
-│   └── sales.contract.ts                    # DTOs: CreateSaleInput, SaleResult, CartItem
+│   ├── sales.contract.ts                    # DTOs de venta y venta en espera
+│   └── exchange-rate.contract.ts             # DTO de tasa USD/VES
 │
 └── renderer/src/
-    ├── shared/
-    │   ├── hooks/useBusinessConfig.ts       # Configuración global del negocio e impuestos
-    │   └── lib/businessConfig.ts            # computeTaxAmount, computeGrandTotal, getTaxLabel
+    ├── shared/hooks/useBusinessConfig.ts    # Configuración tributaria
     └── features/pos/
-        ├── POSView.tsx                      # Pantalla principal del terminal de ventas
+        ├── POSView.tsx                      # Búsqueda, carrito, clientes y cobro
+        ├── api/sales.api.ts                 # Puente tipado a window.api
+        ├── hooks/useUsdVesRate.ts           # Consulta y refresco de tasa
         ├── components/
-        │   ├── SaleModal.tsx                # Modal de cobro estándar [F12]
-        │   ├── SplitPaymentModal.tsx        # Modal de pago dividido [F11]
-        │   ├── SuspendedSalesModal.tsx      # Modal de ventas en espera [ALT + P]
-        │   └── TicketPreviewModal.tsx       # Ticket 80mm alimentado por business_settings
-        └── types/
-            ├── POSView.type.ts              # Tipos locales del carrito y estado
-            └── index.ts                     # Re-export de tipos
+        │   ├── SaleModal.tsx                # Efectivo, tarjeta y crédito
+        │   ├── SplitPaymentModal.tsx        # Pago mixto
+        │   ├── SuspendedSalesModal.tsx      # Ventas en espera
+        │   └── TicketPreviewModal.tsx       # Previsualización del ticket
+        └── types/POSView.type.ts
 ```
+
+Las llamadas de persistencia se exponen como `window.api.sales` y
+`window.api.exchangeRate`; el renderer no accede directamente a SQLite.
 
 ---
 
@@ -56,32 +61,47 @@ nexus-post/src/
 
 | Atajo | Acción | Descripción |
 | :---: | :--- | :--- |
-| `[F1]` | Foco en Terminal POS | Activa la pestaña y enfoca el input de escáner |
+| `[F2]` | Buscar producto | Enfoca el campo de búsqueda/lector |
 | `[F12]` | Cobro Estándar | Despliega el modal de pago completo |
+| `[F6]` | Cobro en efectivo | Abre cobro con efectivo preseleccionado |
+| `[F7]` | Cobro con tarjeta | Abre cobro con tarjeta preseleccionada |
+| `[F8]` | Pago mixto | Abre el modal para combinar efectivo y tarjeta |
 | `[ALT + Q]` | Cobro Rápido | Cierra la venta asumiendo pago exacto en efectivo |
-| `[ALT + L]` | Selector en Lista | Modal o dropdown para buscar productos por nombre |
+| `[ALT + K]` | Asociar cliente | Enfoca la búsqueda de cliente |
+| `[ALT + L]` | Buscar en lista | Enfoca/abre los resultados de productos |
 | `[ALT + P]` | Suspender Venta | Guarda la venta actual en cola y libera el carrito |
-| `[ALT + V]` | Previsualizar Ticket | Muestra el ticket térmico de 80mm formateado |
+| `[ALT + E]` | Ventas en espera | Abre la lista de ventas pausadas |
+| `[ALT + T]` | Previsualizar Ticket | Muestra la previsualización del ticket |
 | `[Esc]` | Cancelar / Limpiar | Limpia el carrito o cierra el modal activo |
-| `[Enter]` | Agregar por Código | Al escanear con la pistola o presionar Enter |
+| `[Enter]` | Agregar por código | Agrega la coincidencia exacta del lector o búsqueda |
 
 ---
 
 ## 4. Conexiones con Otros Módulos
 
-- ➡️ **Módulo 03 (Inventario):** Consulta existencias en tiempo real y descuenta el stock de forma atómica en SQLite.
-- ➡️ **Módulo 04 (Kardex):** Cada venta confirmada genera automáticamente un registro inmutable de Kardex con tipo `SALIDA (-)` y motivo `VENTA`.
-- ➡️ **Módulo 05 (Caja y Turno):** El dinero recibido (efectivo) incrementa directamente la gaveta de caja del turno abierto.
-- ➡️ **Módulo 06 (Clientes):** Si la venta se marca como método `CRÉDITO`, el total se carga a la deuda del cliente seleccionado.
-- ➡️ **Módulo 08 (Ajustes y Hardware):** La identidad fiscal, el domicilio, la plantilla del ticket y la tasa de impuesto se leen de `business_settings`; al finalizar la venta se envía el comando de impresión a la impresora térmica USB/COM y el pulso de apertura a la gaveta de dinero.
+- ➡️ **Módulo 03 (Inventario):** El catálogo se carga desde SQLite. La venta descuenta existencias de forma atómica; `CAN_OVERRIDE_NO_STOCK` permite vender y registrar saldo negativo.
+- ➡️ **Módulo 04 (Kardex):** Cada venta genera un movimiento `SALIDA`/`VENTA` dentro de la misma transacción de venta y stock.
+- ➡️ **Módulo 05 (Caja y Turno):** El resumen/arqueo mostrado actualmente en el POS aún se mantiene en memoria y no se reconcilia al reiniciar.
+- ➡️ **Módulo 06 (Clientes):** El cliente asociado queda guardado en la venta. El pago a crédito registra la deuda y valida el límite dentro del flujo transaccional.
+- ➡️ **Módulo 08 (Ajustes y Hardware):** La configuración tributaria se lee de `business_settings`. La impresión térmica y el pulso de gaveta todavía no están integrados; la previsualización no equivale a imprimir.
+
+### Persistencia, moneda y pagos
+
+- La migración `012_sales_exchange_rates` crea `sales`, `sale_items`, `suspended_sales` y `exchange_rates`. La venta guarda un snapshot de la tasa disponible.
+- `SalesService` recalcula precios e impuestos con los datos persistidos, valida el medio de pago y ejecuta venta, decremento de stock, Kardex y deuda de crédito en una transacción SQLite.
+- Las ventas pausadas se serializan en SQLite y pueden restaurarse o eliminarse desde el modal. Restaurar requiere un carrito activo vacío.
+- Los cuatro medios registrados son efectivo, tarjeta, mixto y crédito. Los montos de cobro se expresan exclusivamente en USD; la conversión VES es informativa.
+- La tasa USD/VES se consulta desde `https://ve.dolarapi.com/v1/dolares/oficial`, se refresca al iniciar el POS y cada 30 minutos, y se almacena localmente. Si el proveedor falla, se usa la última tasa cacheada con indicador de desactualización; sin caché se informa el error sin bloquear ventas USD.
+- El pago con tarjeta se confirma manualmente por el cajero; no existe conexión con pinpad o procesador de pagos. La opción de impresión automática del modal de cobro aún no está conectada.
 
 ---
 
 ## 5. Reglas de Negocio Específicas
 
 1. **Transaccionalidad Atómica:** El registro de la venta, el decremento de existencias en `products` y la inserción en `kardex` deben ocurrir dentro de una misma transacción SQLite (`db.transaction()`).
-2. **Validación de Sobrevendido:** Si un producto no tiene suficiente stock y el cajero carece del permiso `CAN_OVERRIDE_NO_STOCK`, la interfaz bloquea el cobro y resalta la fila en `#C42B1C`.
-3. **Restricción de Tamaño:** `POSView.tsx` no debe rebasar **300 líneas**. Extraer componentes como `CartTable`, `TotalsPanel` y `SearchBar` si el archivo se expande.
-4. **Impuesto dinámico:** La tasa y el nombre del impuesto provienen de `useBusinessConfig()` (Ajustes → IVA). Solo los productos con `hasTax === true` forman la base gravable. Si `taxEnabled` es `false`, no se traslada impuesto y la línea desaparece del resumen y del ticket.
-5. **Precio con impuesto incluido:** Si `pricesIncludeTax === true`, `computeTaxAmount` desagrega el impuesto del precio y `computeGrandTotal` **no** lo suma; el cliente paga el precio de lista. En caso contrario, el impuesto se suma al subtotal.
-6. **Consistencia del cobro:** `App.handleCompleteSale` recalcula el total con `computeGrandTotal` usando la configuración vigente, de modo que la venta persistida coincide con lo mostrado en el POS y el ticket.
+2. **Validación de Sobrevendido:** Si un producto no tiene suficiente stock y el usuario carece de `CAN_OVERRIDE_NO_STOCK`, la interfaz y backend bloquean el cobro. Con permiso, la existencia puede quedar negativa y el Kardex conserva el saldo resultante.
+3. **Descuentos:** El permiso `CAN_APPLY_DISCOUNT` se valida tanto en la interfaz como en el servicio de ventas.
+4. **Restricción de Tamaño:** `POSView.tsx` no debe rebasar **300 líneas**. Extraer componentes como `CartTable`, `TotalsPanel` y `SearchBar` si el archivo se expande.
+5. **Impuesto dinámico:** La tasa y el nombre del impuesto provienen de `useBusinessConfig()` (Ajustes → IVA). Solo los productos con `hasTax === true` forman la base gravable. Si `taxEnabled` es `false`, no se traslada impuesto y la línea desaparece del resumen y del ticket.
+6. **Precio con impuesto incluido:** Si `pricesIncludeTax === true`, `computeTaxAmount` desagrega el impuesto del precio y `computeGrandTotal` **no** lo suma; el cliente paga el precio de lista. En caso contrario, el impuesto se suma al subtotal.
+7. **Consistencia del cobro:** `SalesService` vuelve a calcular importes usando productos y configuración persistidos en main; los totales enviados desde renderer deben coincidir con esa comprobación.

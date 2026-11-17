@@ -24,7 +24,9 @@ import type {
   CustomerFilter,
   CustomerPaymentInput,
   CreateCreditSaleInput,
-  ApplyPaymentToDebtInput
+  ApplyPaymentToDebtInput,
+  CreateSaleInput,
+  SuspendedSale
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -42,6 +44,18 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.inventory.adjustStock, input),
     listMovements: (productId?: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, productId)
+  },
+  sales: {
+    complete: (input: CreateSaleInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sales.complete, input),
+    listSuspended: () => ipcRenderer.invoke(IPC_CHANNELS.sales.listSuspended),
+    suspend: (sale: SuspendedSale) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sales.suspend, sale),
+    deleteSuspended: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sales.deleteSuspended, id)
+  },
+  exchangeRate: {
+    getUsdVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getUsdVes)
   },
   categories: {
     list: (filter?: CategoryFilter) => ipcRenderer.invoke(IPC_CHANNELS.categories.list, filter),

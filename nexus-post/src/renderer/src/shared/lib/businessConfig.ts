@@ -26,7 +26,7 @@ export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   parish: 'Altagracia',
   country: 'Venezuela',
   postalCode: '1010',
-  currency: 'VES',
+  currency: 'USD',
   ticketHeader: '¡Bienvenidos a Nexus Market Venezuela!',
   ticketFooter: 'Gracias por su compra. Conserve este ticket para cambios o devoluciones.',
   ticketLegalNote: 'Documento no fiscal. RIF: J-00000000-0. Sujeto a regulación del SENIAT.',

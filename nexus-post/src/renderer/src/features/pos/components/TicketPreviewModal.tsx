@@ -3,6 +3,8 @@ import { CartItem, PaymentDetails } from '../../../shared/types/domain'
 import { Printer, X, Receipt } from '../../../shared/icons/Icons'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { formatBusinessAddress, getTaxLabel } from '../../../shared/lib/businessConfig'
+import type { UsdVesExchangeRate } from '@shared/contracts'
+import { formatVesAmount } from '../../../shared/lib/currency'
 
 interface TicketPreviewModalProps {
   isOpen: boolean
@@ -16,6 +18,7 @@ interface TicketPreviewModalProps {
   ticketNumber: string
   cashierName: string
   customerName?: string
+  exchangeRate: UsdVesExchangeRate | null
 }
 
 export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
@@ -29,7 +32,8 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
   payment,
   ticketNumber,
   cashierName,
-  customerName
+  customerName,
+  exchangeRate
 }) => {
   const { config: business } = useBusinessConfig()
   const taxLabel = getTaxLabel(business)
@@ -149,6 +153,10 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
               <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-200">
                 <span>TOTAL A PAGAR:</span>
                 <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>Referencia en bolívares (BCV):</span>
+                <span>{exchangeRate ? formatVesAmount(total * exchangeRate.rate) : 'No disponible'}</span>
               </div>
 
               {payment && (

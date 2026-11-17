@@ -1,7 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
-import {
-  PaymentDetails,
-} from '../../shared/types/domain'
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import type { PaymentDetails, PaymentMethodType, SuspendedSale } from '../../shared/types/domain'
 import SaleModal from './components/SaleModal'
 import SplitPaymentModal from './components/SplitPaymentModal'
 import SuspendedSalesModal from './components/SuspendedSalesModal'
@@ -33,8 +31,11 @@ import {
 } from '../../shared/icons/Icons'
 import { POSViewProps } from './types'
 import type { Customer } from '@shared/contracts'
+import { formatVesAmount } from '../../shared/lib/currency'
 
 const createTicketNumber = (): string => `TK-${Date.now()}`
+const createSuspendedSaleId = (): string => `susp-${Date.now()}`
+const getCurrentTimestamp = (): string => new Date().toISOString()
 
 export const POSView: React.FC<POSViewProps> = ({
   products,
@@ -50,7 +51,14 @@ export const POSView: React.FC<POSViewProps> = ({
   onCompleteSale,
   onSuspendSale,
   onResumeSale,
-  onDeleteSuspendedSale
+  onDeleteSuspendedSale,
+  exchangeRate,
+  exchangeRateLoading,
+  exchangeRateError,
+  onRefreshExchangeRate,
+  cashierName,
+  canOverrideNoStock,
+  canApplyDiscount
 }) => {
   const { config: businessConfig } = useBusinessConfig()
   const [searchInput, setSearchInput] = useState('')
@@ -78,6 +86,7 @@ export const POSView: React.FC<POSViewProps> = ({
   const [customerError, setCustomerError] = useState<string | null>(null)
   const [ticketNumber, setTicketNumber] = useState(createTicketNumber)
   const [lastTicketNumber, setLastTicketNumber] = useState<string | null>(null)
+  const [lastCustomerDisplayName, setLastCustomerDisplayName] = useState<string | undefined>()
 
   // Modals state
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
@@ -85,6 +94,8 @@ export const POSView: React.FC<POSViewProps> = ({
   const [isSuspendedModalOpen, setIsSuspendedModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
   const [lastPaymentDetails, setLastPaymentDetails] = useState<PaymentDetails | undefined>(undefined)
+  const [initialPaymentMethod, setInitialPaymentMethod] =
+    useState<PaymentMethodType>('cash')
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => {
@@ -109,17 +120,18 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Detección de déficit de stock
   const hasStockDeficit = cart.some((item) => item.quantity > item.product.stock)
+  const cannotCompleteSale = hasStockDeficit && !canOverrideNoStock
 
   const searchMatches = useMemo(() => {
-    if (!searchInput.trim()) return []
+    if (!searchInput.trim()) return products.filter((product) => product.active && !product.deleted).slice(0, 100)
     const query = searchInput.toLowerCase().trim()
     return products
       .filter(
-      (p) =>
-        p.active &&
-        (p.name.toLowerCase().includes(query) ||
-          p.code.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query))
+        (product) =>
+          product.active &&
+          !product.deleted &&
+          (product.name.toLowerCase().includes(query) ||
+            product.code.toLowerCase().includes(query))
       )
       .slice(0, 6)
   }, [searchInput, products])
@@ -137,6 +149,11 @@ export const POSView: React.FC<POSViewProps> = ({
     )
   }, [customerCedulaInput, customers])
 
+  const activeCustomerDisplayName =
+    assignCustomer && selectedCustomer
+      ? `${selectedCustomer.name} (${selectedCustomer.taxId})`
+      : '000 - Consumidor Final'
+
   // Handle enter key in product search
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
@@ -144,7 +161,9 @@ export const POSView: React.FC<POSViewProps> = ({
       const query = searchInput.trim()
       if (!query) return
 
-      const exactMatch = products.find((p) => p.code === query && p.active)
+      const exactMatch = products.find(
+        (product) => product.code.trim().toLowerCase() === query.toLowerCase() && product.active
+      )
       if (exactMatch) {
         onAddToCart(exactMatch, 1)
         setSearchInput('')
@@ -157,6 +176,7 @@ export const POSView: React.FC<POSViewProps> = ({
         setSearchInput('')
         setShowSearchResults(false)
       }
+      setShowSearchResults(true)
     }
   }
 
@@ -253,12 +273,54 @@ export const POSView: React.FC<POSViewProps> = ({
     if (completed === false) return
     setLastPaymentDetails(details)
     setLastTicketNumber(ticketNumber)
+    setLastCustomerDisplayName(activeCustomerDisplayName)
     setTicketNumber(createTicketNumber())
+    setAssignCustomer(false)
+    setSelectedCustomer(null)
   }
 
+  const handleSuspendCurrentSale = async (): Promise<void> => {
+    if (cart.length === 0) return
+    const suspended: SuspendedSale = {
+      id: createSuspendedSaleId(),
+      ticketNumber,
+      name: `${ticketNumber} (${cart[0].product.name})`,
+      timestamp: getCurrentTimestamp(),
+      items: [...cart],
+      customerId: assignCustomer ? selectedCustomer?.id : undefined,
+      customerName: assignCustomer ? selectedCustomer?.name : undefined,
+      subtotal,
+      total: finalTotal
+    }
+    if (await onSuspendSale(suspended)) {
+      setTicketNumber(createTicketNumber())
+      setAssignCustomer(false)
+      setSelectedCustomer(null)
+      setCustomerCedulaInput('')
+    }
+    }
+
+  const handleResumeSuspendedSale = async (sale: SuspendedSale): Promise<boolean> => {
+    if (!(await onResumeSale(sale))) return false
+    const customer = sale.customerId
+      ? customers.find((item) => item.id === sale.customerId) ?? null
+      : null
+    setAssignCustomer(Boolean(sale.customerId))
+    setSelectedCustomer(customer)
+    setTicketNumber(sale.ticketNumber ?? createTicketNumber())
+    return true
+  }
+
+  const handleClearActiveSale = useCallback((): void => {
+    onClearCart()
+    setAssignCustomer(false)
+    setSelectedCustomer(null)
+    setCustomerCedulaInput('')
+    setTicketNumber(createTicketNumber())
+  }, [onClearCart])
+
   // Global hotkeys listener for keyboard-first POS flow
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent): void => {
+  const handleGlobalKeyDown = useEffectEvent((e: KeyboardEvent): void => {
       // If modal is active, let modal handle keys
       if (
         isSaleModalOpen ||
@@ -281,21 +343,30 @@ export const POSView: React.FC<POSViewProps> = ({
       // [F12]: Open Checkout modal
       if (e.key === 'F12') {
         e.preventDefault()
-        if (cart.length > 0) setIsSaleModalOpen(true)
+        if (cart.length > 0) {
+          setInitialPaymentMethod('cash')
+          setIsSaleModalOpen(true)
+        }
         return
       }
 
       // [F6]: Fast Cash checkout
       if (e.key === 'F6') {
         e.preventDefault()
-        if (cart.length > 0) setIsSaleModalOpen(true)
+        if (cart.length > 0) {
+          setInitialPaymentMethod('cash')
+          setIsSaleModalOpen(true)
+        }
         return
       }
 
       // [F7]: Fast Card checkout
       if (e.key === 'F7') {
         e.preventDefault()
-        if (cart.length > 0) setIsSaleModalOpen(true)
+        if (cart.length > 0) {
+          setInitialPaymentMethod('card')
+          setIsSaleModalOpen(true)
+        }
         return
       }
 
@@ -327,7 +398,7 @@ export const POSView: React.FC<POSViewProps> = ({
       // [ALT+P]: Pause / suspend sale
       if (e.altKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault()
-        if (cart.length > 0) onSuspendSale()
+        if (cart.length > 0) void handleSuspendCurrentSale()
         return
       }
 
@@ -335,6 +406,7 @@ export const POSView: React.FC<POSViewProps> = ({
       if (e.altKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault()
         setShowSearchResults((prev) => !prev)
+        searchInputRef.current?.focus()
         return
       }
 
@@ -359,27 +431,16 @@ export const POSView: React.FC<POSViewProps> = ({
         } else if (showCustomerDropdown) {
           setShowCustomerDropdown(false)
         } else if (cart.length > 0) {
-          onClearCart()
+          handleClearActiveSale()
         }
         return
       }
-    }
+  })
 
+  useEffect(() => {
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [
-    cart,
-    finalTotal,
-    isSaleModalOpen,
-    isSplitModalOpen,
-    isSuspendedModalOpen,
-    isPreviewModalOpen,
-    isCreateCustomerModalOpen,
-    showSearchResults,
-    showCustomerDropdown,
-    onSuspendSale,
-    onClearCart
-  ])
+  }, [])
 
   // Split payment confirmation
   const handleConfirmSplit = async (cashAmount: number, cardAmount: number): Promise<void> => {
@@ -396,15 +457,12 @@ export const POSView: React.FC<POSViewProps> = ({
     if (completed === false) return
     setLastPaymentDetails(details)
     setLastTicketNumber(ticketNumber)
+    setLastCustomerDisplayName(activeCustomerDisplayName)
     setTicketNumber(createTicketNumber())
+    setAssignCustomer(false)
+    setSelectedCustomer(null)
     setIsSplitModalOpen(false)
   }
-
-  // Active customer display name for ticket
-  const activeCustomerDisplayName =
-    assignCustomer && selectedCustomer
-      ? `${selectedCustomer.name} (${selectedCustomer.taxId})`
-      : '000 - Consumidor Final'
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#F3F3F3]">
@@ -452,7 +510,7 @@ export const POSView: React.FC<POSViewProps> = ({
 
             {/* Pausar Venta [ALT+P] */}
             <button
-              onClick={onSuspendSale}
+              onClick={() => void handleSuspendCurrentSale()}
               disabled={cart.length === 0}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-amber-50 disabled:opacity-40 border border-[#D1D1D1] rounded-[4px] transition-colors cursor-pointer"
             >
@@ -482,9 +540,13 @@ export const POSView: React.FC<POSViewProps> = ({
           </div>
 
           {/* Search Dropdown Results */}
-          {showSearchResults && searchMatches.length > 0 && (
+          {showSearchResults && (
             <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-[#D1D1D1] rounded-[4px] shadow-lg max-h-60 overflow-y-auto divide-y divide-[#E5E5E5]">
-              {searchMatches.map((prod) => (
+              {searchMatches.length === 0 ? (
+                <div className="p-3 text-xs text-[#717783]">
+                  No se encontraron productos por nombre o código.
+                </div>
+              ) : searchMatches.map((prod) => (
                 <div
                   key={prod.id}
                   onClick={() => {
@@ -634,6 +696,7 @@ export const POSView: React.FC<POSViewProps> = ({
                               type="number"
                               min="0"
                               max="100"
+                              disabled={!canApplyDiscount}
                               value={item.discountPercent || 0}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) =>
@@ -687,14 +750,14 @@ export const POSView: React.FC<POSViewProps> = ({
             </div>
 
             {hasStockDeficit && (
-              <span className="text-[#C42B1C] font-bold flex items-center gap-1 text-[11px]">
+              <span className={`${canOverrideNoStock ? 'text-amber-700' : 'text-[#C42B1C]'} font-bold flex items-center gap-1 text-[11px]`}>
                 <AlertCircle size={13} /> Alerta: Existen productos con stock insuficiente
               </span>
             )}
 
             {cart.length > 0 && (
               <button
-                onClick={onClearCart}
+                onClick={handleClearActiveSale}
                 className="text-[#C42B1C] hover:underline flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
               >
                 <RotateCcw size={12} /> Limpiar Venta [ESC]
@@ -958,6 +1021,34 @@ export const POSView: React.FC<POSViewProps> = ({
               <div className="text-4xl font-extrabold font-mono text-[#1B1B1B] mt-1 tracking-tight">
                 ${finalTotal.toFixed(2)}
               </div>
+              <div className="mt-1 text-xs text-[#5C5C5C]">
+                {exchangeRate
+                  ? `≈ ${formatVesAmount(finalTotal * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}`
+                  : 'Tasa BCV no disponible'}
+                {exchangeRate?.isStale && (
+                  <span className="ml-1 font-semibold text-amber-700">· tasa desactualizada</span>
+                )}
+              </div>
+              <div className="mt-1 flex justify-center gap-2 text-[10px]">
+                {exchangeRate && (
+                  <span className="text-[#717783]">
+                    Actualizada: {new Date(exchangeRate.updatedAt).toLocaleString('es-VE')}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={onRefreshExchangeRate}
+                  disabled={exchangeRateLoading}
+                  className="text-[#0067C0] underline disabled:opacity-50"
+                >
+                  {exchangeRateLoading ? 'Actualizando tasa…' : 'Actualizar tasa BCV'}
+                </button>
+              </div>
+              {!exchangeRate && exchangeRateError && (
+                <div role="alert" className="mt-1 text-[10px] text-[#C42B1C]">
+                  {exchangeRateError}
+                </div>
+              )}
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-2 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#107C41]"></span>
                 <span>BALANCE PENDIENTE DE COBRO</span>
@@ -969,8 +1060,11 @@ export const POSView: React.FC<POSViewProps> = ({
           <div className="space-y-2.5 pt-3 border-t border-[#E5E5E5]">
             {/* Primary Checkout Button: Emerald Green (#107C41) with [F12] badge */}
             <button
-              onClick={() => setIsSaleModalOpen(true)}
-              disabled={cart.length === 0}
+              onClick={() => {
+                setInitialPaymentMethod('cash')
+                setIsSaleModalOpen(true)
+              }}
+              disabled={cart.length === 0 || cannotCompleteSale}
               className="w-full flex items-center justify-between py-3.5 px-4 bg-[#107C41] hover:bg-[#0F7B0F] active:bg-[#005228] disabled:bg-slate-300 text-white font-bold text-sm rounded-[4px] shadow-sm transition-all cursor-pointer select-none"
             >
               <div className="flex items-center gap-2">
@@ -989,8 +1083,11 @@ export const POSView: React.FC<POSViewProps> = ({
             <div className="grid grid-cols-3 gap-1.5">
               {/* Efectivo F6 */}
               <button
-                onClick={() => setIsSaleModalOpen(true)}
-                disabled={cart.length === 0}
+                onClick={() => {
+                  setInitialPaymentMethod('cash')
+                  setIsSaleModalOpen(true)
+                }}
+                disabled={cart.length === 0 || cannotCompleteSale}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <Banknote size={16} className="text-[#107C41] mb-0.5" />
@@ -1002,8 +1099,11 @@ export const POSView: React.FC<POSViewProps> = ({
 
               {/* Tarjeta F7 */}
               <button
-                onClick={() => setIsSaleModalOpen(true)}
-                disabled={cart.length === 0}
+                onClick={() => {
+                  setInitialPaymentMethod('card')
+                  setIsSaleModalOpen(true)
+                }}
+                disabled={cart.length === 0 || cannotCompleteSale}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <CreditCard size={16} className="text-[#0067C0] mb-0.5" />
@@ -1016,7 +1116,7 @@ export const POSView: React.FC<POSViewProps> = ({
               {/* Pago Mixto F8 */}
               <button
                 onClick={() => setIsSplitModalOpen(true)}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || cannotCompleteSale}
                 className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-[#F9F9F9] disabled:opacity-40 text-[#1B1B1B] rounded-[4px] border border-[#D1D1D1] shadow-xs transition-colors text-xs font-semibold cursor-pointer"
               >
                 <Layers size={16} className="text-purple-700 mb-0.5" />
@@ -1031,7 +1131,7 @@ export const POSView: React.FC<POSViewProps> = ({
             <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
               <button
                 onClick={handleQuickCash}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || cannotCompleteSale}
                 className="flex items-center justify-center gap-1.5 py-2 px-2 bg-[#107C41]/10 hover:bg-[#107C41]/20 active:bg-[#107C41]/30 disabled:opacity-40 text-[#107C41] font-bold border border-[#107C41]/30 rounded-[4px] transition-colors cursor-pointer"
               >
                 <Zap size={14} className="text-[#107C41]" />
@@ -1067,35 +1167,39 @@ export const POSView: React.FC<POSViewProps> = ({
         items={cart}
         customerId={assignCustomer ? selectedCustomer?.id : undefined}
         ticketNumber={ticketNumber}
+        initialMethod={initialPaymentMethod}
+        exchangeRate={exchangeRate}
         onClose={() => setIsSaleModalOpen(false)}
         onConfirmSale={async (details) => {
           const completed = await onCompleteSale(details)
           if (completed === false) return false
           setLastPaymentDetails(details)
           setLastTicketNumber(ticketNumber)
+          setLastCustomerDisplayName(activeCustomerDisplayName)
           setTicketNumber(`TK-${Date.now()}`)
+          setAssignCustomer(false)
+          setSelectedCustomer(null)
           setIsSaleModalOpen(false)
           return true
         }}
       />}
 
       {/* Split Payment Modal (F8) */}
-      <SplitPaymentModal
+      {isSplitModalOpen && <SplitPaymentModal
         isOpen={isSplitModalOpen}
         total={finalTotal}
+        exchangeRate={exchangeRate}
         onClose={() => setIsSplitModalOpen(false)}
         onConfirmSplit={handleConfirmSplit}
-      />
+      />}
 
       {/* Suspended Sales Modal */}
       <SuspendedSalesModal
         isOpen={isSuspendedModalOpen}
         suspendedSales={suspendedSales}
+        exchangeRate={exchangeRate}
         onClose={() => setIsSuspendedModalOpen(false)}
-        onResumeSale={(sale) => {
-          onResumeSale(sale)
-          setIsSuspendedModalOpen(false)
-        }}
+        onResumeSale={handleResumeSuspendedSale}
         onDeleteSuspendedSale={onDeleteSuspendedSale}
       />
 
@@ -1110,8 +1214,9 @@ export const POSView: React.FC<POSViewProps> = ({
         total={finalTotal}
         payment={lastPaymentDetails}
         ticketNumber={cart.length > 0 ? ticketNumber : lastTicketNumber ?? ticketNumber}
-        cashierName="Carlos Morales"
-        customerName={activeCustomerDisplayName}
+        cashierName={cashierName}
+        customerName={cart.length > 0 ? activeCustomerDisplayName : lastCustomerDisplayName}
+        exchangeRate={exchangeRate}
       />
 
       {/* ========================================================= */}

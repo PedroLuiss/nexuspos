@@ -1,4 +1,5 @@
 import type { Product } from '@shared/contracts/product.contract'
+import type { SaleCartItem, SalePayment, SuspendedSale } from '@shared/contracts/sales.contract'
 
 export type { Product, ProductInput, ProductFilter } from '@shared/contracts/product.contract'
 export type {
@@ -7,23 +8,11 @@ export type {
   KardexMovement
 } from '@shared/contracts/inventory.contract'
 
-export interface CartItem {
-  product: Product
-  quantity: number
-  discountPercent: number
-  customPrice?: number
-  total: number
-}
+export type CartItem = SaleCartItem
 
-export type PaymentMethodType = 'cash' | 'card' | 'mixed' | 'credit'
+export type PaymentMethodType = SalePayment['method']
 
-export interface PaymentDetails {
-  method: PaymentMethodType
-  amountPaid: number
-  change: number
-  cardReference?: string
-  cashAmount?: number
-  cardAmount?: number
+export interface PaymentDetails extends SalePayment {
   customerId?: string
   ticketNumber?: string
 }
@@ -121,15 +110,7 @@ export interface Customer {
   payments: CustomerPayment[]
 }
 
-export interface SuspendedSale {
-  id: string
-  name: string
-  timestamp: string
-  items: CartItem[]
-  customerName?: string
-  subtotal: number
-  total: number
-}
+export type { SuspendedSale }
 
 export interface UserPermissions {
   canDeleteProduct: boolean

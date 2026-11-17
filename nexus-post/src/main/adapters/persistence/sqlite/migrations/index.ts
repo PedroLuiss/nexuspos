@@ -17,6 +17,7 @@ import { migration008BusinessSettings } from './008_business_settings'
 import { migration009BusinessSettingsColumns } from './009_business_settings_columns'
 import { migration010ScaleConfig } from './010_scale_config'
 import { migration011Customers } from './011_customers'
+import { migration012SalesExchangeRates } from './012_sales_exchange_rates'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -29,7 +30,8 @@ const MIGRATIONS: Migration[] = [
   migration008BusinessSettings,
   migration009BusinessSettingsColumns,
   migration010ScaleConfig,
-  migration011Customers
+  migration011Customers,
+  migration012SalesExchangeRates
 ]
 
 /** Ejecuta de forma idempotente las migraciones pendientes. */
