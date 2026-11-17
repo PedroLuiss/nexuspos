@@ -18,7 +18,10 @@ interface SeedProduct {
 const SEED_CATEGORIES = [
   { name: 'Bebidas y Refrescos', description: 'Gaseosas, jugos, aguas minerales y cervezas' },
   { name: 'Lácteos y Huevos', description: 'Leche, quesos, cremas, mantequilla y huevos frescos' },
-  { name: 'Abarrotes y Despensa', description: 'Arroz, frijol, aceites, pastas, enlatados y condimentos' },
+  {
+    name: 'Abarrotes y Despensa',
+    description: 'Arroz, frijol, aceites, pastas, enlatados y condimentos'
+  },
   { name: 'Snacks y Golosinas', description: 'Papas, frituras, galletas y chocolates' },
   { name: 'Panadería y Dulces', description: 'Pan de caja, pan dulce, donas y tostadas' },
   { name: 'Limpieza del Hogar', description: 'Detergentes, suavizantes, cloro y papel higiénico' },

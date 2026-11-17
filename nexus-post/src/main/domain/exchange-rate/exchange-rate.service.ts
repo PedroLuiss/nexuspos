@@ -29,11 +29,7 @@ export class ExchangeRateService {
     return this.toContract(latest.rate, latest.updatedAt)
   }
 
-  private toContract(
-    rate: number,
-    updatedAt: string,
-    isFallback = false
-  ): UsdVesExchangeRate {
+  private toContract(rate: number, updatedAt: string, isFallback = false): UsdVesExchangeRate {
     return {
       rate,
       updatedAt,

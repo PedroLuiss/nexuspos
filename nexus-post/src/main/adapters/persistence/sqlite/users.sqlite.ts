@@ -1,5 +1,11 @@
 import type Database from 'better-sqlite3'
-import type { PermissionKey, User, UserRole, CreateUserInput, UpdateUserInput } from '@shared/contracts'
+import type {
+  PermissionKey,
+  User,
+  UserRole,
+  CreateUserInput,
+  UpdateUserInput
+} from '@shared/contracts'
 import { ROLE_DEFAULT_PERMISSIONS, sanitizePermissionKeys } from '@shared/contracts'
 import type { UserRepository, UserWithSecret } from '../../../ports/user.repository'
 
@@ -120,9 +126,7 @@ export class SqliteUserRepository implements UserRepository {
     const id = `usr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
     const requestedPermissions = sanitizePermissionKeys(input.permissions)
     const permissionsJson = JSON.stringify(
-      requestedPermissions.length > 0
-        ? requestedPermissions
-        : parsePermissions(null, input.role)
+      requestedPermissions.length > 0 ? requestedPermissions : parsePermissions(null, input.role)
     )
 
     const stmt = this.db.prepare(`
@@ -216,7 +220,9 @@ export class SqliteUserRepository implements UserRepository {
     if (!current) throw new Error(`Usuario con id "${id}" no encontrado.`)
     const newActive = current.active ? 0 : 1
     const now = new Date().toISOString()
-    this.db.prepare(`UPDATE users SET active = ?, updated_at = ? WHERE id = ?`).run(newActive, now, id)
+    this.db
+      .prepare(`UPDATE users SET active = ?, updated_at = ? WHERE id = ?`)
+      .run(newActive, now, id)
     return this.findById(id)!
   }
 

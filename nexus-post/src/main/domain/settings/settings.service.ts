@@ -1,4 +1,9 @@
-import type { BusinessConfig, BusinessConfigInput, CurrencyCode, TaxIdType } from '@shared/contracts'
+import type {
+  BusinessConfig,
+  BusinessConfigInput,
+  CurrencyCode,
+  TaxIdType
+} from '@shared/contracts'
 import { CURRENCY_OPTIONS, TAX_ID_TYPE_OPTIONS } from '@shared/contracts'
 import type { SettingsRepository } from '../../ports/settings.repository'
 import type { AuthService } from '../auth/auth.service'
@@ -31,7 +36,7 @@ export class SettingsService {
   constructor(
     private readonly repository: SettingsRepository,
     private readonly auth: AuthService
-  ) { }
+  ) {}
 
   private requireAdminSession(): { name: string } {
     const session = this.auth.getSessionUser()

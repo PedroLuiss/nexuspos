@@ -6,7 +6,7 @@ import SuspendedSalesModal from './components/SuspendedSalesModal'
 import TicketPreviewModal from './components/TicketPreviewModal'
 import ProductAvatar from '../../shared/ui/ProductAvatar'
 import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
-import { computeGrandTotal, computeTaxAmount, getTaxLabel } from '../../shared/lib/businessConfig'
+import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import {
   Search,
   Trash2,
@@ -99,24 +99,28 @@ export const POSView: React.FC<POSViewProps> = ({
   const [initialPaymentMethod, setInitialPaymentMethod] = useState<PaymentMethodType>('cash')
 
   // Calculations
-  const subtotal = cart.reduce((acc, item) => {
-    return acc + item.product.salePrice * item.quantity
-  }, 0)
-
-  const discountTotal = cart.reduce((acc, item) => {
-    const rawTotal = item.product.salePrice * item.quantity
-    return acc + rawTotal * (item.discountPercent / 100)
-  }, 0)
-
-  const taxableAmount = cart
-    .filter((item) => item.product.hasTax)
-    .reduce((acc, item) => {
-      return acc + item.product.salePrice * item.quantity * (1 - item.discountPercent / 100)
-    }, 0)
-
-  const taxTotal = computeTaxAmount(taxableAmount, businessConfig)
-  const finalTotal = computeGrandTotal(subtotal - discountTotal, taxableAmount, businessConfig)
-  const taxLabel = getTaxLabel(businessConfig)
+  const totals = computeSaleTotals(
+    cart.map((item) => {
+      const tax = resolveProductTax(item.product, businessConfig)
+      return {
+        unitPrice: item.product.salePrice,
+        quantity: item.quantity,
+        discountPercent: item.discountPercent,
+        taxId: tax.taxId,
+        taxName: tax.taxName,
+        taxRate: tax.taxRate
+      }
+    }),
+    {
+      taxEnabled: businessConfig.taxEnabled,
+      pricesIncludeTax: businessConfig.pricesIncludeTax
+    }
+  )
+  const subtotal = totals.subtotal
+  const discountTotal = totals.discount
+  const taxTotal = totals.tax
+  const finalTotal = totals.total
+  const taxBreakdown = totals.taxBreakdown
   const totalItemCount = cart.length
 
   // Detección de déficit de stock
@@ -994,15 +998,28 @@ export const POSView: React.FC<POSViewProps> = ({
                 </div>
               )}
 
-              {businessConfig.taxEnabled && (
-                <div className="flex justify-between text-[#5C5C5C]">
-                  <span>
-                    {taxLabel}
-                    {businessConfig.pricesIncludeTax ? ' incluido' : ''}:
-                  </span>
-                  <span className="font-mono font-medium text-[#1B1B1B]">
-                    ${taxTotal.toFixed(2)}
-                  </span>
+              {businessConfig.taxEnabled &&
+                taxBreakdown
+                  .filter((line) => line.taxRate > 0)
+                  .map((line) => (
+                    <div
+                      key={`${line.taxId ?? line.taxName}-${line.taxRate}`}
+                      className="flex justify-between text-[#5C5C5C]"
+                    >
+                      <span>
+                        {formatTaxLabel(line.taxName, line.taxRate)}
+                        {businessConfig.pricesIncludeTax ? ' incluido' : ''}:
+                      </span>
+                      <span className="font-mono font-medium text-[#1B1B1B]">
+                        ${line.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+
+              {businessConfig.taxEnabled && totals.exemptBase > 0 && (
+                <div className="flex justify-between text-[#717783]">
+                  <span>Base exenta:</span>
+                  <span className="font-mono">${totals.exemptBase.toFixed(2)}</span>
                 </div>
               )}
             </div>

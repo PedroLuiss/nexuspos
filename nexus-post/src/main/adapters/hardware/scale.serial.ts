@@ -1,11 +1,6 @@
 import type { SerialPort } from 'serialport'
 import { SerialPort as SerialPortClass } from 'serialport'
-import type {
-  SerialPortInfo,
-  BaudRate,
-  ScaleReading,
-  HardwarePort
-} from '@shared/contracts'
+import type { SerialPortInfo, BaudRate, ScaleReading, HardwarePort } from '@shared/contracts'
 
 const DEFAULT_READ_TIMEOUT_MS = 3000
 const STABLE_READINGS_REQUIRED = 3
@@ -134,10 +129,7 @@ export class SerialScaleAdapter implements HardwarePort {
           buffer = ''
         }
 
-        if (
-          readings.length >= STABLE_READINGS_REQUIRED &&
-          this.isStable(readings)
-        ) {
+        if (readings.length >= STABLE_READINGS_REQUIRED && this.isStable(readings)) {
           clearTimeout(timeout)
           this.port!.removeListener('data', onData)
           const reading = this.buildReadingFromBuffer(readings, buffer)
@@ -192,17 +184,12 @@ export class SerialScaleAdapter implements HardwarePort {
     const recent = readings.slice(-STABLE_READINGS_REQUIRED)
     const max = Math.max(...recent)
     const min = Math.min(...recent)
-    return (max - min) <= STABILITY_THRESHOLD
+    return max - min <= STABILITY_THRESHOLD
   }
 
-  private buildReadingFromBuffer(
-    readings: number[],
-    buffer: string,
-    error?: string
-  ): ScaleReading {
+  private buildReadingFromBuffer(readings: number[], buffer: string, error?: string): ScaleReading {
     const weightKg = readings.length > 0 ? readings[readings.length - 1] : 0
-    const isStable =
-      readings.length >= STABLE_READINGS_REQUIRED && this.isStable(readings)
+    const isStable = readings.length >= STABLE_READINGS_REQUIRED && this.isStable(readings)
 
     return {
       weightKg,

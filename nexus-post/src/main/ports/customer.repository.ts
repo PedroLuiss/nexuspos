@@ -1,4 +1,9 @@
-import type { Customer, CustomerInput, CustomerUpdateInput, CustomerFilter } from '@shared/contracts'
+import type {
+  Customer,
+  CustomerInput,
+  CustomerUpdateInput,
+  CustomerFilter
+} from '@shared/contracts'
 import type { CustomerDebt, CustomerPayment, CustomerAccountSummary } from '@shared/contracts'
 
 /**
@@ -33,7 +38,12 @@ export interface CustomerRepository {
   /** Lista los pagos realizados por un cliente. */
   listPayments(customerId: string): CustomerPayment[]
   /** Asocia una venta a crédito a un cliente (crea una deuda). */
-  createCreditSale(customerId: string, ticketNumber: string, totalAmount: number, date: string): CustomerDebt
+  createCreditSale(
+    customerId: string,
+    ticketNumber: string,
+    totalAmount: number,
+    date: string
+  ): CustomerDebt
   /** Abona a una deuda específica de un cliente. */
   applyPaymentToDebt(
     debtId: string,

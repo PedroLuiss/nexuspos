@@ -11,8 +11,8 @@ export const ProductStatusBar: React.FC<ProductStatusBarProps> = ({ stats }) => 
     <div className="flex flex-wrap items-center justify-between px-3 py-2 bg-[#F9F9F9] border-t border-[#E5E5E5] text-xs text-[#5C5C5C]">
       <div className="flex items-center gap-4">
         <span>
-          Total Catálogo:{' '}
-          <strong className="text-[#1B1B1B] font-mono">{stats.total}</strong> productos
+          Total Catálogo: <strong className="text-[#1B1B1B] font-mono">{stats.total}</strong>{' '}
+          productos
         </span>
         <span>•</span>
         <span>

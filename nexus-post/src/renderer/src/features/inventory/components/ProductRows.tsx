@@ -2,6 +2,7 @@ import React from 'react'
 import type { Product } from '@shared/contracts'
 import { Package, Power, Edit3, Trash2 } from '../../../shared/icons/Icons'
 import ProductAvatar from '../../../shared/ui/ProductAvatar'
+import { formatTaxRate } from '@shared/lib/tax'
 
 interface ProductRowsProps {
   products: Product[]
@@ -31,6 +32,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
             <th className="py-2 px-3 text-right">Venta</th>
             <th className="py-2 px-3 text-center">Stock</th>
             <th className="py-2 px-3 text-center">Mín.</th>
+            <th className="py-2 px-3 text-center">Impuesto</th>
             <th className="py-2 px-3 text-center">Categoría</th>
             <th className="py-2 px-3 text-center">Estado</th>
             <th className="py-2 px-3 text-center">Acciones</th>
@@ -39,7 +41,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
         <tbody className="divide-y divide-[#E5E5E5]">
           {products.length === 0 ? (
             <tr>
-              <td colSpan={9} className="py-20 text-center text-[#717783]">
+              <td colSpan={10} className="py-20 text-center text-[#717783]">
                 <Package size={40} className="mx-auto mb-2 text-[#D1D1D1]" />
                 <p className="text-xs font-semibold text-[#1B1B1B]">
                   No se encontraron productos registrados
@@ -71,7 +73,9 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                     <div className="flex items-center gap-2.5">
                       <ProductAvatar name={p.name} imageUrl={p.imageUrl} size="sm" />
                       <div className="min-w-0">
-                        <div className="font-semibold text-xs text-[#1B1B1B] truncate">{p.name}</div>
+                        <div className="font-semibold text-xs text-[#1B1B1B] truncate">
+                          {p.name}
+                        </div>
                         {p.description && (
                           <div className="text-[10px] text-[#717783] truncate max-w-sm">
                             {p.description}
@@ -103,6 +107,25 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                   </td>
 
                   <td className="py-2 px-3 text-center font-mono text-[#717783]">{p.minStock}</td>
+
+                  <td className="py-2 px-3 text-center">
+                    {p.taxRate === undefined ? (
+                      <span className="text-[10px] font-semibold text-[#C42B1C] bg-red-50 border border-red-200 rounded-[3px] px-1.5 py-0.5">
+                        SIN TASA
+                      </span>
+                    ) : p.taxRate > 0 ? (
+                      <span
+                        className="text-[10px] font-bold text-[#5C5C5C] bg-[#F3F3F3] border border-[#E5E5E5] rounded-[3px] px-1.5 py-0.5"
+                        title={p.taxName ?? 'Impuesto'}
+                      >
+                        {formatTaxRate(p.taxRate)}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[3px] px-1.5 py-0.5">
+                        EXENTO
+                      </span>
+                    )}
+                  </td>
 
                   <td className="py-2 px-3 text-center">
                     <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold text-[#5C5C5C] bg-[#F3F3F3] border border-[#E5E5E5] rounded-[3px]">

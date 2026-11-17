@@ -19,6 +19,7 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
         ? undefined
         : Math.max(0, Number(input.maxStock) || 0),
     unit: input.unit?.trim() || DEFAULT_UNIT,
+    taxId: input.taxId?.trim() || undefined,
     hasTax: Boolean(input.hasTax),
     active: input.active ?? true,
     deleted: input.deleted ?? false,

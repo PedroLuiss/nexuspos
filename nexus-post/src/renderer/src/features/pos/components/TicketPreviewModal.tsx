@@ -2,7 +2,8 @@ import React from 'react'
 import { CartItem, PaymentDetails } from '../../../shared/types/domain'
 import { Printer, X, Receipt } from '../../../shared/icons/Icons'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
-import { formatBusinessAddress, getTaxLabel } from '../../../shared/lib/businessConfig'
+import { formatBusinessAddress } from '../../../shared/lib/businessConfig'
+import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
 import { formatProductQuantity } from '@shared/lib/product-quantity'
@@ -37,7 +38,20 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
   exchangeRate
 }) => {
   const { config: business } = useBusinessConfig()
-  const taxLabel = getTaxLabel(business)
+  const totals = computeSaleTotals(
+    items.map((item) => {
+      const tax = resolveProductTax(item.product, business)
+      return {
+        unitPrice: item.product.salePrice,
+        quantity: item.quantity,
+        discountPercent: item.discountPercent,
+        taxId: tax.taxId,
+        taxName: tax.taxName,
+        taxRate: tax.taxRate
+      }
+    }),
+    { taxEnabled: business.taxEnabled, pricesIncludeTax: business.pricesIncludeTax }
+  )
 
   if (!isOpen) return null
 
@@ -148,13 +162,35 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                   <span>-${discount.toFixed(2)}</span>
                 </div>
               )}
-              {business.taxEnabled && (
-                <div className="flex justify-between">
-                  <span>
-                    {taxLabel}
-                    {business.pricesIncludeTax ? ' incluido' : ''}:
-                  </span>
-                  <span>${tax.toFixed(2)}</span>
+              {business.taxEnabled &&
+                totals.taxBreakdown
+                  .filter((line) => line.taxRate > 0)
+                  .map((line) => (
+                    <div
+                      key={`${line.taxId ?? line.taxName}-${line.taxRate}`}
+                      className="flex justify-between"
+                    >
+                      <span>
+                        {formatTaxLabel(line.taxName, line.taxRate)}
+                        {business.pricesIncludeTax ? ' incluido' : ''}:
+                      </span>
+                      <span>${line.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+              {business.taxEnabled &&
+                totals.taxBreakdown.every((line) => line.taxRate <= 0) &&
+                tax > 0 && (
+                  <div className="flex justify-between">
+                    <span>
+                      {business.taxName} ({business.taxRate}%):
+                    </span>
+                    <span>${tax.toFixed(2)}</span>
+                  </div>
+                )}
+              {business.taxEnabled && totals.exemptBase > 0 && (
+                <div className="flex justify-between text-slate-500">
+                  <span>Base exenta:</span>
+                  <span>${totals.exemptBase.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-200">

@@ -64,48 +64,11 @@ export function formatBusinessAddress(
   return parts.join(', ')
 }
 
-/** Etiqueta del impuesto para tickets y resúmenes (p. ej. "IVA (16%)"). */
-export function getTaxLabel(
-  config: Pick<BusinessConfig, 'taxEnabled' | 'taxName' | 'taxRate'>
-): string {
-  if (!config.taxEnabled || config.taxRate <= 0) return config.taxName || 'Impuesto'
-  const rate = Number.isInteger(config.taxRate) ? config.taxRate : config.taxRate.toFixed(2)
-  return `${config.taxName || 'IVA'} (${rate}%)`
-}
-
 /**
- * Monto de impuesto trasladado de una base gravable.
- * Si los precios ya incluyen impuesto, se desagrega del precio en lugar de sumarse.
+ * Nota: los cálculos fiscales (impuesto por base, desglose multi-tasa y total)
+ * viven en `@shared/lib/tax`, que es la única fuente de verdad compartida entre
+ * el proceso principal y el renderer. No dupliques esa matemática aquí.
  */
-export function computeTaxAmount(
-  taxableAmount: number,
-  config: Pick<BusinessConfig, 'taxEnabled' | 'taxRate' | 'pricesIncludeTax'>
-): number {
-  if (!config.taxEnabled || config.taxRate <= 0 || taxableAmount === 0) return 0
-  const rate = config.taxRate / 100
-  if (config.pricesIncludeTax) return taxableAmount - taxableAmount / (1 + rate)
-  return taxableAmount * rate
-}
-
-/** Total a cobrar considerando si el impuesto se suma o ya está incluido en el precio. */
-export function computeGrandTotal(
-  netAmount: number,
-  taxableAmount: number,
-  config: Pick<BusinessConfig, 'taxEnabled' | 'taxRate' | 'pricesIncludeTax'>
-): number {
-  if (config.taxEnabled && !config.pricesIncludeTax) {
-    return netAmount + computeTaxAmount(taxableAmount, config)
-  }
-  return netAmount
-}
-
-/** Etiqueta corta para precios de producto: "IVA 16%" o "Sin impuesto". */
-export function getProductTaxLabel(
-  config: Pick<BusinessConfig, 'taxEnabled' | 'taxName' | 'taxRate'>
-): string {
-  if (!config.taxEnabled || config.taxRate <= 0) return 'Sin impuesto'
-  return `${config.taxName || 'IVA'} ${config.taxRate}%`
-}
 
 /** Valida el formato básico de un RIF venezolano: Prefijo + 8 dígitos + dígito verificador (ej. J-00000000-0). */
 export function isValidRif(rif: string): boolean {

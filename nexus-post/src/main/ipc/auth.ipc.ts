@@ -12,12 +12,9 @@ import type { AuthService } from '../domain/auth/auth.service'
 
 /** Registra los canales IPC del dominio de Autenticación. */
 export function registerAuthIpc(auth: AuthService): void {
-  ipcMain.handle(
-    IPC_CHANNELS.auth.login,
-    (_event, input: LoginInput): Promise<AuthResponse> => {
-      return auth.login(input)
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.auth.login, (_event, input: LoginInput): Promise<AuthResponse> => {
+    return auth.login(input)
+  })
 
   ipcMain.handle(
     IPC_CHANNELS.auth.loginPin,
@@ -26,19 +23,13 @@ export function registerAuthIpc(auth: AuthService): void {
     }
   )
 
-  ipcMain.handle(
-    IPC_CHANNELS.auth.logout,
-    async (): Promise<void> => {
-      await auth.logout()
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.auth.logout, async (): Promise<void> => {
+    await auth.logout()
+  })
 
-  ipcMain.handle(
-    IPC_CHANNELS.auth.getCurrentUser,
-    (): Promise<User | null> => {
-      return auth.getCurrentUser()
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.auth.getCurrentUser, (): Promise<User | null> => {
+    return auth.getCurrentUser()
+  })
 
   ipcMain.handle(
     IPC_CHANNELS.auth.sendOtp,

@@ -164,7 +164,11 @@ export class AuthService {
           this.currentUser = remoteRes.user
           return remoteRes
         }
-        if (remoteRes.error && !remoteRes.error.includes('No se pudo conectar') && !remoteRes.error.includes('Tiempo de espera')) {
+        if (
+          remoteRes.error &&
+          !remoteRes.error.includes('No se pudo conectar') &&
+          !remoteRes.error.includes('Tiempo de espera')
+        ) {
           return remoteRes
         }
       } catch {
@@ -243,7 +247,10 @@ export class AuthService {
 
     const stored = this.otps.get(cleanEmail)
     if (!stored) {
-      return { success: false, error: 'No hay un código pendiente de verificación para este correo.' }
+      return {
+        success: false,
+        error: 'No hay un código pendiente de verificación para este correo.'
+      }
     }
 
     if (Date.now() > stored.expiresAt) {

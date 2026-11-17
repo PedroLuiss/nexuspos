@@ -2,6 +2,9 @@ import React, { useRef } from 'react'
 import { Barcode, X, Upload } from '../../../shared/icons/Icons'
 import ProductAvatar from '../../../shared/ui/ProductAvatar'
 import type { ProductFormValues } from '../hooks/useProductForm'
+import ProductBrandField from './ProductBrandField'
+import ProductSupplierField from './ProductSupplierField'
+import ProductTypeField from './ProductTypeField'
 
 interface ProductBasicFieldsProps {
   values: ProductFormValues
@@ -49,11 +52,7 @@ export const ProductBasicFields: React.FC<ProductBasicFieldsProps> = ({
         </label>
         <div className="flex items-center gap-3 p-2 bg-[#F9F9F9] border border-slate-200 rounded-[6px]">
           <div className="relative flex-shrink-0">
-            <ProductAvatar
-              name={values.name || 'Producto'}
-              imageUrl={values.imageUrl}
-              size="lg"
-            />
+            <ProductAvatar name={values.name || 'Producto'} imageUrl={values.imageUrl} size="lg" />
             {values.imageUrl && (
               <button
                 type="button"
@@ -103,7 +102,10 @@ export const ProductBasicFields: React.FC<ProductBasicFieldsProps> = ({
         </label>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Barcode size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Barcode
+              size={16}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               type="text"
               required
@@ -179,6 +181,22 @@ export const ProductBasicFields: React.FC<ProductBasicFieldsProps> = ({
           value={values.description}
           onChange={(e) => update('description', e.target.value)}
           className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] resize-none"
+        />
+      </div>
+
+      {/* Marca, Proveedor y Tipo de producto */}
+      <div className="grid grid-cols-3 gap-3">
+        <ProductBrandField
+          brandId={values.brandId}
+          onChange={(brandId) => update('brandId', brandId)}
+        />
+        <ProductSupplierField
+          supplierId={values.supplierId}
+          onChange={(supplierId) => update('supplierId', supplierId)}
+        />
+        <ProductTypeField
+          typeId={values.typeId}
+          onChange={(typeId) => update('typeId', typeId)}
         />
       </div>
     </div>

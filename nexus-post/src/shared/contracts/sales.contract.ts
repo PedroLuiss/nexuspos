@@ -32,6 +32,17 @@ export interface SuspendedSale {
   total: number
 }
 
+/** Desglose de impuesto por tasa dentro de una venta (16%, 8%, exento…). */
+export interface SaleTaxLine {
+  taxId?: string
+  taxName: string
+  /** Tasa en porcentaje (16 = 16%). */
+  taxRate: number
+  /** Base gravable sobre la que se calculó el impuesto. */
+  taxableBase: number
+  amount: number
+}
+
 export interface CreateSaleItemInput {
   productId: string
   quantity: number
@@ -49,6 +60,8 @@ export interface CreateSaleInput {
   payment: SalePayment
   exchangeRate?: number
   exchangeRateUpdatedAt?: string
+  /** Desglose informativo; el backend siempre lo recalcula. */
+  taxBreakdown?: SaleTaxLine[]
 }
 
 export interface SaleResult {
@@ -61,6 +74,8 @@ export interface SaleResult {
   tax: number
   total: number
   customerId?: string
+  /** Desglose por tasa guardado en `sale_taxes`. */
+  taxBreakdown?: SaleTaxLine[]
 }
 
 export interface SalesApi {

@@ -1,9 +1,9 @@
 import type { BusinessConfig } from '@shared/contracts'
-import { Building2, Database, Percent, Scale, Users } from '../../../shared/icons/Icons'
+import { Building2, Database, Percent, Scale, Truck, Users, Package } from '../../../shared/icons/Icons'
 import { getCurrencySymbol } from '../../../shared/lib/businessConfig'
 import SettingsCard from './SettingsCard'
 
-export type SettingsModalAction = 'users' | 'business' | 'tax' | 'database' | 'scale'
+export type SettingsModalAction = 'users' | 'business' | 'tax' | 'catalogs' | 'database' | 'scale'
 
 export interface ScaleConfigView {
   comPort: string
@@ -106,18 +106,18 @@ export function SettingsCards({
 
       <SettingsCard
         icon={<Percent size={22} />}
-        title="Impuestos y Facturación (IVA)"
-        subtitle="Tasa trasladada en ventas y ticket"
+        title="Impuestos y Facturación"
+        subtitle="Catálogo de alícuotas por producto"
         accent="amber"
         badge={
           business.taxEnabled
             ? {
-                label: `${business.taxName} ${business.taxRate}%`,
+                label: `${business.taxName} ${business.taxRate}% · predeterminada`,
                 className: 'bg-amber-50 text-amber-700 border-amber-200'
               }
             : { label: 'Desactivado', className: 'bg-slate-100 text-slate-500 border-slate-200' }
         }
-        description="Defina el nombre local del impuesto (IVA, IGV, ITBMS), su tasa y si los precios de venta ya lo incluyen. El POS y el ticket usan esta configuración."
+        description="Administre el catálogo de alícuotas (Exento, IVA General, reducido y personalizadas). Cada producto traslada su propia tasa y el ticket muestra el desglose."
         facts={[
           {
             label: 'Estado del impuesto:',
@@ -125,7 +125,7 @@ export function SettingsCards({
             valueClassName: business.taxEnabled ? 'text-[#107C41]' : 'text-slate-500'
           },
           {
-            label: 'Tasa aplicada:',
+            label: 'Tasa predeterminada:',
             value: business.taxEnabled ? `${business.taxName} ${business.taxRate}%` : '—',
             valueClassName: 'font-mono'
           },
@@ -136,9 +136,29 @@ export function SettingsCards({
           }
         ]}
         footerNote={isAdmin ? 'Configuración tributaria' : 'Solo lectura'}
-        actionLabel="Configurar IVA"
+        actionLabel="Configurar Impuestos"
         actionHotkey="ALT+T"
         onAction={() => onOpenModal('tax')}
+        disabled={!isAdmin}
+        disabledHint={restrictedHint}
+      />
+
+      <SettingsCard
+        icon={<Package size={22} />}
+        title="Catálogos de Producto"
+        subtitle="Marcas, proveedores y tipos"
+        accent="blue"
+        badge={{
+          label: isAdmin ? 'Editable' : 'Solo lectura',
+          className: isAdmin
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            : 'bg-slate-100 text-slate-500 border-slate-200'
+        }}
+        description="Gestione marcas, proveedores y tipos de producto (simple, combo, servicio, insumo) para clasificar el catálogo."
+        facts={[]}
+        footerNote={isAdmin ? 'Configuración de catálogos' : 'Solo lectura'}
+        actionLabel="Gestionar Catálogos"
+        onAction={() => onOpenModal('catalogs')}
         disabled={!isAdmin}
         disabledHint={restrictedHint}
       />

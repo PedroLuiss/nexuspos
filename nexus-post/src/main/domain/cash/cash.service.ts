@@ -90,7 +90,9 @@ export class CashService {
       throw new Error('No se pudo cargar la caja activa para registrar el movimiento.')
     }
     if (input.type === 'EGRESO' && amount > register.shift.expectedCash) {
-      throw new ValidationError('El gasto no puede superar el efectivo esperado disponible en caja.')
+      throw new ValidationError(
+        'El gasto no puede superar el efectivo esperado disponible en caja.'
+      )
     }
     this.tx.run(() =>
       this.cash.insertMovement({
@@ -121,11 +123,12 @@ export class CashService {
     if (ticket.returnedAt) throw new ValidationError('La factura ya fue devuelta.')
 
     const returnPayment = this.getReturnPayment(ticket.payment, ticket.total)
-    const cashAmount = ticket.payment.method === 'cash'
-      ? ticket.total
-      : ticket.payment.method === 'mixed'
-        ? ticket.payment.cashAmount ?? 0
-        : 0
+    const cashAmount =
+      ticket.payment.method === 'cash'
+        ? ticket.total
+        : ticket.payment.method === 'mixed'
+          ? (ticket.payment.cashAmount ?? 0)
+          : 0
     const returnedAt = new Date().toISOString()
 
     this.tx.run(() => {
@@ -145,7 +148,9 @@ export class CashService {
       for (const item of currentTicket.items) {
         const product = this.products.findById(item.productId)
         if (!product) {
-          throw new ValidationError(`No se puede reponer "${item.productName}": producto inexistente.`)
+          throw new ValidationError(
+            `No se puede reponer "${item.productName}": producto inexistente.`
+          )
         }
         const newStock = product.stock + item.quantity
         this.products.setStock(product.id, newStock)

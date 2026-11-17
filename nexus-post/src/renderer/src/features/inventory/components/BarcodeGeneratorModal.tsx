@@ -40,7 +40,8 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
                 Generador de Etiquetas y Códigos de Barras
               </h2>
               <p className="text-[11px] text-[#717783]">
-                Configuración de dimensiones térmicas para impresoras de etiquetas (Zebra / Xprinter)
+                Configuración de dimensiones térmicas para impresoras de etiquetas (Zebra /
+                Xprinter)
               </p>
             </div>
           </div>
@@ -137,7 +138,9 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Nº Copias a Imprimir</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Nº Copias a Imprimir
+                </label>
                 <input
                   type="number"
                   min="1"

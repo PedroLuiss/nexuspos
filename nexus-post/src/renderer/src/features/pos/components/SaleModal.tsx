@@ -3,7 +3,7 @@ import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/typ
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
-import { getTaxLabel } from '../../../shared/lib/businessConfig'
+import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import {
   Banknote,
   CreditCard,
@@ -45,7 +45,23 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   onConfirmSale
 }) => {
   const { config: businessConfig } = useBusinessConfig()
-  const taxLabel = getTaxLabel(businessConfig)
+  const taxBreakdown = computeSaleTotals(
+    items.map((item) => {
+      const tax = resolveProductTax(item.product, businessConfig)
+      return {
+        unitPrice: item.product.salePrice,
+        quantity: item.quantity,
+        discountPercent: item.discountPercent,
+        taxId: tax.taxId,
+        taxName: tax.taxName,
+        taxRate: tax.taxRate
+      }
+    }),
+    {
+      taxEnabled: businessConfig.taxEnabled,
+      pricesIncludeTax: businessConfig.pricesIncludeTax
+    }
+  ).taxBreakdown
   const [method, setMethod] = useState<PaymentMethodType>(initialMethod)
   const [cashTendered, setCashTendered] = useState<number>(total)
   const [cardAuth, setCardAuth] = useState<string>('')
@@ -139,9 +155,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               <h2 className="text-xs font-bold text-[#1B1B1B] uppercase tracking-wide">
                 Terminal POS - Modal de Cobro
               </h2>
-              <p className="text-[11px] text-[#5C5C5C]">
-                Calculadora de cambio y formas de pago
-              </p>
+              <p className="text-[11px] text-[#5C5C5C]">Calculadora de cambio y formas de pago</p>
             </div>
           </div>
           <button
@@ -169,12 +183,22 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           </div>
           <div className="text-right text-xs text-[#5C5C5C] space-y-0.5 font-medium">
             <div>{items.length} artículos en la orden</div>
-            <div className="font-mono text-[11px]">
-              Subtotal: ${subtotal.toFixed(2)}
-              {businessConfig.taxEnabled
-                ? ` | ${taxLabel}${businessConfig.pricesIncludeTax ? ' incluido' : ''}: $${tax.toFixed(2)}`
-                : ' | Sin impuesto'}
-            </div>
+            <div className="font-mono text-[11px]">Subtotal: ${subtotal.toFixed(2)}</div>
+            {businessConfig.taxEnabled ? (
+              taxBreakdown
+                .filter((line) => line.taxRate > 0)
+                .map((line) => (
+                  <div
+                    key={`${line.taxId ?? line.taxName}-${line.taxRate}`}
+                    className="font-mono text-[11px]"
+                  >
+                    {formatTaxLabel(line.taxName, line.taxRate)}
+                    {businessConfig.pricesIncludeTax ? ' incluido' : ''}: ${line.amount.toFixed(2)}
+                  </div>
+                ))
+            ) : (
+              <div className="font-mono text-[11px]">Sin impuesto</div>
+            )}
             {discount > 0 && (
               <div className="text-[#107C41] font-semibold text-[11px]">
                 Descuento: -${discount.toFixed(2)}
@@ -289,7 +313,9 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 {/* Change calculation */}
                 <div className="pt-2 border-t border-[#E5E5E5] flex items-center justify-between">
                   <div>
-                    <span className="block text-xs font-semibold text-[#5C5C5C]">Cambio a entregar al cliente:</span>
+                    <span className="block text-xs font-semibold text-[#5C5C5C]">
+                      Cambio a entregar al cliente:
+                    </span>
                     {!isCashSufficient && (
                       <span className="text-[11px] text-[#C42B1C] font-semibold flex items-center gap-1 mt-0.5">
                         <AlertCircle size={12} />
@@ -312,7 +338,9 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               <div className="space-y-3 bg-[#F9F9F9] p-3.5 rounded-[4px] border border-[#E5E5E5] text-xs">
                 <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-[4px] text-emerald-800">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span className="font-medium">Registre el cobro aprobado en su terminal bancaria.</span>
+                  <span className="font-medium">
+                    Registre el cobro aprobado en su terminal bancaria.
+                  </span>
                 </div>
 
                 <div>
@@ -362,8 +390,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
 
             {method === 'credit' && (
               <div className="rounded-[4px] border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
-                La venta se asociará al cliente seleccionado y se registrará en su cuenta por cobrar.
-                El sistema validará el límite de crédito antes de confirmar.
+                La venta se asociará al cliente seleccionado y se registrará en su cuenta por
+                cobrar. El sistema validará el límite de crédito antes de confirmar.
               </div>
             )}
 
@@ -382,9 +410,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 </span>
               </label>
 
-              <span className="kbd-badge">
-                ENTER
-              </span>
+              <span className="kbd-badge">ENTER</span>
             </div>
           </div>
 

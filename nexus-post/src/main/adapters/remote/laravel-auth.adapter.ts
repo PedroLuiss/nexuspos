@@ -53,7 +53,10 @@ export class LaravelAuthAdapter implements RemoteAuthPort {
       body?: unknown
       authenticated?: boolean
     } = {}
-  ): Promise<{ ok: true; data: T } | { ok: false; error: string; statusCode?: number; isNetworkError?: boolean }> {
+  ): Promise<
+    | { ok: true; data: T }
+    | { ok: false; error: string; statusCode?: number; isNetworkError?: boolean }
+  > {
     const url = `${this.baseUrl}${endpoint}`
     const headers: Record<string, string> = {
       Accept: 'application/json',
@@ -87,15 +90,17 @@ export class LaravelAuthAdapter implements RemoteAuthPort {
 
       // Manejo de errores de validación de Laravel (422) o de autenticación (401, 403)
       const errorJson = (await response.json().catch(() => null)) as
-        | LaravelValidationErrorResponse
-        | { message?: string; error?: string }
-        | null
+        LaravelValidationErrorResponse | { message?: string; error?: string } | null
 
       let errorMsg = 'Error en el servidor de autenticación.'
       if (errorJson?.message) {
         errorMsg = errorJson.message
       }
-      if ('errors' in (errorJson ?? {}) && errorJson && (errorJson as LaravelValidationErrorResponse).errors) {
+      if (
+        'errors' in (errorJson ?? {}) &&
+        errorJson &&
+        (errorJson as LaravelValidationErrorResponse).errors
+      ) {
         const firstField = Object.keys((errorJson as LaravelValidationErrorResponse).errors!)[0]
         const firstError = (errorJson as LaravelValidationErrorResponse).errors![firstField]?.[0]
         if (firstError) {
@@ -112,7 +117,8 @@ export class LaravelAuthAdapter implements RemoteAuthPort {
     } catch (err: any) {
       clearTimeout(timer)
       const isAbort = err?.name === 'AbortError'
-      const isConnectionRefused = err?.code === 'ECONNREFUSED' || err?.message?.includes('fetch failed')
+      const isConnectionRefused =
+        err?.code === 'ECONNREFUSED' || err?.message?.includes('fetch failed')
 
       return {
         ok: false,

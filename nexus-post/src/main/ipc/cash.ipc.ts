@@ -20,7 +20,5 @@ export function registerCashIpc(cash: CashService): void {
   ipcMain.handle(IPC_CHANNELS.cash.addMovement, (_event, input: CreateCashMovementInput) =>
     cash.addMovement(input)
   )
-  ipcMain.handle(IPC_CHANNELS.cash.returnSale, (_event, saleId: string) =>
-    cash.returnSale(saleId)
-  )
+  ipcMain.handle(IPC_CHANNELS.cash.returnSale, (_event, saleId: string) => cash.returnSale(saleId))
 }

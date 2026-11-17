@@ -215,7 +215,9 @@ export class SqliteCustomerRepository implements CustomerRepository {
       throw new Error(`Cliente con id "${id}" no encontrado.`)
     }
     this.db
-      .prepare('UPDATE customers SET active = CASE active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?')
+      .prepare(
+        'UPDATE customers SET active = CASE active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?'
+      )
       .run(new Date().toISOString(), id)
     return this.getById(id) as Customer
   }
@@ -300,7 +302,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
   listDebts(customerId: string): CustomerDebt[] {
     const rows = this.db
       .prepare<[string], CustomerDebtRow>(
-        'SELECT * FROM customer_debts WHERE customer_id = ? AND status IN (\'PENDING\', \'PARTIAL\') ORDER BY date ASC'
+        "SELECT * FROM customer_debts WHERE customer_id = ? AND status IN ('PENDING', 'PARTIAL') ORDER BY date ASC"
       )
       .all(customerId)
     return rows.map(mapDebtRow)
@@ -429,24 +431,36 @@ export class SqliteCustomerRepository implements CustomerRepository {
   }
 
   refundCreditSale(customerId: string, ticketNumber: string, totalAmount: number): void {
-    const debt = this.db.prepare(`
+    const debt = this.db
+      .prepare(
+        `
       SELECT id, balance FROM customer_debts WHERE customer_id = ? AND ticket_number = ?
-    `).get(customerId, ticketNumber) as { id: string; balance: number } | undefined
+    `
+      )
+      .get(customerId, ticketNumber) as { id: string; balance: number } | undefined
     if (!debt) throw new Error('No se encontró la deuda asociada a la factura a crédito.')
     const customer = this.getById(customerId)
     if (!customer) throw new Error('El cliente asociado a la factura no existe.')
 
     const credited = Math.max(0, totalAmount - debt.balance)
     const now = new Date().toISOString()
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE customer_debts SET balance = 0, status = 'CANCELLED'
       WHERE id = ? AND status != 'CANCELLED'
-    `).run(debt.id)
-    this.db.prepare(`
+    `
+      )
+      .run(debt.id)
+    this.db
+      .prepare(
+        `
       UPDATE customers
       SET current_debt = ?, credit_balance = credit_balance + ?, updated_at = ?
       WHERE id = ?
-    `).run(Math.max(0, customer.currentDebt - debt.balance), credited, now, customerId)
+    `
+      )
+      .run(Math.max(0, customer.currentDebt - debt.balance), credited, now, customerId)
   }
 
   /** Aplica un monto de pago a las deudas pendientes (más antiguas primero). */

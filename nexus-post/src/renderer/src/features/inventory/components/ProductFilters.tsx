@@ -1,6 +1,6 @@
 import React from 'react'
 import { Search, Filter } from '../../../shared/icons/Icons'
-import type { StockFilter } from '../hooks/useProductFilters'
+import type { StockFilter, TaxFilterOption } from '../hooks/useProductFilters'
 
 interface ProductFiltersProps {
   searchTerm: string
@@ -10,6 +10,18 @@ interface ProductFiltersProps {
   onCategoryChange: (value: string) => void
   stockFilter: StockFilter
   onStockFilterChange: (value: StockFilter) => void
+  taxOptions: TaxFilterOption[]
+  selectedTax: string
+  onTaxChange: (value: string) => void
+  brandOptions: TaxFilterOption[]
+  selectedBrand: string
+  onBrandChange: (value: string) => void
+  supplierOptions: TaxFilterOption[]
+  selectedSupplier: string
+  onSupplierChange: (value: string) => void
+  typeOptions: TaxFilterOption[]
+  selectedType: string
+  onTypeChange: (value: string) => void
   counts: { all: number; low: number; out: number }
 }
 
@@ -21,6 +33,18 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   onCategoryChange,
   stockFilter,
   onStockFilterChange,
+  taxOptions,
+  selectedTax,
+  onTaxChange,
+  brandOptions,
+  selectedBrand,
+  onBrandChange,
+  supplierOptions,
+  selectedSupplier,
+  onSupplierChange,
+  typeOptions,
+  selectedType,
+  onTypeChange,
   counts
 }) => {
   return (
@@ -54,6 +78,70 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               ))}
           </select>
         </div>
+
+        {taxOptions.length > 0 && (
+          <select
+            value={selectedTax}
+            onChange={(e) => onTaxChange(e.target.value)}
+            title="Filtrar por impuesto"
+            className="px-2.5 py-1.5 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] text-[#1B1B1B] font-medium"
+          >
+            <option value="ALL">Todos los impuestos</option>
+            {taxOptions.map((tax) => (
+              <option key={tax.value} value={tax.value}>
+                {tax.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {brandOptions.length > 0 && (
+          <select
+            value={selectedBrand}
+            onChange={(e) => onBrandChange(e.target.value)}
+            title="Filtrar por marca"
+            className="px-2.5 py-1.5 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] text-[#1B1B1B] font-medium"
+          >
+            <option value="ALL">Todas las marcas</option>
+            {brandOptions.map((brand) => (
+              <option key={brand.value} value={brand.value}>
+                {brand.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {supplierOptions.length > 0 && (
+          <select
+            value={selectedSupplier}
+            onChange={(e) => onSupplierChange(e.target.value)}
+            title="Filtrar por proveedor"
+            className="px-2.5 py-1.5 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] text-[#1B1B1B] font-medium"
+          >
+            <option value="ALL">Todos los proveedores</option>
+            {supplierOptions.map((supplier) => (
+              <option key={supplier.value} value={supplier.value}>
+                {supplier.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {typeOptions.length > 0 && (
+          <select
+            value={selectedType}
+            onChange={(e) => onTypeChange(e.target.value)}
+            title="Filtrar por tipo de producto"
+            className="px-2.5 py-1.5 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] text-[#1B1B1B] font-medium"
+          >
+            <option value="ALL">Todos los tipos</option>
+            {typeOptions.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         <div className="flex items-center gap-1 bg-[#F3F3F3] p-0.5 rounded-[4px] border border-[#E5E5E5] text-xs">
           <button

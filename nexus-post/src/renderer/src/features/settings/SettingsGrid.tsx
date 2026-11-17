@@ -7,6 +7,7 @@ import { useUsers } from './hooks/useUsers'
 import UserManagerModal from './components/UserManagerModal'
 import BusinessInfoModal from './components/BusinessInfoModal'
 import TaxSettingsModal from './components/TaxSettingsModal'
+import ProductCatalogsSettingsModal from './components/ProductCatalogsSettingsModal'
 import DatabaseBackupModal from './components/DatabaseBackupModal'
 import ScaleSettingsModal from './components/ScaleSettingsModal'
 import {
@@ -66,6 +67,13 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       )
       return
     }
+    if (modal === 'catalogs' && !isAdmin) {
+      showFeedback(
+        'Acceso denegado: solo el Administrador puede gestionar los catálogos de producto.',
+        'error'
+      )
+      return
+    }
     if (modal === 'database' && !isAdmin) {
       showFeedback(
         'Acceso denegado: solo el Administrador puede administrar la base de datos.',
@@ -102,7 +110,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     loadScaleConfig()
   }, [])
 
-  // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA
+  // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA, [ALT+O] catálogos
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (!e.altKey) return
@@ -116,6 +124,9 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       } else if (key === 't') {
         e.preventDefault()
         openModal('tax')
+      } else if (key === 'o') {
+        e.preventDefault()
+        openModal('catalogs')
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -201,9 +212,19 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           onSave={async (input) => {
             await saveConfig(input)
             showFeedback(
-              `Impuesto ${input.taxName} ${input.taxRate}% guardado y aplicado en el POS`
+              input.taxEnabled
+                ? 'Catálogo de impuestos y reglas fiscales guardados y aplicados en el POS'
+                : 'Impuestos desactivados: el POS ya no calcula alícuotas'
             )
           }}
+        />
+      )}
+
+      {activeModal === 'catalogs' && (
+        <ProductCatalogsSettingsModal
+          isOpen
+          onClose={() => setActiveModal(null)}
+          canEdit={isAdmin}
         />
       )}
 

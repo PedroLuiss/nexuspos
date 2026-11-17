@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  ArrowRightLeft,
-  Minus,
-  Plus,
-  QrCode,
-  Wifi,
-  Check
-} from '../../../shared/icons/Icons'
+import { ArrowRightLeft, Minus, Plus, QrCode, Wifi, Check } from '../../../shared/icons/Icons'
 
 interface StockBranchTransferFormProps {
   activeBranchName: string

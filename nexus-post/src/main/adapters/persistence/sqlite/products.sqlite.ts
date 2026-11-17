@@ -13,6 +13,15 @@ interface ProductRow {
   min_stock: number
   max_stock: number | null
   unit: string
+  brand_id: string | null
+  brand_name: string | null
+  supplier_id: string | null
+  supplier_name: string | null
+  type_id: string | null
+  type_name: string | null
+  tax_id: string | null
+  tax_name: string | null
+  tax_rate: number | null
   has_tax: number
   active: number
   deleted: number
@@ -22,7 +31,25 @@ interface ProductRow {
   updated_at: string
 }
 
+/** Producto + sus relaciones resueltas desde catálogos (migración 015 y 016). */
+const SELECT_PRODUCTS = `
+  SELECT p.*,
+    b.name AS brand_name,
+    s.name AS supplier_name,
+    t.name AS type_name,
+    tx.name AS tax_name,
+    tx.rate AS tax_rate
+  FROM products p
+  LEFT JOIN brands b ON b.id = p.brand_id
+  LEFT JOIN suppliers s ON s.id = p.supplier_id
+  LEFT JOIN product_types t ON t.id = p.type_id
+  LEFT JOIN taxes tx ON tx.id = p.tax_id
+`
+
 function mapRow(row: ProductRow): Product {
+  const hasTax =
+    row.tax_rate === null || row.tax_rate === undefined ? Boolean(row.has_tax) : row.tax_rate > 0
+
   return {
     id: row.id,
     code: row.code,
@@ -34,7 +61,16 @@ function mapRow(row: ProductRow): Product {
     minStock: row.min_stock,
     maxStock: row.max_stock ?? undefined,
     unit: row.unit,
-    hasTax: Boolean(row.has_tax),
+    brandId: row.brand_id ?? undefined,
+    brandName: row.brand_name ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    supplierName: row.supplier_name ?? undefined,
+    typeId: row.type_id ?? undefined,
+    typeName: row.type_name ?? undefined,
+    taxId: row.tax_id ?? undefined,
+    taxName: row.tax_name ?? undefined,
+    taxRate: row.tax_rate ?? undefined,
+    hasTax,
     active: Boolean(row.active),
     deleted: Boolean(row.deleted),
     description: row.description,
@@ -46,42 +82,52 @@ function mapRow(row: ProductRow): Product {
 
 /** Adaptador SQLite del puerto `ProductRepository`. */
 export class SqliteProductRepository implements ProductRepository {
-  constructor(private readonly db: Database.Database) { }
+  constructor(private readonly db: Database.Database) {}
 
   findAll(filter?: ProductFilter): Product[] {
     const clauses: string[] = []
     const params: Record<string, unknown> = {}
 
-    if (!filter?.includeDeleted) clauses.push('deleted = 0')
-    if (filter?.onlyActive) clauses.push('active = 1')
+    if (!filter?.includeDeleted) clauses.push('p.deleted = 0')
+    if (filter?.onlyActive) clauses.push('p.active = 1')
     if (filter?.category) {
-      clauses.push('category = @category')
+      clauses.push('p.category = @category')
       params.category = filter.category
     }
+    if (filter?.brandId) {
+      clauses.push('p.brand_id = @brandId')
+      params.brandId = filter.brandId
+    }
+    if (filter?.supplierId) {
+      clauses.push('p.supplier_id = @supplierId')
+      params.supplierId = filter.supplierId
+    }
+    if (filter?.typeId) {
+      clauses.push('p.type_id = @typeId')
+      params.typeId = filter.typeId
+    }
     if (filter?.search) {
-      clauses.push('(code LIKE @search OR name LIKE @search OR category LIKE @search)')
+      clauses.push('(p.code LIKE @search OR p.name LIKE @search OR p.category LIKE @search)')
       params.search = `%${filter.search}%`
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
     const rows = this.db
-      .prepare(`SELECT * FROM products ${where} ORDER BY name COLLATE NOCASE ASC`)
+      .prepare(`${SELECT_PRODUCTS} ${where} ORDER BY p.name COLLATE NOCASE ASC`)
       .all(params) as ProductRow[]
 
     return rows.map(mapRow)
   }
 
   findById(id: string): Product | null {
-    const row = this.db.prepare('SELECT * FROM products WHERE id = ?').get(id) as
-      | ProductRow
-      | undefined
+    const row = this.db.prepare(`${SELECT_PRODUCTS} WHERE p.id = ?`).get(id) as
+      ProductRow | undefined
     return row ? mapRow(row) : null
   }
 
   findByCode(code: string): Product | null {
-    const row = this.db.prepare('SELECT * FROM products WHERE code = ?').get(code) as
-      | ProductRow
-      | undefined
+    const row = this.db.prepare(`${SELECT_PRODUCTS} WHERE p.code = ?`).get(code) as
+      ProductRow | undefined
     return row ? mapRow(row) : null
   }
 
@@ -90,10 +136,10 @@ export class SqliteProductRepository implements ProductRepository {
       .prepare(
         `INSERT INTO products (
           id, code, name, category, cost_price, sale_price, stock, min_stock, max_stock,
-          unit, has_tax, active, deleted, description, image_url, created_at, updated_at
+          unit, brand_id, supplier_id, type_id, tax_id, has_tax, active, deleted, description, image_url, created_at, updated_at
         ) VALUES (
           @id, @code, @name, @category, @costPrice, @salePrice, @stock, @minStock, @maxStock,
-          @unit, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
+          @unit, @brandId, @supplierId, @typeId, @taxId, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
         )`
       )
       .run({
@@ -107,6 +153,10 @@ export class SqliteProductRepository implements ProductRepository {
         minStock: input.minStock,
         maxStock: input.maxStock ?? null,
         unit: input.unit,
+        brandId: input.brandId ?? null,
+        supplierId: input.supplierId ?? null,
+        typeId: input.typeId ?? null,
+        taxId: input.taxId ?? null,
         hasTax: input.hasTax ? 1 : 0,
         active: input.active ? 1 : 0,
         deleted: input.deleted ? 1 : 0,
@@ -132,6 +182,10 @@ export class SqliteProductRepository implements ProductRepository {
           min_stock = @minStock,
           max_stock = @maxStock,
           unit = @unit,
+          brand_id = @brandId,
+          supplier_id = @supplierId,
+          type_id = @typeId,
+          tax_id = @taxId,
           has_tax = @hasTax,
           active = @active,
           deleted = @deleted,
@@ -151,6 +205,10 @@ export class SqliteProductRepository implements ProductRepository {
         minStock: product.minStock,
         maxStock: product.maxStock ?? null,
         unit: product.unit,
+        brandId: product.brandId ?? null,
+        supplierId: product.supplierId ?? null,
+        typeId: product.typeId ?? null,
+        taxId: product.taxId ?? null,
         hasTax: product.hasTax ? 1 : 0,
         active: product.active ? 1 : 0,
         deleted: product.deleted ? 1 : 0,
@@ -170,7 +228,9 @@ export class SqliteProductRepository implements ProductRepository {
 
   toggleStatus(id: string): Product {
     this.db
-      .prepare('UPDATE products SET active = CASE active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?')
+      .prepare(
+        'UPDATE products SET active = CASE active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?'
+      )
       .run(new Date().toISOString(), id)
     return this.findById(id) as Product
   }

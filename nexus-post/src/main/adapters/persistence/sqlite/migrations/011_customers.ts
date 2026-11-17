@@ -65,7 +65,9 @@ export const migration011Customers: Migration = {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active)`)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_customer_debts_customer ON customer_debts(customer_id)`)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_customer_debts_status ON customer_debts(status)`)
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_customer_payments_customer ON customer_payments(customer_id)`)
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_customer_payments_customer ON customer_payments(customer_id)`
+    )
 
     // Semilla de clientes demostrativos
     const now = new Date().toISOString()
@@ -135,16 +137,7 @@ export const migration011Customers: Migration = {
       )
     `)
 
-    debtInsert.run(
-      'debt-001',
-      'cust-003',
-      'TKT-000123',
-      now,
-      3000,
-      2500,
-      'PENDING',
-      now
-    )
+    debtInsert.run('debt-001', 'cust-003', 'TKT-000123', now, 3000, 2500, 'PENDING', now)
 
     // Semilla de pago para el cliente 3
     const paymentInsert = db.prepare(`
@@ -155,14 +148,6 @@ export const migration011Customers: Migration = {
       )
     `)
 
-    paymentInsert.run(
-      'pay-001',
-      'cust-003',
-      now,
-      500,
-      'Abono parcial',
-      'Administrador',
-      now
-    )
+    paymentInsert.run('pay-001', 'cust-003', now, 500, 'Abono parcial', 'Administrador', now)
   }
 }

@@ -46,6 +46,20 @@ Cualquier cambio propuesto por una IA o desarrollador DEBE cumplir estrictamente
    - ✅ Toda llamada a backend se realiza exclusivamente mediante `window.api.<dominio>.<metodo>()` expuesto por `contextBridge` en `src/preload/index.ts`.
 4. **Integridad de Datos**:
    - ✅ **Soft Delete Obligatorio**: Los productos y registros clave NUNCA se eliminan con `DELETE FROM`. Se actualizan a `deleted = 1` y `active = 0` para preservar la integridad de ventas previas y trazabilidad contable en Kardex.
+5. **Assets Nativos**:
+   - ✅ Los recursos de marca (logo, iconos de app) viven en `nexus-post/resources/` y se importan con el alias `@resources/*` (configurado en `electron.vite.config.ts` y `tsconfig.web.json`).
+   - ✅ El shell (`app/DashboardLayout.tsx`) usa `resources/logobanner.png` como identidad visual del header; no debe duplicarse el nombre ni la versión en texto.
+6. **Feedback UI Global**:
+   - ✅ Las alertas efímeras usan `shared/hooks/useToast` + `shared/ui/ToastAlert` (animación Fluent + barra de progreso). `shared/ui` permanece presentacional: sin IPC ni lógica de negocio.
+7. **Shell y Controles de Ventana**:
+   - ✅ El header del dashboard (`app/DashboardLayout.tsx`) concentra identidad (logo), estado del turno, candado de operador (PIN real vía `auth:loginWithPin`) y cierre de sesión.
+   - ✅ Los controles minimizar/maximizar/cerrar del header de login usan `window.api.appWindow.*`, respaldado por `main/ipc/window.ipc.ts` (`appWindow:*`). Nunca se accede a `BrowserWindow` desde el renderer.
+
+### 3.1 Entorno de desarrollo y caché de Chromium
+
+- En `main/index.ts`, cuando `is.dev` es verdadero, se ejecuta `app.commandLine.appendSwitch('disable-http-cache')` y se elimina `<userData>/Cache` antes de crear la ventana.
+- Motivo: el backend `blockfile` de Chromium puede corromperse con el HMR de Vite o tras cierres forzados, llenando la consola de `Failing CreateMapBlock` / `Failed to save user data` / `Create entry failed` para URLs de `http://localhost:5173`. No afecta a la base de datos SQLite.
+- En producción (app empaquetada, `file://`) se mantiene la caché en disco normal. Si en un equipo de desarrollo vuelven a aparecer esos mensajes, cerrar la app y borrar `%APPDATA%\nexus-post\Cache` antes de reabrirla.
 
 ---
 
@@ -59,6 +73,7 @@ nexus-post/src/
 │   │   ├── auth.ipc.ts
 │   │   ├── products.ipc.ts
 │   │   ├── inventory.ipc.ts
+│   │   ├── window.ipc.ts                    # appWindow:minimize / toggleMaximize / close
 │   │   └── index.ts                         # Registro centralizado de handlers
 │   ├── domain/                              # Entidades, Value Objects y Servicios Puros
 │   │   ├── auth/                            # Lógica de login, hash, tokens

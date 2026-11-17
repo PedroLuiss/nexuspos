@@ -91,10 +91,13 @@ nexus-post/src/
 │
 └── renderer/src/
     ├── shared/lib/permissions.ts            # getUserPermissions / canAccessTab / canManageUsers
+    ├── shared/hooks/useToast.ts             # Estado de alertas efímeras (toast global)
+    ├── shared/ui/ToastAlert.tsx             # Alerta animada presentacional (sin IPC)
     └── features/auth/
         ├── api/auth.api.ts                  # Wrapper de window.api.auth con fallbacks
         ├── hooks/useAuth.ts                 # Estado de sesión (<= 200 líneas)
         ├── components/                      # AuthHeader, AuthFooter, LoginForm, QuickPinModal, OTP...
+        │   └── OperatorSwitchModal.tsx      # Candado LOCK del header: PIN real + cambio de operador
         └── LoginView.tsx                    # Orquestador del flujo de pantallas Auth
 ```
 
@@ -180,3 +183,10 @@ VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 - La gestión de usuarios y la autorización por rol/permisos se documentan junto con Ajustes en [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md).
 - El inicio de sesión no requiere red para usuarios ya materializados localmente. Recuperación OTP y bootstrap remoto sí requieren el servicio externo.
 - Las limitaciones de almacenamiento de credenciales/token siguen pendientes; la presencia de controles UI no sustituye las guardias de autorización en main.
+
+### 8.1 Candado de estación (LOCK) y cierre de sesión desde el header
+
+- El botón `LOCK` del header abre `OperatorSwitchModal` (`features/auth/components/OperatorSwitchModal.tsx`), que valida el PIN con `auth:loginWithPin` (SQLite local primero) y, si es válido, cambia el operador activo en `AppContent` (`currentUser`), recalculando pestañas por RBAC sin recargar la ventana.
+- El botón `Salir` ejecuta `logoutApi()` (marca `sessionAutoRestoreBlocked`), limpia carrito, ventas pausadas y estado de caja, y vuelve a `LoginView`. Durante el proceso el botón se deshabilita y muestra `Saliendo…`.
+- El cierre de sesión emite una alerta animada (`shared/hooks/useToast` + `shared/ui/ToastAlert`) que se renderiza incluso sobre la pantalla de login.
+- El chip de estación del header muestra el estado real del turno (`TURNO ACTIVO` / `SIN TURNO`) y navega al módulo Caja `[F4]` cuando la sesión tiene permiso.

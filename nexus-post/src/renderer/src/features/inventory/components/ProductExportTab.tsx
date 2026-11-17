@@ -1,42 +1,22 @@
 import React from 'react'
 import type { Product } from '@shared/contracts'
 import { FileText, Download } from '../../../shared/icons/Icons'
+import { useBrands } from '../../../shared/hooks/useBrands'
+import { useSuppliers } from '../../../shared/hooks/useSuppliers'
+import { useProductTypes } from '../../../shared/hooks/useProductTypes'
+import { buildProductCatalogCsv } from '../lib/productCsv'
 
 interface ProductExportTabProps {
   products: Product[]
 }
 
 export const ProductExportTab: React.FC<ProductExportTabProps> = ({ products }) => {
+  const { brands } = useBrands()
+  const { suppliers } = useSuppliers()
+  const { types } = useProductTypes()
+
   const handleExportCsv = (): void => {
-    const headers = [
-      'Codigo',
-      'Nombre',
-      'Categoria',
-      'PrecioCosto',
-      'PrecioVenta',
-      'Stock',
-      'StockMinimo',
-      'Unidad',
-      'Descripcion',
-      'TieneImpuesto',
-      'ImagenURL'
-    ]
-
-    const csvRows = products.map((p) => [
-      `"${p.code.replace(/"/g, '""')}"`,
-      `"${p.name.replace(/"/g, '""')}"`,
-      `"${p.category.replace(/"/g, '""')}"`,
-      p.costPrice.toFixed(2),
-      p.salePrice.toFixed(2),
-      p.stock,
-      p.minStock,
-      `"${p.unit.replace(/"/g, '""')}"`,
-      `"${(p.description || '').replace(/"/g, '""')}"`,
-      p.hasTax ? 'SI' : 'NO',
-      `"${(p.imageUrl || '').replace(/"/g, '""')}"`
-    ])
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...csvRows.map((r) => r.join(','))].join('\r\n')
+    const csvContent = '\uFEFF' + buildProductCatalogCsv(products, brands, suppliers, types)
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -59,8 +39,8 @@ export const ProductExportTab: React.FC<ProductExportTabProps> = ({ products }) 
             Descarga del inventario completo en formato Excel / CSV
           </p>
           <p className="text-slate-500 text-[11px] mt-0.5">
-            El archivo generado incluye codificación internacional UTF-8 BOM, lo que garantiza que
-            acentos y caracteres especiales se abran sin errores en Excel de Windows.
+            El archivo incluye la alícuota, marca, proveedor y tipo de cada producto,
+            codificación UTF-8 BOM y se abre sin errores en Excel de Windows.
           </p>
         </div>
       </div>

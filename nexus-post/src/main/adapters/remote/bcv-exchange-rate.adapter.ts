@@ -20,8 +20,7 @@ export class BcvExchangeRateAdapter implements ExchangeRateSource {
 
     const data = (await response.json()) as BcvRateResponse
     const rate = Number(data.promedio)
-    const updatedAt =
-      typeof data.fechaActualizacion === 'string' ? data.fechaActualizacion : ''
+    const updatedAt = typeof data.fechaActualizacion === 'string' ? data.fechaActualizacion : ''
     const timestamp = Date.parse(updatedAt)
 
     if (

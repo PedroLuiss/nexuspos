@@ -5,7 +5,9 @@ export const migration012SalesExchangeRates: Migration = {
   version: 12,
   name: 'sales_exchange_rates',
   up(db: Database.Database): void {
-    db.exec(`UPDATE business_settings SET currency = 'USD' WHERE id = 'default' AND currency = 'VES'`)
+    db.exec(
+      `UPDATE business_settings SET currency = 'USD' WHERE id = 'default' AND currency = 'VES'`
+    )
     db.exec(`
       CREATE TABLE sales (
         id TEXT PRIMARY KEY,

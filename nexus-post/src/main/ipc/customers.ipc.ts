@@ -41,12 +41,9 @@ export function registerCustomerIpc(customerService: CustomerService): void {
     return customerService.toggleStatus(id)
   })
 
-  ipcMain.handle(
-    IPC_CHANNELS.customers.getAccountSummary,
-    async (_event, customerId: string) => {
-      return customerService.getAccountSummary(customerId)
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.customers.getAccountSummary, async (_event, customerId: string) => {
+    return customerService.getAccountSummary(customerId)
+  })
 
   ipcMain.handle(
     IPC_CHANNELS.customers.recordPayment,
@@ -55,19 +52,13 @@ export function registerCustomerIpc(customerService: CustomerService): void {
     }
   )
 
-  ipcMain.handle(
-    IPC_CHANNELS.customers.listDebts,
-    async (_event, customerId: string) => {
-      return customerService.listDebts(customerId)
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.customers.listDebts, async (_event, customerId: string) => {
+    return customerService.listDebts(customerId)
+  })
 
-  ipcMain.handle(
-    IPC_CHANNELS.customers.listPayments,
-    async (_event, customerId: string) => {
-      return customerService.listPayments(customerId)
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.customers.listPayments, async (_event, customerId: string) => {
+    return customerService.listPayments(customerId)
+  })
 
   ipcMain.handle(
     IPC_CHANNELS.customers.createCreditSale,

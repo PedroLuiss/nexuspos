@@ -40,9 +40,7 @@ export class CustomerService {
       throw new Error('No hay una sesión activa. Inicie sesión nuevamente.')
     }
     if (session.role !== 'ADMIN') {
-      throw new Error(
-        'Acceso denegado: solo el Administrador puede gestionar clientes.'
-      )
+      throw new Error('Acceso denegado: solo el Administrador puede gestionar clientes.')
     }
     return { name: session.name }
   }
@@ -93,9 +91,7 @@ export class CustomerService {
     }
 
     // Verificar código único
-    const existing = this.repository
-      .list()
-      .find((c) => c.code === code)
+    const existing = this.repository.list().find((c) => c.code === code)
     if (existing) {
       throw new Error(`El código de cliente "${code}" ya está registrado.`)
     }
@@ -140,9 +136,7 @@ export class CustomerService {
     }
 
     // Verificar código único (excluyendo el actual)
-    const codeConflict = this.repository
-      .list()
-      .find((c) => c.code === code && c.id !== input.id)
+    const codeConflict = this.repository.list().find((c) => c.code === code && c.id !== input.id)
     if (codeConflict) {
       throw new Error(`El código de cliente "${code}" ya está registrado por otro cliente.`)
     }
@@ -205,11 +199,7 @@ export class CustomerService {
   }
 
   /** Registra un pago/abono a la cuenta de un cliente (cajero o admin). */
-  recordPayment(
-    customerId: string,
-    amount: number,
-    concept: string
-  ): CustomerPayment {
+  recordPayment(customerId: string, amount: number, concept: string): CustomerPayment {
     const session = this.requireCashierOrAdmin()
 
     if (!Number.isFinite(amount) || amount <= 0) {

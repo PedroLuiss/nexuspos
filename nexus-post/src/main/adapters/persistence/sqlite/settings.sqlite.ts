@@ -81,29 +81,98 @@ const FALLBACK_CONFIG: BusinessConfig = {
 
 /** Todas las columnas esperadas en la tabla business_settings. */
 const EXPECTED_COLUMNS: { name: string; ddl: string }[] = [
-  { name: 'municipality', ddl: "ALTER TABLE business_settings ADD COLUMN municipality TEXT NOT NULL DEFAULT ''" },
-  { name: 'parish', ddl: "ALTER TABLE business_settings ADD COLUMN parish TEXT NOT NULL DEFAULT ''" },
-  { name: 'country', ddl: "ALTER TABLE business_settings ADD COLUMN country TEXT NOT NULL DEFAULT 'Venezuela'" },
-  { name: 'currency', ddl: "ALTER TABLE business_settings ADD COLUMN currency TEXT NOT NULL DEFAULT 'VES'" },
-  { name: 'tax_id_type', ddl: "ALTER TABLE business_settings ADD COLUMN tax_id_type TEXT NOT NULL DEFAULT 'RIF'" },
-  { name: 'tax_regime', ddl: "ALTER TABLE business_settings ADD COLUMN tax_regime TEXT NOT NULL DEFAULT ''" },
-  { name: 'owner_tax_id', ddl: "ALTER TABLE business_settings ADD COLUMN owner_tax_id TEXT NOT NULL DEFAULT ''" },
-  { name: 'mobile', ddl: "ALTER TABLE business_settings ADD COLUMN mobile TEXT NOT NULL DEFAULT ''" },
-  { name: 'website', ddl: "ALTER TABLE business_settings ADD COLUMN website TEXT NOT NULL DEFAULT ''" },
-  { name: 'district', ddl: "ALTER TABLE business_settings ADD COLUMN district TEXT NOT NULL DEFAULT ''" },
-  { name: 'ticket_header', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_header TEXT NOT NULL DEFAULT ''" },
-  { name: 'ticket_footer', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_footer TEXT NOT NULL DEFAULT ''" },
-  { name: 'ticket_legal_note', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_legal_note TEXT NOT NULL DEFAULT ''" },
-  { name: 'ticket_show_tax_id', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_show_tax_id INTEGER NOT NULL DEFAULT 1" },
-  { name: 'ticket_show_address', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_show_address INTEGER NOT NULL DEFAULT 1" },
-  { name: 'ticket_show_cashier', ddl: "ALTER TABLE business_settings ADD COLUMN ticket_show_cashier INTEGER NOT NULL DEFAULT 1" },
-  { name: 'tax_enabled', ddl: "ALTER TABLE business_settings ADD COLUMN tax_enabled INTEGER NOT NULL DEFAULT 1" },
-  { name: 'tax_name', ddl: "ALTER TABLE business_settings ADD COLUMN tax_name TEXT NOT NULL DEFAULT 'IVA'" },
-  { name: 'tax_rate', ddl: "ALTER TABLE business_settings ADD COLUMN tax_rate REAL NOT NULL DEFAULT 16" },
-  { name: 'prices_include_tax', ddl: "ALTER TABLE business_settings ADD COLUMN prices_include_tax INTEGER NOT NULL DEFAULT 0" },
-  { name: 'created_at', ddl: "ALTER TABLE business_settings ADD COLUMN created_at TEXT NOT NULL DEFAULT ''" },
-  { name: 'updated_at', ddl: "ALTER TABLE business_settings ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''" },
-  { name: 'updated_by', ddl: "ALTER TABLE business_settings ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''" }
+  {
+    name: 'municipality',
+    ddl: "ALTER TABLE business_settings ADD COLUMN municipality TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'parish',
+    ddl: "ALTER TABLE business_settings ADD COLUMN parish TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'country',
+    ddl: "ALTER TABLE business_settings ADD COLUMN country TEXT NOT NULL DEFAULT 'Venezuela'"
+  },
+  {
+    name: 'currency',
+    ddl: "ALTER TABLE business_settings ADD COLUMN currency TEXT NOT NULL DEFAULT 'VES'"
+  },
+  {
+    name: 'tax_id_type',
+    ddl: "ALTER TABLE business_settings ADD COLUMN tax_id_type TEXT NOT NULL DEFAULT 'RIF'"
+  },
+  {
+    name: 'tax_regime',
+    ddl: "ALTER TABLE business_settings ADD COLUMN tax_regime TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'owner_tax_id',
+    ddl: "ALTER TABLE business_settings ADD COLUMN owner_tax_id TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'mobile',
+    ddl: "ALTER TABLE business_settings ADD COLUMN mobile TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'website',
+    ddl: "ALTER TABLE business_settings ADD COLUMN website TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'district',
+    ddl: "ALTER TABLE business_settings ADD COLUMN district TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_header',
+    ddl: "ALTER TABLE business_settings ADD COLUMN ticket_header TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_footer',
+    ddl: "ALTER TABLE business_settings ADD COLUMN ticket_footer TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_legal_note',
+    ddl: "ALTER TABLE business_settings ADD COLUMN ticket_legal_note TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_show_tax_id',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_tax_id INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'ticket_show_address',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_address INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'ticket_show_cashier',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_cashier INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'tax_enabled',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN tax_enabled INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'tax_name',
+    ddl: "ALTER TABLE business_settings ADD COLUMN tax_name TEXT NOT NULL DEFAULT 'IVA'"
+  },
+  {
+    name: 'tax_rate',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN tax_rate REAL NOT NULL DEFAULT 16'
+  },
+  {
+    name: 'prices_include_tax',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN prices_include_tax INTEGER NOT NULL DEFAULT 0'
+  },
+  {
+    name: 'created_at',
+    ddl: "ALTER TABLE business_settings ADD COLUMN created_at TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'updated_at',
+    ddl: "ALTER TABLE business_settings ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'updated_by',
+    ddl: "ALTER TABLE business_settings ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''"
+  }
 ]
 
 function mapRow(row: BusinessSettingsRow): BusinessConfig {
@@ -162,7 +231,9 @@ export class SqliteSettingsRepository implements SettingsRepository {
   private ensureColumns(): void {
     try {
       const tableExists = this.db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'business_settings'")
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'business_settings'"
+        )
         .get() as { name: string } | undefined
 
       if (!tableExists) return

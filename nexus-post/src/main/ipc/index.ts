@@ -5,6 +5,10 @@ import {
 } from '../adapters/persistence/sqlite/database'
 import { runMigrations } from '../adapters/persistence/sqlite/migrations'
 import { SqliteProductRepository } from '../adapters/persistence/sqlite/products.sqlite'
+import { SqliteTaxRepository } from '../adapters/persistence/sqlite/taxes.sqlite'
+import { SqliteBrandRepository } from '../adapters/persistence/sqlite/brands.sqlite'
+import { SqliteSupplierRepository } from '../adapters/persistence/sqlite/suppliers.sqlite'
+import { SqliteProductTypeRepository } from '../adapters/persistence/sqlite/product-types.sqlite'
 import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/stock-movements.sqlite'
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
@@ -22,6 +26,10 @@ import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
 import { LaravelDatabaseBackupAdapter } from '../adapters/remote/laravel-database-backup.adapter'
 import { ProductService } from '../domain/products/product.service'
+import { TaxService } from '../domain/taxes/tax.service'
+import { BrandService } from '../domain/brands/brand.service'
+import { SupplierService } from '../domain/suppliers/supplier.service'
+import { ProductTypeService } from '../domain/product-types/product-type.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
 import { AuthService } from '../domain/auth/auth.service'
@@ -35,6 +43,10 @@ import { CashService } from '../domain/cash/cash.service'
 import { ReportsService } from '../domain/reports/reports.service'
 import { DatabaseMaintenanceService } from '../domain/settings/database-maintenance.service'
 import { registerProductIpc } from './products.ipc'
+import { registerTaxIpc } from './taxes.ipc'
+import { registerBrandIpc } from './brands.ipc'
+import { registerSupplierIpc } from './suppliers.ipc'
+import { registerProductTypeIpc } from './product-types.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
 import { registerAuthIpc } from './auth.ipc'
@@ -47,6 +59,7 @@ import { registerExchangeRateIpc } from './exchange-rate.ipc'
 import { registerCashIpc } from './cash.ipc'
 import { registerReportsIpc } from './reports.ipc'
 import { registerDatabaseIpc } from './database.ipc'
+import { registerAppWindowIpc } from './window.ipc'
 import { LATEST_MIGRATION_VERSION } from '../adapters/persistence/sqlite/migrations'
 import { app } from 'electron'
 import { join } from 'node:path'
@@ -60,6 +73,10 @@ export function registerIpcHandlers(): void {
   runMigrations(db)
 
   const productRepository = new SqliteProductRepository(db)
+  const taxRepository = new SqliteTaxRepository(db)
+  const brandRepository = new SqliteBrandRepository(db)
+  const supplierRepository = new SqliteSupplierRepository(db)
+  const productTypeRepository = new SqliteProductTypeRepository(db)
   const stockMovementRepository = new SqliteStockMovementRepository(db)
   const categoryRepository = new SqliteCategoryRepository(db)
   const userRepository = new SqliteUserRepository(db)
@@ -69,7 +86,16 @@ export function registerIpcHandlers(): void {
   const reportsRepository = new SqliteReportsRepository(db)
   const transactionRunner = new SqliteTransactionRunner(db)
 
-  const productService = new ProductService(productRepository)
+  const productService = new ProductService(
+    productRepository,
+    taxRepository,
+    brandRepository,
+    supplierRepository,
+    productTypeRepository
+  )
+  const brandService = new BrandService(brandRepository)
+  const supplierService = new SupplierService(supplierRepository)
+  const productTypeService = new ProductTypeService(productTypeRepository)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
@@ -78,6 +104,7 @@ export function registerIpcHandlers(): void {
   const categoryService = new CategoryService(categoryRepository)
   const authAdapter = new LaravelAuthAdapter()
   const authService = new AuthService(userRepository, authAdapter)
+  const taxService = new TaxService(taxRepository, authService)
   const userService = new UserService(userRepository, authService)
   const settingsService = new SettingsService(settingsRepository, authService)
   const scaleService = new ScaleService(scaleRepository, authService)
@@ -130,6 +157,10 @@ export function registerIpcHandlers(): void {
   scaleService.setHardwarePort(serialAdapter)
 
   registerProductIpc(productService)
+  registerTaxIpc(taxService)
+  registerBrandIpc(brandService)
+  registerSupplierIpc(supplierService)
+  registerProductTypeIpc(productTypeService)
   registerInventoryIpc(inventoryService)
   registerCategoryIpc(categoryService)
   registerAuthIpc(authService)
@@ -142,4 +173,5 @@ export function registerIpcHandlers(): void {
   registerCashIpc(cashService)
   registerReportsIpc(reportsService)
   registerDatabaseIpc(databaseMaintenanceService)
+  registerAppWindowIpc()
 }

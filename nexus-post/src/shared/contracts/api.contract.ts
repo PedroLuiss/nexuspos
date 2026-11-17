@@ -1,4 +1,8 @@
 import type { Product, ProductInput, ProductFilter } from './product.contract'
+import type { TaxRate, TaxesApi } from './tax.contract'
+import type { Brand, BrandInput, BrandFilter } from './brand.contract'
+import type { Supplier, SupplierInput, SupplierFilter } from './supplier.contract'
+import type { ProductType, ProductTypeInput, ProductTypeFilter } from './product-type.contract'
 import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
@@ -24,6 +28,37 @@ export const IPC_CHANNELS = {
     update: 'products:update',
     softDelete: 'products:softDelete',
     toggleStatus: 'products:toggleStatus'
+  },
+  taxes: {
+    list: 'taxes:list',
+    create: 'taxes:create',
+    update: 'taxes:update',
+    remove: 'taxes:remove',
+    setDefault: 'taxes:setDefault'
+  },
+  brands: {
+    list: 'brands:list',
+    getById: 'brands:getById',
+    create: 'brands:create',
+    update: 'brands:update',
+    softDelete: 'brands:softDelete',
+    toggleStatus: 'brands:toggleStatus'
+  },
+  suppliers: {
+    list: 'suppliers:list',
+    getById: 'suppliers:getById',
+    create: 'suppliers:create',
+    update: 'suppliers:update',
+    softDelete: 'suppliers:softDelete',
+    toggleStatus: 'suppliers:toggleStatus'
+  },
+  productTypes: {
+    list: 'productTypes:list',
+    getById: 'productTypes:getById',
+    create: 'productTypes:create',
+    update: 'productTypes:update',
+    softDelete: 'productTypes:softDelete',
+    toggleStatus: 'productTypes:toggleStatus'
   },
   inventory: {
     adjustStock: 'inventory:adjustStock',
@@ -107,6 +142,11 @@ export const IPC_CHANNELS = {
     listPayments: 'customers:listPayments',
     createCreditSale: 'customers:createCreditSale',
     applyPaymentToDebt: 'customers:applyPaymentToDebt'
+  },
+  appWindow: {
+    minimize: 'appWindow:minimize',
+    toggleMaximize: 'appWindow:toggleMaximize',
+    close: 'appWindow:close'
   }
 } as const
 
@@ -117,6 +157,33 @@ export interface ProductsApi {
   update(product: Product): Promise<Product>
   softDelete(id: string): Promise<void>
   toggleStatus(id: string): Promise<Product>
+}
+
+export interface BrandsApi {
+  list(filter?: BrandFilter): Promise<Brand[]>
+  getById(id: string): Promise<Brand | null>
+  create(input: BrandInput): Promise<Brand>
+  update(brand: Brand): Promise<Brand>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<Brand>
+}
+
+export interface SuppliersApi {
+  list(filter?: SupplierFilter): Promise<Supplier[]>
+  getById(id: string): Promise<Supplier | null>
+  create(input: SupplierInput): Promise<Supplier>
+  update(supplier: Supplier): Promise<Supplier>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<Supplier>
+}
+
+export interface ProductTypesApi {
+  list(filter?: ProductTypeFilter): Promise<ProductType[]>
+  getById(id: string): Promise<ProductType | null>
+  create(input: ProductTypeInput): Promise<ProductType>
+  update(type: ProductType): Promise<ProductType>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<ProductType>
 }
 
 export interface InventoryApi {
@@ -132,9 +199,20 @@ export interface CategoriesApi {
   toggleStatus(id: string): Promise<Category>
 }
 
+/** Control de la ventana nativa desde el header del renderer (minimizar/maximizar/cerrar). */
+export interface AppWindowApi {
+  minimize(): Promise<void>
+  toggleMaximize(): Promise<boolean>
+  close(): Promise<void>
+}
+
 /** Superficie completa expuesta en `window.api` por el preload. */
 export interface NexusApi {
   products: ProductsApi
+  taxes: TaxesApi
+  brands: BrandsApi
+  suppliers: SuppliersApi
+  productTypes: ProductTypesApi
   inventory: InventoryApi
   categories: CategoriesApi
   auth: AuthApi
@@ -147,4 +225,5 @@ export interface NexusApi {
   cash: CashApi
   reports: ReportsApi
   database: DatabaseMaintenanceApi
+  appWindow: AppWindowApi
 }

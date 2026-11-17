@@ -34,12 +34,9 @@ export function registerHardwareIpc(scaleService: ScaleService): void {
     }
   })
 
-  ipcMain.handle(
-    IPC_CHANNELS.hardware.saveScaleConfig,
-    async (_event, input: ScaleConfigInput) => {
-      return scaleService.saveScaleConfig(input)
-    }
-  )
+  ipcMain.handle(IPC_CHANNELS.hardware.saveScaleConfig, async (_event, input: ScaleConfigInput) => {
+    return scaleService.saveScaleConfig(input)
+  })
 
   ipcMain.handle(IPC_CHANNELS.hardware.getScaleConfig, async () => {
     return scaleService.getScaleConfig()

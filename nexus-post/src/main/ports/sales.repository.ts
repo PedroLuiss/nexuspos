@@ -22,12 +22,7 @@ export interface SaleItemRecord {
 export interface SalesRepository {
   insertSale(sale: SaleRecord, items: SaleItemRecord[]): void
   findTicket(id: string): CashTicket | null
-  markReturned(
-    saleId: string,
-    returnedAt: string,
-    payment: SalePayment,
-    cashAmount: number
-  ): void
+  markReturned(saleId: string, returnedAt: string, payment: SalePayment, cashAmount: number): void
   listSuspended(cashierId: string): import('@shared/contracts').SuspendedSale[]
   saveSuspended(sale: import('@shared/contracts').SuspendedSale, cashierId: string): void
   deleteSuspended(id: string, cashierId: string): void

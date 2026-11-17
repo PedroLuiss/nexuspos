@@ -31,9 +31,7 @@ export class ScaleService implements HardwarePort {
       throw new Error('No hay una sesión activa. Inicie sesión nuevamente.')
     }
     if (session.role !== 'ADMIN') {
-      throw new Error(
-        'Acceso denegado: solo el Administrador puede configurar la báscula.'
-      )
+      throw new Error('Acceso denegado: solo el Administrador puede configurar la báscula.')
     }
     return { name: session.name }
   }

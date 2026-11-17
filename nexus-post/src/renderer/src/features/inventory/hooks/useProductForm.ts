@@ -22,7 +22,10 @@ export interface ProductFormValues {
   salePrice: number
   stock: number
   minStock: number
-  hasTax: boolean
+  brandId: string
+  supplierId: string
+  typeId: string
+  taxId: string
   active: boolean
 }
 
@@ -59,7 +62,10 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
       salePrice: Number((cost * 1.1).toFixed(2)),
       stock: initialData?.stock ?? 0,
       minStock: initialData?.minStock ?? 5,
-      hasTax: initialData?.hasTax ?? true,
+      brandId: initialData?.brandId ?? '',
+      supplierId: initialData?.supplierId ?? '',
+      typeId: initialData?.typeId ?? '',
+      taxId: initialData?.taxId ?? '',
       active: initialData?.active ?? true
     }
   }
@@ -76,7 +82,10 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
     salePrice: sale > 0 ? sale : Number((cost * (1 + margin / 100)).toFixed(2)),
     stock: initialData?.stock ?? 0,
     minStock: initialData?.minStock ?? 5,
-    hasTax: initialData?.hasTax ?? true,
+    brandId: initialData?.brandId ?? '',
+    supplierId: initialData?.supplierId ?? '',
+    typeId: initialData?.typeId ?? '',
+    taxId: initialData?.taxId ?? '',
     active: initialData?.active ?? true
   }
 }
@@ -157,7 +166,10 @@ export function useProductForm(
       salePrice: Number(values.salePrice),
       stock: Number(values.stock),
       minStock: Number(values.minStock),
-      hasTax: values.hasTax,
+      brandId: values.brandId || undefined,
+      supplierId: values.supplierId || undefined,
+      typeId: values.typeId || undefined,
+      taxId: values.taxId || undefined,
       active: values.active
     }
   }, [values])

@@ -69,7 +69,7 @@ export const migration013CashRegister: Migration = {
       .all() as Array<{ id: string; permissions: string | null }>
     const updatePermissions = db.prepare('UPDATE users SET permissions = ? WHERE id = ?')
     for (const row of cashierRows) {
-      const permissions = row.permissions ? JSON.parse(row.permissions) as unknown : []
+      const permissions = row.permissions ? (JSON.parse(row.permissions) as unknown) : []
       if (!Array.isArray(permissions)) {
         throw new Error(`Permisos inválidos para el usuario cajero ${row.id}.`)
       }

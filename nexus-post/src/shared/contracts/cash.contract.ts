@@ -1,4 +1,4 @@
-import type { SalePayment } from './sales.contract'
+import type { SalePayment, SaleTaxLine } from './sales.contract'
 
 export type CashMovementType = 'INGRESO' | 'EGRESO' | 'DEVOLUCION'
 export type CashMovementSource = 'MANUAL' | 'SALE' | 'CUSTOMER_PAYMENT' | 'SALE_REFUND'
@@ -66,6 +66,8 @@ export interface CashTicket {
   discount: number
   tax: number
   total: number
+  /** Desglose por tasa (ventas nuevas; queda vacío en tickets históricos). */
+  taxBreakdown?: SaleTaxLine[]
   payment: SalePayment
   items: CashSaleItem[]
   returnedAt?: string

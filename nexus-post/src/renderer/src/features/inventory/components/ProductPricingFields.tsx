@@ -1,8 +1,7 @@
 import React from 'react'
 import type { ProductFormValues } from '../hooks/useProductForm'
 import { Sparkles } from '../../../shared/icons/Icons'
-import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
-import { getProductTaxLabel } from '../../../shared/lib/businessConfig'
+import ProductTaxField from './ProductTaxField'
 import { getProductQuantityStep } from '@shared/lib/product-quantity'
 
 interface ProductPricingFieldsProps {
@@ -25,8 +24,6 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
   setSalePrice,
   marginDollar
 }) => {
-  const { config: businessConfig } = useBusinessConfig()
-  const taxLabel = getProductTaxLabel(businessConfig)
   const quantityStep = getProductQuantityStep(values.unit)
 
   return (
@@ -153,8 +150,8 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
         </div>
       </div>
 
-      {/* Stock, Mínimo e IVA */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stock y mínimo */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Stock Inicial</label>
           <input
@@ -177,18 +174,14 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
             className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
           />
         </div>
-        <div className="flex items-end pb-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={values.hasTax}
-              onChange={(e) => update('hasTax', e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-[#0067C0] focus:ring-[#0067C0]"
-            />
-            {taxLabel}
-          </label>
-        </div>
       </div>
+
+      {/* Impuesto / alícuota del producto */}
+      <ProductTaxField
+        taxId={values.taxId}
+        onChange={(taxId) => update('taxId', taxId)}
+        salePrice={values.salePrice}
+      />
 
       {/* Estado del producto */}
       <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-[4px] border border-slate-200">

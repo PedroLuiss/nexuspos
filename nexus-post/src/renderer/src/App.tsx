@@ -10,7 +10,8 @@ import CashShiftView from './features/cash-shift/CashShiftView'
 import CustomersView from './features/customers/CustomersView'
 import ReportsView from './features/reports/ReportsView'
 import SettingsGrid from './features/settings/SettingsGrid'
-import { CheckCircle2 } from './shared/icons/Icons'
+import ToastAlert from './shared/ui/ToastAlert'
+import { useToast } from './shared/hooks/useToast'
 import type {
   CashRegisterData,
   CloseCashShiftInput,
@@ -23,7 +24,7 @@ import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
-import { computeGrandTotal, computeTaxAmount } from './shared/lib/businessConfig'
+import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
 import { useCustomers } from './features/customers/hooks/useCustomers'
 import { useKardex } from './features/kardex/hooks/useKardex'
 import { useProducts } from './features/inventory/hooks/useProducts'
@@ -77,18 +78,10 @@ function AppContent(): React.JSX.Element {
   })
   const [isCashLoading, setIsCashLoading] = useState(false)
   const [cashError, setCashError] = useState<string | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  const [notification, setNotification] = useState<{
-    message: string
-    type: 'success' | 'info' | 'error'
-  } | null>(null)
-
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success'): void => {
-    setNotification({ message, type })
-    setTimeout(() => {
-      setNotification(null)
-    }, 3500)
-  }
+  // Alerta animada global (feedback de ventas, caja y cierre de sesión).
+  const { toast, showToast, dismissToast } = useToast()
 
   const reloadCashRegister = useCallback(async (shiftId?: string): Promise<void> => {
     setIsCashLoading(true)
@@ -241,21 +234,24 @@ function AppContent(): React.JSX.Element {
 
   const handleCompleteSale = async (details: PaymentDetails): Promise<boolean> => {
     if (cart.length === 0) return false
-    const subtotal = cart.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0)
-    const discount = cart.reduce(
-      (acc, item) => acc + (item.product.salePrice * item.quantity * item.discountPercent) / 100,
-      0
+    const totals = computeSaleTotals(
+      cart.map((item) => {
+        const tax = resolveProductTax(item.product, businessConfig)
+        return {
+          unitPrice: item.product.salePrice,
+          quantity: item.quantity,
+          discountPercent: item.discountPercent,
+          taxId: tax.taxId,
+          taxName: tax.taxName,
+          taxRate: tax.taxRate
+        }
+      }),
+      {
+        taxEnabled: businessConfig.taxEnabled,
+        pricesIncludeTax: businessConfig.pricesIncludeTax
+      }
     )
-    const netTotal = subtotal - discount
-    const taxableBase = cart
-      .filter((item) => item.product.hasTax)
-      .reduce(
-        (acc, item) =>
-          acc + item.product.salePrice * item.quantity * (1 - item.discountPercent / 100),
-        0
-      )
-    const tax = computeTaxAmount(taxableBase, businessConfig)
-    const saleTotal = computeGrandTotal(netTotal, taxableBase, businessConfig)
+    const saleTotal = totals.total
 
     try {
       const { customerId, ticketNumber, ...payment } = details
@@ -267,10 +263,11 @@ function AppContent(): React.JSX.Element {
           quantity: item.quantity,
           discountPercent: item.discountPercent
         })),
-        subtotal,
-        discount,
-        tax,
-        total: saleTotal,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        tax: totals.tax,
+        total: totals.total,
+        taxBreakdown: totals.taxBreakdown,
         payment,
         exchangeRate: usdVesRate?.rate,
         exchangeRateUpdatedAt: usdVesRate?.updatedAt
@@ -404,6 +401,8 @@ function AppContent(): React.JSX.Element {
 
   // Cierre de sesión: limpia backend + estado local del operador.
   const handleLogout = async (): Promise<void> => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
     try {
       // logoutApi nunca lanza: si el canal IPC/SQLite no está listo, la sesión local se cierra igual.
       await logoutApi()
@@ -412,31 +411,44 @@ function AppContent(): React.JSX.Element {
       setSuspendedSales([])
       setCashRegister({ shift: null, shiftOptions: [], movements: [], tickets: [] })
       setCurrentUser(null)
+      setIsLoggingOut(false)
+      showToast(
+        'Sesión cerrada correctamente. Vuelva a ingresar con su PIN o credenciales.',
+        'info'
+      )
     }
+  }
+
+  // Cambio de operador validado por PIN desde el candado del header (LOCK).
+  const handleOperatorSwitch = (nextUser: User): void => {
+    setCurrentUser(nextUser)
+    showToast(`Operador activo: ${nextUser.name}.`, 'success')
   }
 
   if (!currentUser) {
     return (
-      <LoginView
-        onLoginSuccess={(user) => {
-          setCurrentUser(user)
-          void reloadCashRegister()
-        }}
-      />
+      <>
+        <LoginView
+          onLoginSuccess={(user) => {
+            setCurrentUser(user)
+            void reloadCashRegister()
+          }}
+        />
+        {toast && <ToastAlert key={toast.id} toast={toast} onDismiss={dismissToast} />}
+      </>
     )
   }
 
   return (
-    <DashboardLayout currentUser={currentUser} onLogout={handleLogout}>
+    <DashboardLayout
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      onOperatorSwitch={handleOperatorSwitch}
+      cashShiftOpen={Boolean(cashRegister.activeShiftId)}
+      isLoggingOut={isLoggingOut}
+    >
       {/* Toast Alert Feedback */}
-      {notification && (
-        <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
-          <CheckCircle2 size={16} className="text-emerald-400" />
-          <span className={`font-semibold ${notification.type === 'error' ? 'text-red-300' : ''}`}>
-            {notification.message}
-          </span>
-        </div>
-      )}
+      {toast && <ToastAlert key={toast.id} toast={toast} onDismiss={dismissToast} />}
       {customersError && (
         <div
           role="alert"

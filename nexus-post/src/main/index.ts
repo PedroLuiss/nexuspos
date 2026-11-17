@@ -1,9 +1,32 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { rmSync } from 'node:fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc'
 import { closeDatabase } from './adapters/persistence/sqlite/database'
+
+/**
+ * Chromium persiste la caché HTTP con el backend "blockfile" dentro de
+ * `<userData>/Cache`. En desarrollo, el HMR de Vite + reinicios/instancias previas
+ * pueden dejar el índice inconsistente y provocar en consola:
+ *   ERROR:net\disk_cache\blockfile\block_files.cc:113 Failing CreateMapBlock
+ *   ERROR:net\disk_cache\blockfile\entry_impl.cc:996 Failed to save user data
+ * Se elimina antes de que Chromium abra la sesión (sólo en desarrollo; no toca la BD).
+ */
+function resetDevHttpCache(): void {
+  try {
+    rmSync(join(app.getPath('userData'), 'Cache'), { recursive: true, force: true })
+  } catch (error) {
+    console.warn('[dev] No se pudo reiniciar la caché HTTP de Chromium:', error)
+  }
+}
+
+if (is.dev) {
+  // Caché en memoria: el dev server sirve todo desde Vite y no necesitamos disco.
+  app.commandLine.appendSwitch('disable-http-cache')
+  resetDevHttpCache()
+}
 
 function createWindow(): void {
   // Create the browser window.

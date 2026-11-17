@@ -14,7 +14,29 @@ export interface Product {
   minStock: number
   maxStock?: number
   unit: string
-  hasTax: boolean
+  /** Marca del producto (catálogo `brands`). Opcional. */
+  brandId?: string
+  /** Nombre de la marca resuelto por el repositorio (solo lectura). */
+  brandName?: string
+  /** Proveedor del producto (catálogo `suppliers`). Opcional. */
+  supplierId?: string
+  /** Nombre del proveedor resuelto por el repositorio (solo lectura). */
+  supplierName?: string
+  /** Tipo de producto: simple, combo, service o raw_material. */
+  typeId?: string
+  /** Nombre del tipo de producto resuelto por el repositorio (solo lectura). */
+  typeName?: string
+  /** Impuesto asignado del catálogo (`taxes`). 0% / `undefined` = exento. */
+  taxId?: string
+  /** Nombre de la tasa resuelto por el repositorio (solo lectura). */
+  taxName?: string
+  /** Porcentaje de la tasa resuelto por el repositorio (solo lectura). */
+  taxRate?: number
+  /**
+   * @deprecated Usar `taxId` + catálogo de impuestos.
+   * Se conserva para importaciones CSV antiguas y datos legados.
+   */
+  hasTax?: boolean
   active: boolean
   deleted?: boolean
   description?: string
@@ -24,11 +46,14 @@ export interface Product {
 }
 
 /** Datos de entrada para crear un producto (el id y timestamps los genera el backend). */
-export type ProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>
+export type ProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'taxName' | 'taxRate'>
 
 export interface ProductFilter {
   search?: string
   category?: string
+  brandId?: string
+  supplierId?: string
+  typeId?: string
   includeDeleted?: boolean
   onlyActive?: boolean
 }

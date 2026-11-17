@@ -49,8 +49,7 @@ export class SqliteCategoryRepository implements CategoryRepository {
 
   findById(id: string): Category | null {
     const row = this.db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as
-      | CategoryRow
-      | undefined
+      CategoryRow | undefined
     return row ? mapRow(row) : null
   }
 

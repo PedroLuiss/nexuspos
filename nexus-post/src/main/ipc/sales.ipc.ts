@@ -8,9 +8,7 @@ export function registerSalesIpc(sales: SalesService): void {
     sales.complete(input)
   )
   ipcMain.handle(IPC_CHANNELS.sales.listSuspended, () => sales.listSuspended())
-  ipcMain.handle(IPC_CHANNELS.sales.suspend, (_event, sale: SuspendedSale) =>
-    sales.suspend(sale)
-  )
+  ipcMain.handle(IPC_CHANNELS.sales.suspend, (_event, sale: SuspendedSale) => sales.suspend(sale))
   ipcMain.handle(IPC_CHANNELS.sales.deleteSuspended, (_event, id: string) =>
     sales.deleteSuspended(id)
   )

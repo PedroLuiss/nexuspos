@@ -9,6 +9,7 @@ import type { SettingsRepository } from '../../ports/settings.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
+import { computeSaleTotals, resolveProductTax, type SaleLineInput } from '@shared/lib/tax'
 
 const roundMoney = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100
 const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - roundMoney(b)) < 0.011
@@ -39,9 +40,7 @@ export class SalesService {
     const config = this.settings.getBusiness()
     const seenProducts = new Set<string>()
     const items: SaleItemRecord[] = []
-    let subtotal = 0
-    let discount = 0
-    let taxableBase = 0
+    const taxLines: SaleLineInput[] = []
     const now = new Date().toISOString()
 
     for (const line of input.items) {
@@ -72,9 +71,15 @@ export class SalesService {
       const lineSubtotal = product.salePrice * quantity
       const lineDiscount = (lineSubtotal * discountPercent) / 100
       const lineTotal = roundMoney(lineSubtotal - lineDiscount)
-      subtotal += lineSubtotal
-      discount += lineDiscount
-      if (product.hasTax) taxableBase += lineSubtotal - lineDiscount
+      const lineTax = resolveProductTax(product, config)
+      taxLines.push({
+        unitPrice: product.salePrice,
+        quantity,
+        discountPercent,
+        taxId: lineTax.taxId,
+        taxName: lineTax.taxName,
+        taxRate: lineTax.taxRate
+      })
       items.push({
         productId: product.id,
         productName: product.name,
@@ -87,17 +92,11 @@ export class SalesService {
       })
     }
 
-    subtotal = roundMoney(subtotal)
-    discount = roundMoney(discount)
-    const taxable = config.taxEnabled && config.taxRate > 0
-    const tax = taxable
-      ? roundMoney(
-          config.pricesIncludeTax
-            ? taxableBase - taxableBase / (1 + config.taxRate / 100)
-            : (taxableBase * config.taxRate) / 100
-        )
-      : 0
-    const total = roundMoney(subtotal - discount + (taxable && !config.pricesIncludeTax ? tax : 0))
+    const totals = computeSaleTotals(taxLines, {
+      taxEnabled: config.taxEnabled,
+      pricesIncludeTax: config.pricesIncludeTax
+    })
+    const { subtotal, discount, tax, total } = totals
     if (total <= 0) throw new ValidationError('El total de la venta debe ser mayor a cero.')
 
     if (
@@ -126,7 +125,8 @@ export class SalesService {
       discount,
       tax,
       total,
-      customerId: input.customerId
+      customerId: input.customerId,
+      taxBreakdown: totals.taxBreakdown
     }
     const sale: SaleRecord = {
       ...result,

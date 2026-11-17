@@ -1,13 +1,7 @@
 import type { User, UserRole } from './auth.contract'
 
 export type ModulePermission =
-  | 'pos'
-  | 'inventory'
-  | 'kardex'
-  | 'cash'
-  | 'customers'
-  | 'reports'
-  | 'settings'
+  'pos' | 'inventory' | 'kardex' | 'cash' | 'customers' | 'reports' | 'settings'
 
 export type ActionPermission =
   | 'CAN_DELETE_PRODUCT'
@@ -27,21 +21,61 @@ export interface PermissionDescriptor<K extends PermissionKey = PermissionKey> {
 
 export const ALL_MODULE_PERMISSIONS: PermissionDescriptor<ModulePermission>[] = [
   { key: 'pos', label: 'Ventas y Caja (POS)', description: 'Terminal de cobro [F1] y tickets' },
-  { key: 'inventory', label: 'Inventario y Catálogo', description: 'Productos, precios y ajustes [F2]' },
+  {
+    key: 'inventory',
+    label: 'Inventario y Catálogo',
+    description: 'Productos, precios y ajustes [F2]'
+  },
   { key: 'kardex', label: 'Kardex y Auditoría', description: 'Trazabilidad de movimientos [F3]' },
   { key: 'cash', label: 'Corte de Turno', description: 'Arqueo Z y balance de gaveta [F4]' },
-  { key: 'customers', label: 'Clientes y Créditos', description: 'Cuentas corrientes y cobranza [F5]' },
-  { key: 'reports', label: 'Reportes y Analítica', description: 'KPIs y métricas comerciales [F6]' },
-  { key: 'settings', label: 'Ajustes del Sistema', description: 'Configuración general y hardware [F7]' }
+  {
+    key: 'customers',
+    label: 'Clientes y Créditos',
+    description: 'Cuentas corrientes y cobranza [F5]'
+  },
+  {
+    key: 'reports',
+    label: 'Reportes y Analítica',
+    description: 'KPIs y métricas comerciales [F6]'
+  },
+  {
+    key: 'settings',
+    label: 'Ajustes del Sistema',
+    description: 'Configuración general y hardware [F7]'
+  }
 ]
 
 export const ALL_ACTION_PERMISSIONS: PermissionDescriptor<ActionPermission>[] = [
-  { key: 'CAN_DELETE_PRODUCT', label: 'Eliminar Productos', description: 'Dar de baja artículos del catálogo' },
-  { key: 'CAN_MODIFY_PRICE', label: 'Modificar Precios', description: 'Cambiar precio al vuelo en terminal' },
-  { key: 'CAN_APPLY_DISCOUNT', label: 'Aplicar Descuentos', description: 'Rebajas porcentuales en carrito' },
-  { key: 'CAN_MANUAL_CASH_MOVEMENTS', label: 'Entradas/Salidas de Caja', description: 'Gastos y retiros de gaveta' },
-  { key: 'CAN_OVERRIDE_NO_STOCK', label: 'Vender sin Stock', description: 'Permitir venta de producto agotado' },
-  { key: 'MANAGE_USERS', label: 'Gestionar Usuarios', description: 'Exclusivo del rol Administrador' }
+  {
+    key: 'CAN_DELETE_PRODUCT',
+    label: 'Eliminar Productos',
+    description: 'Dar de baja artículos del catálogo'
+  },
+  {
+    key: 'CAN_MODIFY_PRICE',
+    label: 'Modificar Precios',
+    description: 'Cambiar precio al vuelo en terminal'
+  },
+  {
+    key: 'CAN_APPLY_DISCOUNT',
+    label: 'Aplicar Descuentos',
+    description: 'Rebajas porcentuales en carrito'
+  },
+  {
+    key: 'CAN_MANUAL_CASH_MOVEMENTS',
+    label: 'Entradas/Salidas de Caja',
+    description: 'Gastos y retiros de gaveta'
+  },
+  {
+    key: 'CAN_OVERRIDE_NO_STOCK',
+    label: 'Vender sin Stock',
+    description: 'Permitir venta de producto agotado'
+  },
+  {
+    key: 'MANAGE_USERS',
+    label: 'Gestionar Usuarios',
+    description: 'Exclusivo del rol Administrador'
+  }
 ]
 
 /** Claves válidas para validar lo que llega desde IPC antes de persistir. */
@@ -77,7 +111,11 @@ export function isValidPermissionKey(key: string): key is PermissionKey {
 /** Filtra y deduplica claves de permiso recibidas de fuentes externas. */
 export function sanitizePermissionKeys(keys: unknown): PermissionKey[] {
   if (!Array.isArray(keys)) return []
-  return Array.from(new Set(keys.filter((k): k is PermissionKey => typeof k === 'string' && isValidPermissionKey(k))))
+  return Array.from(
+    new Set(
+      keys.filter((k): k is PermissionKey => typeof k === 'string' && isValidPermissionKey(k))
+    )
+  )
 }
 
 export interface CreateUserInput {

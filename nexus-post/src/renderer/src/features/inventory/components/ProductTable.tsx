@@ -3,6 +3,10 @@ import type { Product, ProductInput, KardexReason } from '@shared/contracts'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
 import { useProductFilters } from '../hooks/useProductFilters'
+import { useTaxes } from '../../../shared/hooks/useTaxes'
+import { useBrands } from '../../../shared/hooks/useBrands'
+import { useSuppliers } from '../../../shared/hooks/useSuppliers'
+import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { toErrorMessage } from '../api/products.api'
 import AddProductModal from './AddProductModal'
 import BarcodeGeneratorModal from './BarcodeGeneratorModal'
@@ -29,7 +33,11 @@ export const ProductTable: React.FC = () => {
   const categoryManager = useCategories()
   const categoryNames = categoryManager.activeNames
 
-  const filters = useProductFilters(products)
+  const { taxes } = useTaxes()
+  const { brands } = useBrands()
+  const { suppliers } = useSuppliers()
+  const { types } = useProductTypes()
+  const filters = useProductFilters(products, taxes, brands, suppliers, types)
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -166,6 +174,18 @@ export const ProductTable: React.FC = () => {
         onCategoryChange={filters.setSelectedCategory}
         stockFilter={filters.stockFilter}
         onStockFilterChange={filters.setStockFilter}
+        taxOptions={filters.taxOptions}
+        selectedTax={filters.taxFilter}
+        onTaxChange={filters.setTaxFilter}
+        brandOptions={filters.brandOptions}
+        selectedBrand={filters.brandFilter}
+        onBrandChange={filters.setBrandFilter}
+        supplierOptions={filters.supplierOptions}
+        selectedSupplier={filters.supplierFilter}
+        onSupplierChange={filters.setSupplierFilter}
+        typeOptions={filters.typeOptions}
+        selectedType={filters.typeFilter}
+        onTypeChange={filters.setTypeFilter}
         counts={{
           all: filters.stats.total,
           low: filters.stats.lowStock,

@@ -1,12 +1,22 @@
 import React, { useState, useRef } from 'react'
 import type { ProductInput } from '@shared/contracts'
 import { Upload, Check, AlertCircle } from '../../../shared/icons/Icons'
+import { useTaxes } from '../../../shared/hooks/useTaxes'
+import { useBrands } from '../../../shared/hooks/useBrands'
+import { useSuppliers } from '../../../shared/hooks/useSuppliers'
+import { useProductTypes } from '../../../shared/hooks/useProductTypes'
+import { formatTaxLabel } from '@shared/lib/tax'
+import { PRODUCT_CSV_TEMPLATE, parseProductCatalogCsv } from '../lib/productCsv'
 
 interface ProductImportTabProps {
   onImportBatch: (inputs: ProductInput[]) => Promise<number>
 }
 
 export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatch }) => {
+  const { taxes, defaultTax, error: taxesError } = useTaxes()
+  const { brands, error: brandsError } = useBrands()
+  const { suppliers, error: suppliersError } = useSuppliers()
+  const { types, error: typesError } = useProductTypes()
   const [parsedRows, setParsedRows] = useState<ProductInput[]>([])
   const [parseErrors, setParseErrors] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
@@ -14,15 +24,9 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDownloadTemplate = (): void => {
-    const templateContent =
-      '\uFEFF' +
-      [
-        'Codigo,Nombre,Categoria,PrecioCosto,PrecioVenta,Stock,StockMinimo,Unidad,Descripcion,TieneImpuesto,ImagenURL',
-        '750100000001,Ejemplo Producto 1,Abarrotes y Despensa,15.50,22.00,50,10,Pieza (pza),Descripcion del producto,SI,https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300',
-        '750100000002,Ejemplo Producto 2,Bebidas y Refrescos,10.00,16.50,100,20,Pieza (pza),Bebida refrescante,SI,'
-      ].join('\r\n')
-
-    const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + PRODUCT_CSV_TEMPLATE], {
+      type: 'text/csv;charset=utf-8;'
+    })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.setAttribute('href', url)
@@ -43,57 +47,14 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
     const reader = new FileReader()
     reader.onload = () => {
       const text = reader.result as string
-      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
-
-      if (lines.length < 2) {
-        setParseErrors(['El archivo no contiene filas de datos suficientes.'])
-        return
-      }
-
-      const rows: ProductInput[] = []
-      const errors: string[] = []
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i]
-        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((c) =>
-          c.trim().replace(/^"|"$/g, '').replace(/""/g, '"')
-        )
-
-        if (cols.length < 5) continue
-
-        const code = cols[0]?.trim()
-        const name = cols[1]?.trim()
-        const category = cols[2]?.trim() || 'General'
-        const costPrice = parseFloat(cols[3]) || 0
-        const salePrice = parseFloat(cols[4]) || 0
-        const stock = parseFloat(cols[5]) || 0
-        const minStock = parseFloat(cols[6]) || 5
-        const unit = cols[7]?.trim() || 'Pieza (pza)'
-        const description = cols[8]?.trim() || ''
-        const hasTax = (cols[9]?.toUpperCase() || 'SI').includes('SI')
-        const imageUrl = cols[10]?.trim() || ''
-
-        if (!code || !name) {
-          errors.push(`Línea ${i + 1}: Código y Nombre son obligatorios.`)
-          continue
-        }
-
-        rows.push({
-          code,
-          name,
-          category,
-          costPrice,
-          salePrice,
-          stock,
-          minStock,
-          unit,
-          description,
-          hasTax,
-          imageUrl,
-          active: true
-        })
-      }
-
+      const { rows, errors } = parseProductCatalogCsv(
+        text,
+        taxes,
+        brands,
+        suppliers,
+        types,
+        defaultTax
+      )
       setParsedRows(rows)
       setParseErrors(errors)
     }
@@ -109,11 +70,36 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
       setImportedCount(count)
       setParsedRows([])
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al guardar productos en la base de datos.'
+      const msg =
+        err instanceof Error ? err.message : 'Error al guardar productos en la base de datos.'
       setParseErrors([msg])
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const taxLabel = (taxId?: string): string => {
+    const tax = taxes.find((item) => item.id === taxId)
+    if (!tax) return 'Predeterminada'
+    return formatTaxLabel(tax.name, tax.rate)
+  }
+
+  const brandLabel = (brandId?: string): string => {
+    if (!brandId) return '-'
+    const b = brands.find((item) => item.id === brandId)
+    return b ? b.name : '-'
+  }
+
+  const supplierLabel = (supplierId?: string): string => {
+    if (!supplierId) return '-'
+    const s = suppliers.find((item) => item.id === supplierId)
+    return s ? s.name : '-'
+  }
+
+  const typeLabel = (typeId?: string): string => {
+    if (!typeId) return '-'
+    const t = types.find((item) => item.id === typeId)
+    return t ? t.name : '-'
   }
 
   return (
@@ -122,7 +108,7 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
         <div>
           <p className="font-semibold text-blue-900">¿No tienes el formato requerido?</p>
           <p className="text-blue-700 text-[11px]">
-            Descarga la plantilla oficial con ejemplos de columnas y tipos de datos.
+            Descarga la plantilla oficial con las columnas de impuesto y ejemplos de cada tasa.
           </p>
         </div>
         <button
@@ -152,10 +138,32 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
             Haz clic aquí para seleccionar el archivo CSV o Excel
           </span>
           <span className="text-[10px] text-slate-400">
-            Columnas requeridas: Codigo, Nombre, Categoria, PrecioCosto, PrecioVenta, Stock
+            Columnas requeridas: Codigo, Nombre, Categoria, PrecioCosto, PrecioVenta, Stock ·
+            Impuesto: ImpuestoNombre / ImpuestoTasa · Marca / Proveedor / TipoProducto (opcional)
           </span>
         </button>
       </div>
+
+      {taxesError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-[6px] text-amber-800 text-[11px]">
+          No se pudo leer el catálogo de impuestos: {taxesError}
+        </div>
+      )}
+      {brandsError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-[6px] text-amber-800 text-[11px]">
+          No se pudo leer el catálogo de marcas: {brandsError}
+        </div>
+      )}
+      {suppliersError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-[6px] text-amber-800 text-[11px]">
+          No se pudo leer el catálogo de proveedores: {suppliersError}
+        </div>
+      )}
+      {typesError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-[6px] text-amber-800 text-[11px]">
+          No se pudo leer el catálogo de tipos de producto: {typesError}
+        </div>
+      )}
 
       {importedCount !== null && (
         <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-300 rounded-[6px] text-[#107C41]">
@@ -172,11 +180,16 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
             <AlertCircle size={15} />
             <span>Observaciones encontradas:</span>
           </div>
-          {parseErrors.slice(0, 4).map((err, idx) => (
+          {parseErrors.slice(0, 6).map((err, idx) => (
             <p key={idx} className="text-[11px]">
               • {err}
             </p>
           ))}
+          {parseErrors.length > 6 && (
+            <p className="text-[10px] text-red-600">
+              … y {parseErrors.length - 6} observación(es) más.
+            </p>
+          )}
         </div>
       )}
 
@@ -203,9 +216,13 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
                   <th className="py-1 px-2">Código</th>
                   <th className="py-1 px-2">Nombre</th>
                   <th className="py-1 px-2">Categoría</th>
+                  <th className="py-1 px-2 text-center">Marca</th>
+                  <th className="py-1 px-2 text-center">Proveedor</th>
+                  <th className="py-1 px-2 text-center">Tipo</th>
                   <th className="py-1 px-2 text-right">Costo</th>
                   <th className="py-1 px-2 text-right">Venta</th>
                   <th className="py-1 px-2 text-center">Stock</th>
+                  <th className="py-1 px-2 text-center">Impuesto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
@@ -214,11 +231,15 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
                     <td className="py-1 px-2">{r.code}</td>
                     <td className="py-1 px-2 font-sans font-medium">{r.name}</td>
                     <td className="py-1 px-2 font-sans">{r.category}</td>
+                    <td className="py-1 px-2 text-center font-sans">{brandLabel(r.brandId)}</td>
+                    <td className="py-1 px-2 text-center font-sans">{supplierLabel(r.supplierId)}</td>
+                    <td className="py-1 px-2 text-center font-sans">{typeLabel(r.typeId)}</td>
                     <td className="py-1 px-2 text-right">${r.costPrice.toFixed(2)}</td>
                     <td className="py-1 px-2 text-right font-bold text-[#107C41]">
                       ${r.salePrice.toFixed(2)}
                     </td>
                     <td className="py-1 px-2 text-center">{r.stock}</td>
+                    <td className="py-1 px-2 text-center font-sans">{taxLabel(r.taxId)}</td>
                   </tr>
                 ))}
               </tbody>

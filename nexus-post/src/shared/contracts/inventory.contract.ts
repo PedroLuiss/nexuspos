@@ -7,12 +7,7 @@ import type { Product } from './product.contract'
 export type KardexMovementType = 'ENTRADA' | 'SALIDA'
 
 export type KardexReason =
-  | 'VENTA'
-  | 'ENTRADA_MASIVA'
-  | 'SALIDA_AJUSTE'
-  | 'MERMA'
-  | 'DEVOLUCION'
-  | 'INVENTARIO_INICIAL'
+  'VENTA' | 'ENTRADA_MASIVA' | 'SALIDA_AJUSTE' | 'MERMA' | 'DEVOLUCION' | 'INVENTARIO_INICIAL'
 
 export interface KardexMovement {
   id: string

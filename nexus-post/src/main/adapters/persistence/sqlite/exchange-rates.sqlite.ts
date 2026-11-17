@@ -15,12 +15,16 @@ export class SqliteExchangeRateRepository implements ExchangeRateRepository {
   }
 
   saveBcvUsdVes(rate: CachedExchangeRate): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO exchange_rates (id, rate, updated_at)
       VALUES ('USD_VES_BCV', @rate, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET
         rate = excluded.rate,
         updated_at = excluded.updated_at
-    `).run(rate)
+    `
+      )
+      .run(rate)
   }
 }

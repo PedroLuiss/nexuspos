@@ -125,7 +125,9 @@ export class SqliteCashRepository implements CashRepository {
     const active = this.db
       .prepare('SELECT * FROM cash_shifts WHERE cashier_id = ? AND closed_at IS NULL')
       .get(cashierId) as ShiftRow | undefined
-    const shiftOptionRows = this.db.prepare(`
+    const shiftOptionRows = this.db
+      .prepare(
+        `
       SELECT id, opened_at AS openedAt, closed_at AS closedAt, cashier_name AS cashierName,
         opening_amount AS openingAmount,
         COALESCE(expected_cash, opening_amount + (
@@ -136,7 +138,9 @@ export class SqliteCashRepository implements CashRepository {
       FROM cash_shifts
       WHERE (@includeAllCashiers = 1 OR cashier_id = @cashierId)
       ORDER BY opened_at DESC
-    `).all({ cashierId, includeAllCashiers: includeAllCashiers ? 1 : 0 }) as Array<{
+    `
+      )
+      .all({ cashierId, includeAllCashiers: includeAllCashiers ? 1 : 0 }) as Array<{
       id: string
       openedAt: string
       closedAt: string | null
@@ -171,7 +175,8 @@ export class SqliteCashRepository implements CashRepository {
           .prepare('SELECT * FROM cash_shifts WHERE cashier_id = ? ORDER BY opened_at DESC LIMIT 1')
           .get(cashierId) as ShiftRow | undefined)
     const row = selected ?? active ?? latest
-    if (!row) return { shift: null, activeShiftId: active?.id, shiftOptions, movements: [], tickets: [] }
+    if (!row)
+      return { shift: null, activeShiftId: active?.id, shiftOptions, movements: [], tickets: [] }
 
     const movementRows = this.db
       .prepare('SELECT * FROM cash_movements WHERE shift_id = ? ORDER BY created_at DESC')
@@ -212,12 +217,18 @@ export class SqliteCashRepository implements CashRepository {
     const activeTickets = tickets.filter((ticket) => !ticket.returnedAt)
     const movements = movementRows.map(mapMovement)
     const cashPayments = activeTickets.map((ticket) =>
-      ticket.payment.method === 'mixed' ? ticket.payment.cashAmount ?? 0 :
-      ticket.payment.method === 'cash' ? ticket.total : 0
+      ticket.payment.method === 'mixed'
+        ? (ticket.payment.cashAmount ?? 0)
+        : ticket.payment.method === 'cash'
+          ? ticket.total
+          : 0
     )
     const cardPayments = activeTickets.map((ticket) =>
-      ticket.payment.method === 'mixed' ? ticket.payment.cardAmount ?? 0 :
-      ticket.payment.method === 'card' ? ticket.total : 0
+      ticket.payment.method === 'mixed'
+        ? (ticket.payment.cardAmount ?? 0)
+        : ticket.payment.method === 'card'
+          ? ticket.total
+          : 0
     )
     const mixedPayments = activeTickets
       .filter((ticket) => ticket.payment.method === 'mixed')
@@ -231,7 +242,9 @@ export class SqliteCashRepository implements CashRepository {
     const taxCollected = activeTickets.map((ticket) => ticket.tax)
     const totalSales = activeTickets.map((ticket) => ticket.total)
     const totalRefunds = tickets.filter((ticket) => ticket.returnedAt).map((ticket) => ticket.total)
-    const expectedCash = money(row.opening_amount + sum(movements.map((movement) => movement.cashEffect)))
+    const expectedCash = money(
+      row.opening_amount + sum(movements.map((movement) => movement.cashEffect))
+    )
 
     const shift: CashShift = {
       id: row.id,
@@ -241,25 +254,41 @@ export class SqliteCashRepository implements CashRepository {
       openingAmount: row.opening_amount,
       isOpen: row.closed_at === null,
       closedAt: row.closed_at ?? undefined,
-      expectedCash: row.closed_at ? row.expected_cash ?? expectedCash : expectedCash,
+      expectedCash: row.closed_at ? (row.expected_cash ?? expectedCash) : expectedCash,
       countedCash: row.counted_cash ?? undefined,
       difference: row.difference ?? undefined,
       cashSales: money(sum(cashPayments)),
       cardSales: money(sum(cardPayments)),
       mixedSales: money(sum(mixedPayments)),
       creditSales: money(sum(creditPayments)),
-      customerPayments: money(sum(
-        movements.filter((movement) => movement.source === 'CUSTOMER_PAYMENT').map((movement) => movement.amount)
-      )),
-      manualIncomes: money(sum(
-        movements.filter((movement) => movement.source === 'MANUAL' && movement.type === 'INGRESO').map((movement) => movement.amount)
-      )),
-      manualExpenses: money(sum(
-        movements.filter((movement) => movement.source === 'MANUAL' && movement.type === 'EGRESO').map((movement) => movement.amount)
-      )),
-      cashRefunds: money(sum(
-        movements.filter((movement) => movement.source === 'SALE_REFUND').map((movement) => -movement.cashEffect)
-      )),
+      customerPayments: money(
+        sum(
+          movements
+            .filter((movement) => movement.source === 'CUSTOMER_PAYMENT')
+            .map((movement) => movement.amount)
+        )
+      ),
+      manualIncomes: money(
+        sum(
+          movements
+            .filter((movement) => movement.source === 'MANUAL' && movement.type === 'INGRESO')
+            .map((movement) => movement.amount)
+        )
+      ),
+      manualExpenses: money(
+        sum(
+          movements
+            .filter((movement) => movement.source === 'MANUAL' && movement.type === 'EGRESO')
+            .map((movement) => movement.amount)
+        )
+      ),
+      cashRefunds: money(
+        sum(
+          movements
+            .filter((movement) => movement.source === 'SALE_REFUND')
+            .map((movement) => -movement.cashEffect)
+        )
+      ),
       totalSales: money(sum(totalSales)),
       totalRefunds: money(sum(totalRefunds)),
       grossProfit: money(sum(grossProfit)),
@@ -270,16 +299,20 @@ export class SqliteCashRepository implements CashRepository {
   }
 
   openShift(cashierId: string, cashierName: string, openingAmount: number): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO cash_shifts (id, cashier_id, cashier_name, opened_at, opening_amount)
       VALUES (@id, @cashierId, @cashierName, @openedAt, @openingAmount)
-    `).run({
-      id: `shift-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      cashierId,
-      cashierName,
-      openedAt: new Date().toISOString(),
-      openingAmount
-    })
+    `
+      )
+      .run({
+        id: `shift-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        cashierId,
+        cashierName,
+        openedAt: new Date().toISOString(),
+        openingAmount
+      })
   }
 
   closeShift(
@@ -289,15 +322,21 @@ export class SqliteCashRepository implements CashRepository {
     countedCash: number,
     difference: number
   ): void {
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(
+        `
       UPDATE cash_shifts SET closed_at = ?, expected_cash = ?, counted_cash = ?, difference = ?
       WHERE id = ? AND closed_at IS NULL
-    `).run(closedAt, expectedCash, countedCash, difference, shiftId)
+    `
+      )
+      .run(closedAt, expectedCash, countedCash, difference, shiftId)
     if (result.changes !== 1) throw new Error('El turno ya fue cerrado o no existe.')
   }
 
   insertMovement(movement: Omit<CashMovement, 'id' | 'createdAt'>): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO cash_movements (
         id, shift_id, created_at, type, amount, cash_effect, concept,
         cashier_name, source, payment_method, source_id
@@ -305,19 +344,21 @@ export class SqliteCashRepository implements CashRepository {
         @id, @shiftId, @createdAt, @type, @amount, @cashEffect, @concept,
         @cashierName, @source, @paymentMethod, @sourceId
       )
-    `).run({
-      id: `cash-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
-      shiftId: movement.shiftId,
-      type: movement.type,
-      amount: movement.amount,
-      cashEffect: movement.cashEffect,
-      concept: movement.concept,
-      cashierName: movement.cashierName,
-      source: movement.source,
-      paymentMethod: movement.paymentMethod ?? null,
-      sourceId: movement.sourceId ?? null
-    })
+    `
+      )
+      .run({
+        id: `cash-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        createdAt: new Date().toISOString(),
+        shiftId: movement.shiftId,
+        type: movement.type,
+        amount: movement.amount,
+        cashEffect: movement.cashEffect,
+        concept: movement.concept,
+        cashierName: movement.cashierName,
+        source: movement.source,
+        paymentMethod: movement.paymentMethod ?? null,
+        sourceId: movement.sourceId ?? null
+      })
   }
 
   insertRefund(
@@ -329,19 +370,23 @@ export class SqliteCashRepository implements CashRepository {
     payment: SalePayment,
     cashAmount: number
   ): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO sale_refunds (
         id, sale_id, cash_shift_id, cashier_id, returned_at, amount, payment_json, cash_amount
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      `refund-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      saleId,
-      shiftId,
-      cashierId,
-      returnedAt,
-      amount,
-      JSON.stringify(payment),
-      cashAmount
-    )
+    `
+      )
+      .run(
+        `refund-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        saleId,
+        shiftId,
+        cashierId,
+        returnedAt,
+        amount,
+        JSON.stringify(payment),
+        cashAmount
+      )
   }
 }

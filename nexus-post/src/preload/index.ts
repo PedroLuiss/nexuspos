@@ -27,6 +27,17 @@ import type {
   ApplyPaymentToDebtInput,
   CreateSaleInput,
   SuspendedSale,
+  TaxInput,
+  TaxRate,
+  Brand,
+  BrandInput,
+  BrandFilter,
+  Supplier,
+  SupplierInput,
+  SupplierFilter,
+  ProductType,
+  ProductTypeInput,
+  ProductTypeFilter,
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
@@ -42,6 +53,52 @@ const api: NexusApi = {
     update: (product: Product) => ipcRenderer.invoke(IPC_CHANNELS.products.update, product),
     softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.products.softDelete, id),
     toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.products.toggleStatus, id)
+  },
+  taxes: {
+    list: (includeInactive?: boolean) =>
+      ipcRenderer.invoke(IPC_CHANNELS.taxes.list, includeInactive),
+    create: (input: TaxInput) => ipcRenderer.invoke(IPC_CHANNELS.taxes.create, input),
+    update: (tax: TaxRate) => ipcRenderer.invoke(IPC_CHANNELS.taxes.update, tax),
+    remove: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.taxes.remove, id),
+    setDefault: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.taxes.setDefault, id)
+  },
+  brands: {
+    list: (filter?: BrandFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.brands.list, filter),
+    getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.brands.getById, id),
+    create: (input: BrandInput) => ipcRenderer.invoke(IPC_CHANNELS.brands.create, input),
+    update: (brand: Brand) => ipcRenderer.invoke(IPC_CHANNELS.brands.update, brand),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.brands.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.brands.toggleStatus, id)
+  },
+  suppliers: {
+    list: (filter?: SupplierFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.list, filter),
+    getById: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.getById, id),
+    create: (input: SupplierInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.create, input),
+    update: (supplier: Supplier) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.update, supplier),
+    softDelete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.suppliers.toggleStatus, id)
+  },
+  productTypes: {
+    list: (filter?: ProductTypeFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.list, filter),
+    getById: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.getById, id),
+    create: (input: ProductTypeInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.create, input),
+    update: (type: ProductType) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.update, type),
+    softDelete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productTypes.toggleStatus, id)
   },
   inventory: {
     adjustStock: (input: AdjustStockInput) =>
@@ -143,6 +200,11 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.customers.createCreditSale, input),
     applyPaymentToDebt: (input: ApplyPaymentToDebtInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.customers.applyPaymentToDebt, input)
+  },
+  appWindow: {
+    minimize: () => ipcRenderer.invoke(IPC_CHANNELS.appWindow.minimize),
+    toggleMaximize: () => ipcRenderer.invoke(IPC_CHANNELS.appWindow.toggleMaximize),
+    close: () => ipcRenderer.invoke(IPC_CHANNELS.appWindow.close)
   }
 }
 

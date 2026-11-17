@@ -1,8 +1,5 @@
 import type { CreateUserInput, UpdateUserInput, User, UserRole } from '@shared/contracts'
-import {
-  ROLE_DEFAULT_PERMISSIONS,
-  sanitizePermissionKeys
-} from '@shared/contracts'
+import { ROLE_DEFAULT_PERMISSIONS, sanitizePermissionKeys } from '@shared/contracts'
 import type { UserRepository } from '../../ports/user.repository'
 import type { AuthService } from '../auth/auth.service'
 
@@ -37,11 +34,7 @@ export class UserService {
     return session
   }
 
-  private ensureUniqueIdentity(
-    username: string,
-    email: string,
-    excludeId?: string
-  ): void {
+  private ensureUniqueIdentity(username: string, email: string, excludeId?: string): void {
     const byEmail = this.userRepository.findByEmail(email)
     if (byEmail && byEmail.id !== excludeId) {
       throw new Error(
@@ -145,7 +138,8 @@ export class UserService {
       this.assertAnotherAdminExists(current.id)
     }
 
-    const username = input.username !== undefined ? input.username.trim().toLowerCase() : current.username
+    const username =
+      input.username !== undefined ? input.username.trim().toLowerCase() : current.username
     const email = input.email !== undefined ? input.email.trim().toLowerCase() : current.email
 
     if (!username) throw new Error('El nombre de usuario no puede quedar vacío.')
@@ -154,7 +148,11 @@ export class UserService {
     }
     this.ensureUniqueIdentity(username, email, current.id)
 
-    if (input.password !== undefined && input.password.length > 0 && input.password.length < MIN_PASSWORD_LENGTH) {
+    if (
+      input.password !== undefined &&
+      input.password.length > 0 &&
+      input.password.length < MIN_PASSWORD_LENGTH
+    ) {
       throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
     }
     if (input.pin !== undefined && input.pin.trim().length > 0 && !PIN_RE.test(input.pin.trim())) {

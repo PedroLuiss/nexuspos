@@ -127,8 +127,7 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
                 </span>
                 <span>•</span>
                 <span>
-                  Latencia de Red:{' '}
-                  <strong className="font-mono text-[#1B1B1B]">24 ms</strong>
+                  Latencia de Red: <strong className="font-mono text-[#1B1B1B]">24 ms</strong>
                 </span>
               </div>
             </div>
@@ -160,7 +159,10 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
                 Producto Consultado [F4]
               </label>
               <div className="relative">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]" />
+                <Search
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]"
+                />
                 <input
                   type="text"
                   readOnly
