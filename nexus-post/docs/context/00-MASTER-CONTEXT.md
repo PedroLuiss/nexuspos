@@ -128,7 +128,7 @@ Este resumen distingue integración persistida de prototipos visuales; no sustit
 | **04 Kardex** | Consulta historial SQLite; ajustes, ventas y devoluciones agregan movimientos desde sus flujos transaccionales. Los movimientos se tratan como append-only. |
 | **05 Caja** | Turnos y libro de efectivo persistidos por cajero; historial administrativo de turnos cerrados de todos los cajeros solo para ADMIN, con detalle, tickets y devoluciones sujetas a las reglas del contexto 05. |
 | **06 Clientes** | Directorio, créditos y abonos persistidos. Los abonos se asocian al turno; la devolución a crédito cancela deuda pendiente y convierte abonos previos en saldo a favor. |
-| **07 Reportes** | La vista todavía usa KPIs, serie temporal y top de productos de demostración; no hay repositorio/servicio/IPC de reportes conectado a SQLite. |
+| **07 Reportes** | KPIs y rankings netos por fecha de emisión/devolución, agregados a centavos, conversión informativa de montos a VES con tasa BCV y detalle de cuenta real del cliente; utilidad bruta dependiente del costo histórico del ticket. |
 | **08 Ajustes** | Usuarios/RBAC, datos del negocio e impuestos usan SQLite. Configuración y lectura de báscula serial tienen servicio e IPC; impresoras y respaldo/restauración real siguen pendientes. |
 
 ---

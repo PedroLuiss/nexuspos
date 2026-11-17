@@ -9,6 +9,7 @@ import { SqliteCustomerRepository } from '../adapters/persistence/sqlite/custome
 import { SqliteSalesRepository } from '../adapters/persistence/sqlite/sales.sqlite'
 import { SqliteExchangeRateRepository } from '../adapters/persistence/sqlite/exchange-rates.sqlite'
 import { SqliteCashRepository } from '../adapters/persistence/sqlite/cash.sqlite'
+import { SqliteReportsRepository } from '../adapters/persistence/sqlite/reports.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
@@ -25,6 +26,7 @@ import { CustomerService } from '../domain/customers/customer.service'
 import { SalesService } from '../domain/sales/sales.service'
 import { ExchangeRateService } from '../domain/exchange-rate/exchange-rate.service'
 import { CashService } from '../domain/cash/cash.service'
+import { ReportsService } from '../domain/reports/reports.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
@@ -36,6 +38,7 @@ import { registerCustomerIpc } from './customers.ipc'
 import { registerSalesIpc } from './sales.ipc'
 import { registerExchangeRateIpc } from './exchange-rate.ipc'
 import { registerCashIpc } from './cash.ipc'
+import { registerReportsIpc } from './reports.ipc'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -52,6 +55,7 @@ export function registerIpcHandlers(): void {
   const settingsRepository = new SqliteSettingsRepository(db)
   const scaleRepository = new SqliteScaleRepository(db)
   const cashRepository = new SqliteCashRepository(db)
+  const reportsRepository = new SqliteReportsRepository(db)
   const transactionRunner = new SqliteTransactionRunner(db)
 
   const productService = new ProductService(productRepository)
@@ -97,6 +101,7 @@ export function registerIpcHandlers(): void {
     authService,
     transactionRunner
   )
+  const reportsService = new ReportsService(reportsRepository, authService, customerService)
 
   // Conectar el adaptador serial al servicio de dominio
   const serialAdapter = new SerialScaleAdapter()
@@ -113,4 +118,5 @@ export function registerIpcHandlers(): void {
   registerSalesIpc(salesService)
   registerExchangeRateIpc(exchangeRateService)
   registerCashIpc(cashService)
+  registerReportsIpc(reportsService)
 }

@@ -29,7 +29,8 @@ import type {
   SuspendedSale,
   OpenCashShiftInput,
   CloseCashShiftInput,
-  CreateCashMovementInput
+  CreateCashMovementInput,
+  ReportsQuery
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -49,24 +50,29 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, productId)
   },
   sales: {
-    complete: (input: CreateSaleInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.sales.complete, input),
+    complete: (input: CreateSaleInput) => ipcRenderer.invoke(IPC_CHANNELS.sales.complete, input),
     listSuspended: () => ipcRenderer.invoke(IPC_CHANNELS.sales.listSuspended),
-    suspend: (sale: SuspendedSale) =>
-      ipcRenderer.invoke(IPC_CHANNELS.sales.suspend, sale),
-    deleteSuspended: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.sales.deleteSuspended, id)
+    suspend: (sale: SuspendedSale) => ipcRenderer.invoke(IPC_CHANNELS.sales.suspend, sale),
+    deleteSuspended: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sales.deleteSuspended, id)
   },
   exchangeRate: {
     getUsdVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getUsdVes)
   },
   cash: {
     getRegister: (shiftId?: string) => ipcRenderer.invoke(IPC_CHANNELS.cash.getRegister, shiftId),
-    openShift: (input: OpenCashShiftInput) => ipcRenderer.invoke(IPC_CHANNELS.cash.openShift, input),
-    closeShift: (input: CloseCashShiftInput) => ipcRenderer.invoke(IPC_CHANNELS.cash.closeShift, input),
+    openShift: (input: OpenCashShiftInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.cash.openShift, input),
+    closeShift: (input: CloseCashShiftInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.cash.closeShift, input),
     addMovement: (input: CreateCashMovementInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.cash.addMovement, input),
     returnSale: (saleId: string) => ipcRenderer.invoke(IPC_CHANNELS.cash.returnSale, saleId)
+  },
+  reports: {
+    getDashboard: (query: ReportsQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.reports.getDashboard, query),
+    getCustomerDetail: (customerId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.reports.getCustomerDetail, customerId)
   },
   categories: {
     list: (filter?: CategoryFilter) => ipcRenderer.invoke(IPC_CHANNELS.categories.list, filter),
@@ -104,25 +110,19 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.hardware.openPort, comPort, baudRate),
     closePort: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.closePort),
     readWeight: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.readWeight),
-    isConnected: () =>
-      ipcRenderer.invoke(IPC_CHANNELS.hardware.isConnected),
+    isConnected: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.isConnected),
     saveScaleConfig: (input: ScaleConfigInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.hardware.saveScaleConfig, input),
     getScaleConfig: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.getScaleConfig)
   },
   customers: {
-    list: (filter?: CustomerFilter) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.list, filter),
-    getById: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.getById, id),
-    create: (input: CustomerInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.create, input),
+    list: (filter?: CustomerFilter) => ipcRenderer.invoke(IPC_CHANNELS.customers.list, filter),
+    getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.customers.getById, id),
+    create: (input: CustomerInput) => ipcRenderer.invoke(IPC_CHANNELS.customers.create, input),
     update: (input: CustomerUpdateInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.customers.update, input),
-    delete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.delete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.toggleStatus, id),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.customers.delete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.customers.toggleStatus, id),
     getAccountSummary: (customerId: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.customers.getAccountSummary, customerId),
     recordPayment: (input: CustomerPaymentInput) =>
