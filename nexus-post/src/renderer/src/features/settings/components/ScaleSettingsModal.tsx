@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { X } from '../../../shared/icons/Icons'
-import type { SerialPortInfo, ScaleConfigInput, ScaleReading, ScaleConnectionStatus, BaudRate } from '@shared/contracts'
+import type {
+  SerialPortInfo,
+  ScaleConfigInput,
+  ScaleReading,
+  ScaleConnectionStatus,
+  BaudRate
+} from '@shared/contracts'
 
 interface ScaleSettingsModalProps {
   isOpen: boolean
@@ -175,7 +181,7 @@ export const ScaleSettingsModal: React.FC<ScaleSettingsModalProps> = ({
         isEnabled
       }
       await window.api.hardware.saveScaleConfig(input)
-      onFeedback('Configuración de báscula guardada en SQLite')
+      onFeedback('Configuración de báscula guardada correctamente')
       onClose()
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Error guardando configuración')
@@ -186,9 +192,18 @@ export const ScaleSettingsModal: React.FC<ScaleSettingsModalProps> = ({
 
   if (!isOpen) return null
 
-  const portOptions = availablePorts.length > 0
-    ? availablePorts.map((p) => ({ value: p.path, label: `${p.path}${p.manufacturer ? ` - ${p.manufacturer}` : ''}` }))
-    : [{ value: 'COM3', label: 'COM3' }, { value: 'COM1', label: 'COM1' }, { value: 'COM2', label: 'COM2' }, { value: 'COM4', label: 'COM4' }]
+  const portOptions =
+    availablePorts.length > 0
+      ? availablePorts.map((p) => ({
+          value: p.path,
+          label: `${p.path}${p.manufacturer ? ` - ${p.manufacturer}` : ''}`
+        }))
+      : [
+          { value: 'COM3', label: 'COM3' },
+          { value: 'COM1', label: 'COM1' },
+          { value: 'COM2', label: 'COM2' },
+          { value: 'COM4', label: 'COM4' }
+        ]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
@@ -197,7 +212,10 @@ export const ScaleSettingsModal: React.FC<ScaleSettingsModalProps> = ({
           <h3 className="text-xs font-bold text-[#1B1B1B] uppercase tracking-wide">
             Configuración de Báscula (RS-232 / COM)
           </h3>
-          <button onClick={onClose} className="text-[#5C5C5C] hover:text-[#C42B1C] hover:bg-[#F3F3F3] p-1 rounded cursor-pointer">
+          <button
+            onClick={onClose}
+            className="text-[#5C5C5C] hover:text-[#C42B1C] hover:bg-[#F3F3F3] p-1 rounded cursor-pointer"
+          >
             <X size={16} />
           </button>
         </div>
@@ -265,12 +283,14 @@ export const ScaleSettingsModal: React.FC<ScaleSettingsModalProps> = ({
           </div>
 
           {/* Estado de conexión */}
-          <div className={`p-3 rounded-[4px] border ${isConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+          <div
+            className={`p-3 rounded-[4px] border ${isConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+          >
             <div className="flex items-center justify-between">
-              <span className="font-semibold">
-                {isConnected ? 'Conectado' : 'Desconectado'}
-              </span>
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              <span className="font-semibold">{isConnected ? 'Conectado' : 'Desconectado'}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-slate-400'}`}
+              />
             </div>
             <div className="flex justify-between text-[10px] mt-1">
               <span>Puerto: {comPort}</span>
@@ -286,7 +306,9 @@ export const ScaleSettingsModal: React.FC<ScaleSettingsModalProps> = ({
                 <span className="text-[10px] text-slate-400 block tracking-widest uppercase mb-1">
                   Pantalla Digital de Balanza
                 </span>
-                <div className={`text-3xl font-extrabold tracking-wider my-1 ${isStable ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <div
+                  className={`text-3xl font-extrabold tracking-wider my-1 ${isStable ? 'text-emerald-400' : 'text-amber-400'}`}
+                >
                   {scaleWeight}
                 </div>
                 <span className={`text-[10px] ${isStable ? 'text-emerald-400' : 'text-amber-400'}`}>

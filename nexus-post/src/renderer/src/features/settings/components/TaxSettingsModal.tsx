@@ -79,7 +79,9 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
       })
       onClose()
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'No se pudo guardar la configuración de IVA.')
+      setErrorMsg(
+        err instanceof Error ? err.message : 'No se pudo guardar la configuración de IVA.'
+      )
     } finally {
       setIsSaving(false)
     }
@@ -98,7 +100,7 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
                 Impuestos y Facturación
               </h2>
               <p className="text-[11px] text-[#717783]">
-                Tasa aplicada por la terminal de ventas y el ticket · SQLite
+                Tasa aplicada por la terminal de ventas y el ticket
               </p>
             </div>
           </div>
@@ -138,9 +140,7 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
               className="mt-0.5 rounded border-slate-300 text-[#107C41] focus:ring-[#107C41]"
             />
             <span>
-              <span className="block font-bold text-slate-900">
-                Aplicar impuesto en las ventas
-              </span>
+              <span className="block font-bold text-slate-900">Aplicar impuesto en las ventas</span>
               <span className="block text-[11px] text-slate-600">
                 Al desactivarlo, el POS no traslada impuesto y el ticket omite la línea.
               </span>

@@ -1,11 +1,5 @@
-import type { DatabaseBackup, DatabaseStatus } from '@shared/contracts'
+import type { DatabaseBackupSummary, DatabaseStatusSummary } from '@shared/contracts'
 import { RefreshCw, ShieldCheck } from '../../../shared/icons/Icons'
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-}
 
 function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString('es-VE') : 'Nunca'
@@ -17,7 +11,7 @@ export function DatabaseStatusPanel({
   isBusy,
   onRefresh
 }: {
-  status: DatabaseStatus | null
+  status: DatabaseStatusSummary | null
   isLoading: boolean
   isBusy: boolean
   onRefresh: () => void
@@ -25,7 +19,7 @@ export function DatabaseStatusPanel({
   return (
     <section className="rounded border border-[#E5E5E5] bg-[#F9F9F9] p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h4 className="font-bold">Estado de la base de datos</h4>
+        <h4 className="font-bold">Estado de la información</h4>
         <button
           type="button"
           onClick={onRefresh}
@@ -37,30 +31,20 @@ export function DatabaseStatusPanel({
       </div>
       {isLoading && !status ? (
         <p role="status" className="py-4 text-center text-[#5C5C5C]">
-          Consultando SQLite…
+          Consultando estado…
         </p>
       ) : status ? (
         <>
-          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <StatusFact label="Archivo activo" value={status.fileName} />
-            <StatusFact label="Tamaño" value={formatBytes(status.sizeBytes)} />
-            <StatusFact label="Esquema" value={`Versión ${status.schemaVersion}`} />
+          <dl className="grid gap-2 sm:grid-cols-2">
             <StatusFact
-              label="Integridad SQLite"
-              value={status.integrity === 'ok' ? 'Correcta' : status.integrityMessage}
+              label="Estado de los datos"
+              value={status.integrity === 'ok' ? 'Operativo' : 'Requiere revisión'}
               good={status.integrity === 'ok'}
             />
-            <StatusFact label="Productos" value={status.productCount.toLocaleString('es-VE')} />
-            <StatusFact label="Facturas" value={status.salesCount.toLocaleString('es-VE')} />
-            <StatusFact label="Clientes" value={status.customerCount.toLocaleString('es-VE')} />
             <StatusFact label="Último respaldo" value={formatDate(status.lastBackupAt)} />
-            <StatusFact
-              label="Espacio recuperable"
-              value={`${status.freePages.toLocaleString('es-VE')} páginas`}
-            />
           </dl>
           <p className="mt-2 text-[10px] text-[#5C5C5C]">
-            Los respaldos se almacenan localmente en la carpeta de datos de NexusPOS.
+            La información técnica y los archivos de respaldo no se muestran en este panel.
           </p>
         </>
       ) : null}
@@ -71,7 +55,7 @@ export function DatabaseStatusPanel({
 export function DatabaseBackupHistory({
   backups
 }: {
-  backups: DatabaseBackup[]
+  backups: DatabaseBackupSummary[]
 }): React.JSX.Element {
   return (
     <section className="rounded border border-[#E5E5E5] p-3">
@@ -83,11 +67,14 @@ export function DatabaseBackupHistory({
         <p className="py-3 text-center text-[#717783]">Todavía no hay respaldos locales.</p>
       ) : (
         <ul className="max-h-36 divide-y divide-[#E5E5E5] overflow-y-auto">
-          {backups.map((backup) => (
-            <li key={backup.fileName} className="flex flex-wrap justify-between gap-2 py-2">
-              <span className="break-all font-mono">{backup.fileName}</span>
+          {backups.map((backup, index) => (
+            <li
+              key={`${backup.createdAt}-${index}`}
+              className="flex flex-wrap justify-between gap-2 py-2"
+            >
+              <span className="font-semibold">Copia de seguridad</span>
               <span className="text-[#5C5C5C]">
-                {formatBytes(backup.sizeBytes)} · {formatDate(backup.createdAt)}
+                {formatDate(backup.createdAt)}
                 {backup.remoteStatus && (
                   <span
                     className={`ml-2 font-semibold ${
@@ -99,10 +86,10 @@ export function DatabaseBackupHistory({
                     }`}
                   >
                     {backup.remoteStatus === 'uploaded'
-                      ? '· enviado a Laravel'
+                      ? '· copia remota completada'
                       : backup.remoteStatus === 'failed'
-                        ? '· error remoto'
-                        : '· endpoint pendiente'}
+                        ? '· envío remoto fallido'
+                        : '· envío remoto pendiente'}
                   </span>
                 )}
               </span>

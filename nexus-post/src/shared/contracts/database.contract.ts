@@ -23,11 +23,21 @@ export interface DatabaseStatus {
   lastBackupAt: string | null
 }
 
+export interface DatabaseStatusSummary {
+  integrity: 'ok' | 'error'
+  lastBackupAt: string | null
+}
+
+export interface DatabaseBackupSummary {
+  createdAt: string
+  remoteStatus?: BackupRemoteStatus
+}
+
 export interface DatabaseMaintenanceApi {
-  getStatus(): Promise<DatabaseStatus>
-  listBackups(): Promise<DatabaseBackup[]>
-  createBackup(): Promise<DatabaseBackup>
-  verifyIntegrity(): Promise<DatabaseStatus>
-  optimize(): Promise<DatabaseStatus>
+  getStatus(): Promise<DatabaseStatusSummary>
+  listBackups(): Promise<DatabaseBackupSummary[]>
+  createBackup(): Promise<DatabaseBackupSummary>
+  verifyIntegrity(): Promise<DatabaseStatusSummary>
+  optimize(): Promise<DatabaseStatusSummary>
   restoreBackup(): Promise<void>
 }

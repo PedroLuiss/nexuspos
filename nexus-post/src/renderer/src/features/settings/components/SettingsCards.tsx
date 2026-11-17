@@ -64,7 +64,7 @@ export function SettingsCards({
             valueClassName: isAdmin ? 'text-[#107C41] font-mono' : 'text-[#C42B1C] font-mono'
           }
         ]}
-        footerNote={isAdmin ? 'RBAC persistido en SQLite' : 'Requiere sesión ADMIN'}
+        footerNote={isAdmin ? 'Permisos guardados' : 'Requiere sesión ADMIN'}
         actionLabel="Gestionar Usuarios"
         actionHotkey="ALT+U"
         onAction={() => onOpenModal('users')}
@@ -96,7 +96,7 @@ export function SettingsCards({
             valueClassName: 'font-mono'
           }
         ]}
-        footerNote={isAdmin ? 'Guardado en SQLite' : 'Solo lectura'}
+        footerNote={isAdmin ? 'Configuración guardada' : 'Solo lectura'}
         actionLabel="Editar Datos"
         actionHotkey="ALT+A"
         onAction={() => onOpenModal('business')}
@@ -145,8 +145,8 @@ export function SettingsCards({
 
       <SettingsCard
         icon={<Database size={22} />}
-        title="Base de Datos SQLite Local"
-        subtitle="Respaldos, integridad y mantenimiento"
+        title="Respaldo y recuperación"
+        subtitle="Copias de seguridad y mantenimiento"
         accent="purple"
         badge={{
           label: isAdmin ? 'Herramientas ADMIN' : 'Solo Administrador',
@@ -154,17 +154,16 @@ export function SettingsCards({
             ? 'bg-purple-50 text-purple-700 border-purple-200'
             : 'bg-slate-100 text-slate-500 border-slate-200'
         }}
-        description="Revise el estado real de SQLite, cree respaldos locales verificables, prepare su envío a Laravel, optimice o restaure la base con copia preventiva."
+        description="Consulte el estado operativo, cree copias de seguridad, realice mantenimiento o restaure una copia con protección preventiva."
         facts={[
-          { label: 'Motor local:', value: 'SQLite · better-sqlite3' },
           {
-            label: 'Integridad y tamaño:',
-            value: 'Consultar estado en el centro de mantenimiento'
+            label: 'Estado:',
+            value: 'Consultar en el centro de mantenimiento'
           },
-          { label: 'Respaldo remoto:', value: 'Envío preparado para endpoint Laravel' }
+          { label: 'Envío remoto:', value: 'Pendiente de configuración' }
         ]}
-        footerNote={isAdmin ? 'Respaldos en datos locales de la aplicación' : 'Solo Administrador'}
-        actionLabel="Backup / Restore"
+        footerNote={isAdmin ? 'Herramientas de mantenimiento' : 'Solo Administrador'}
+        actionLabel="Abrir mantenimiento"
         onAction={() => onOpenModal('database')}
         disabled={!isAdmin}
         disabledHint={restrictedHint}

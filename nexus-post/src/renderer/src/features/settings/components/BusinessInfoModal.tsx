@@ -94,7 +94,7 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
                 Datos del Negocio y Plantilla de Ticket
               </h2>
               <p className="text-[11px] text-[#717783]">
-                Información fiscal, propietario y formato del comprobante 80mm · SQLite
+                Información fiscal, propietario y formato del comprobante 80mm
               </p>
             </div>
           </div>
@@ -131,7 +131,9 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
         {!canEdit && (
           <div className="px-5 py-2 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
             <ShieldAlert size={13} className="text-slate-500" />
-            <span>Modo lectura: solo el Administrador puede editar los datos fiscales del negocio.</span>
+            <span>
+              Modo lectura: solo el Administrador puede editar los datos fiscales del negocio.
+            </span>
           </div>
         )}
 
@@ -142,7 +144,11 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
           </div>
         )}
 
-        <form id="business-info-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 text-xs">
+        <form
+          id="business-info-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-5 text-xs"
+        >
           {tab === 'identity' ? (
             <BusinessIdentityForm values={form} onChange={patch} disabled={!canEdit} />
           ) : (
@@ -171,7 +177,7 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#107C41] hover:bg-[#0F7B0F] rounded-[4px] shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check size={14} />
-              <span>{isSaving ? 'Guardando...' : 'Guardar en SQLite'}</span>
+              <span>{isSaving ? 'Guardando...' : 'Guardar cambios'}</span>
             </button>
           </div>
         </div>

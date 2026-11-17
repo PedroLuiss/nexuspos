@@ -47,6 +47,7 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - La restauración selecciona un archivo `.sqlite`, `.sqlite3` o `.db`; valida integridad, tablas y versión compatible, crea un respaldo preventivo, reemplaza la base activa y reinicia NexusPOS.
   - Las operaciones están validadas por rol `ADMIN` en `DatabaseMaintenanceService` además de ocultar/deshabilitar la tarjeta en la interfaz.
   - El envío a Laravel está implementado como carga multipart `POST` (archivo en `database`, además de `created_at`, `sha256` y `source`). Se activa únicamente configurando `NEXUS_BACKUP_API_URL`; `NEXUS_BACKUP_API_TOKEN` es opcional para Bearer. La API aún no está publicada ni se configuró el URL; sin endpoint, se crea el respaldo local y el modal informa que el envío está pendiente.
+  - **Privacidad de la interfaz:** el panel muestra únicamente el estado operativo y la fecha del último respaldo. El IPC transmite resúmenes sin nombres de archivo, extensiones, rutas, motor, esquema, conteos, tamaños ni detalles técnicos; estos permanecen en el flujo interno de mantenimiento.
 
 ---
 

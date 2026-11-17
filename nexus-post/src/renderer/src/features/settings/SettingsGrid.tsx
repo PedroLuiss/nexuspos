@@ -134,8 +134,8 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
             Ajustes Generales del Sistema NexusPOS
           </h2>
           <p className="text-xs text-[#5C5C5C] mt-0.5">
-            Datos del negocio y ticket, impuestos (IVA), usuarios y permisos (RBAC), base de datos
-            SQLite y puertos de hardware
+            Datos del negocio y ticket, impuestos (IVA), usuarios y permisos (RBAC), respaldos y
+            puertos de hardware
           </p>
         </div>
 
@@ -187,7 +187,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           canEdit={isAdmin}
           onSave={async (input) => {
             await saveConfig(input)
-            showFeedback('Datos del negocio y plantilla de ticket guardados en SQLite')
+            showFeedback('Datos del negocio y plantilla de ticket guardados correctamente')
           }}
         />
       )}

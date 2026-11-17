@@ -1,13 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import type { User, CreateUserInput, UpdateUserInput } from '@shared/contracts'
-import {
-  Users,
-  Plus,
-  Search,
-  X,
-  ShieldAlert,
-  RefreshCw
-} from '../../../shared/icons/Icons'
+import { Users, Plus, Search, X, ShieldAlert, RefreshCw } from '../../../shared/icons/Icons'
 import UserTable from './UserTable'
 import UserFormModal from './UserFormModal'
 
@@ -115,7 +108,9 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
     try {
       await onToggleStatus(user.id)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'No se pudo cambiar el estado del usuario.')
+      setActionError(
+        err instanceof Error ? err.message : 'No se pudo cambiar el estado del usuario.'
+      )
     }
   }
 
@@ -147,7 +142,7 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
                 Gestión de Usuarios, Roles y Permisos
               </h2>
               <p className="text-[11px] text-[#717783]">
-                {users.length} usuarios · {activeCount} activos · {adminCount} administradores · SQLite
+                {users.length} usuarios · {activeCount} activos · {adminCount} administradores
               </p>
             </div>
           </div>
@@ -162,7 +157,10 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
         <div className="p-3 bg-white border-b border-[#E5E5E5] flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-1 max-w-lg">
             <div className="relative flex-1">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <input
                 type="text"
                 placeholder="Buscar por nombre, usuario o correo..."
@@ -187,7 +185,7 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
               type="button"
               onClick={() => void onReload()}
               className="p-1.5 text-slate-600 hover:text-[#0067C0] hover:bg-blue-50 border border-slate-300 rounded-[4px] cursor-pointer"
-              title="Recargar desde SQLite"
+              title="Recargar lista"
             >
               <RefreshCw size={14} />
             </button>
@@ -222,7 +220,7 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
 
         <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-t border-[#E5E5E5] text-xs">
           <span className="text-slate-500 font-mono text-[11px]">
-            {filteredUsers.length} de {users.length} usuarios registrados en SQLite
+            {filteredUsers.length} de {users.length} usuarios registrados
           </span>
           <button
             type="button"

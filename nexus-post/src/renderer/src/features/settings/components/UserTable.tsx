@@ -26,11 +26,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   onDelete
 }) => {
   if (isLoading && users.length === 0) {
-    return (
-      <div className="py-12 text-center text-slate-500 text-xs">
-        Cargando usuarios desde SQLite...
-      </div>
-    )
+    return <div className="py-12 text-center text-slate-500 text-xs">Cargando usuarios...</div>
   }
 
   return (
@@ -60,7 +56,11 @@ export const UserTable: React.FC<UserTableProps> = ({
             const isSelf = currentUserId === u.id
 
             return (
-              <tr key={u.id} className="hover:bg-slate-50 transition-colors" style={{ height: '40px' }}>
+              <tr
+                key={u.id}
+                className="hover:bg-slate-50 transition-colors"
+                style={{ height: '40px' }}
+              >
                 <td className="py-2 px-3">
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-slate-900">{u.name}</span>
@@ -76,7 +76,9 @@ export const UserTable: React.FC<UserTableProps> = ({
                 <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
 
                 <td className="py-2 px-3 text-center">
-                  <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${badge.className}`}>
+                  <span
+                    className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${badge.className}`}
+                  >
                     {badge.label}
                   </span>
                 </td>
@@ -113,7 +115,9 @@ export const UserTable: React.FC<UserTableProps> = ({
                           : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 cursor-pointer'
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${u.active ? 'bg-[#107C41]' : 'bg-slate-400'}`} />
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${u.active ? 'bg-[#107C41]' : 'bg-slate-400'}`}
+                    />
                     <span>{u.active ? 'Activo' : 'Inactivo'}</span>
                   </button>
                 </td>
@@ -152,7 +156,9 @@ export const UserTable: React.FC<UserTableProps> = ({
                           ? 'text-slate-300 cursor-not-allowed'
                           : 'text-slate-400 hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer'
                       }`}
-                      title={isSelf ? 'No puede eliminar su propia cuenta' : 'Eliminar (soft delete)'}
+                      title={
+                        isSelf ? 'No puede eliminar su propia cuenta' : 'Eliminar (soft delete)'
+                      }
                     >
                       <Trash2 size={14} />
                     </button>

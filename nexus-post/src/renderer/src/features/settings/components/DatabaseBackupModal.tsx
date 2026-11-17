@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { DatabaseBackup, DatabaseStatus } from '@shared/contracts'
+import type { DatabaseBackupSummary, DatabaseStatusSummary } from '@shared/contracts'
 import { X } from '../../../shared/icons/Icons'
 import { DatabaseBackupHistory, DatabaseStatusPanel } from './DatabaseBackupPanels'
 
@@ -14,8 +14,8 @@ export function DatabaseBackupModal({
   onClose,
   onFeedback
 }: DatabaseBackupModalProps): React.JSX.Element | null {
-  const [status, setStatus] = useState<DatabaseStatus | null>(null)
-  const [backups, setBackups] = useState<DatabaseBackup[]>([])
+  const [status, setStatus] = useState<DatabaseStatusSummary | null>(null)
+  const [backups, setBackups] = useState<DatabaseBackupSummary[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -47,8 +47,8 @@ export function DatabaseBackupModal({
 
   const runAction = async (
     action: string,
-    operation: () => Promise<DatabaseStatus | DatabaseBackup | void>,
-    successMessage: (result: DatabaseStatus | DatabaseBackup | void) => string
+    operation: () => Promise<DatabaseStatusSummary | DatabaseBackupSummary | void>,
+    successMessage: (result: DatabaseStatusSummary | DatabaseBackupSummary | void) => string
   ): Promise<void> => {
     setBusyAction(action)
     setError(null)
@@ -65,7 +65,9 @@ export function DatabaseBackupModal({
         result && 'remoteStatus' in result && result.remoteStatus === 'failed' ? 'error' : 'success'
       onFeedback(successMessage(result), feedbackType)
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : String(reason)
+      console.error(`Database maintenance action failed (${action})`, reason)
+      const message =
+        'No se pudo completar la operación. Inténtelo de nuevo o contacte al administrador.'
       setError(message)
       onFeedback(message, 'error')
     } finally {
@@ -80,9 +82,12 @@ export function DatabaseBackupModal({
       (result) => {
         if (!result || !('remoteStatus' in result)) return 'Respaldo local creado.'
         if (result.remoteStatus === 'uploaded') {
-          return `Respaldo local y remoto creado: ${result.fileName}.`
+          return 'Respaldo local y remoto creado.'
         }
-        return `${result.fileName}: ${result.remoteMessage}`
+        if (result.remoteStatus === 'failed') {
+          return 'Respaldo local creado, pero no se pudo completar el envío remoto.'
+        }
+        return 'Respaldo local creado. El envío remoto está pendiente de configuración.'
       }
     )
   }
@@ -94,8 +99,8 @@ export function DatabaseBackupModal({
       (result) =>
         result && 'integrity' in result
           ? result.integrity === 'ok'
-            ? 'La base de datos superó la verificación de integridad.'
-            : `La verificación encontró incidencias: ${result.integrityMessage}`
+            ? 'La verificación terminó correctamente.'
+            : 'Se detectaron incidencias. Contacte al administrador del sistema.'
           : 'Verificación terminada.'
     )
   }
@@ -121,7 +126,9 @@ export function DatabaseBackupModal({
     try {
       await window.api.database.restoreBackup()
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : String(reason)
+      console.error('Database restore failed', reason)
+      const message =
+        'No se pudo restaurar la copia. Verifique el archivo o contacte al administrador.'
       setError(message)
       onFeedback(message, 'error')
     } finally {
@@ -168,22 +175,22 @@ export function DatabaseBackupModal({
           <section className="grid gap-2 sm:grid-cols-3">
             <ActionButton
               title="Crear y enviar respaldo"
-              description="Crea una copia SQLite verificada y la guarda localmente. El envío Laravel se activa al configurar el endpoint."
+              description="Crea y verifica una copia de seguridad. El envío remoto se habilitará al configurar el servicio."
               label={busyAction === 'backup' ? 'Creando…' : 'Crear respaldo ahora'}
               disabled={busyAction !== null}
               onClick={() => void createBackup()}
             />
             <ActionButton
               title="Verificar integridad"
-              description="Ejecuta la comprobación de integridad nativa de SQLite."
+              description="Comprueba que la información pueda utilizarse correctamente."
               label={busyAction === 'verify' ? 'Verificando…' : 'Verificar base'}
               disabled={busyAction !== null}
               onClick={() => void verify()}
             />
             <ActionButton
               title="Optimizar base"
-              description="Crea respaldo preventivo, libera espacio vacío y actualiza estadísticas SQLite."
-              label={busyAction === 'optimize' ? 'Optimizando…' : 'Optimizar SQLite'}
+              description="Crea una copia preventiva y realiza tareas de mantenimiento."
+              label={busyAction === 'optimize' ? 'Optimizando…' : 'Optimizar almacenamiento'}
               disabled={busyAction !== null}
               onClick={() => void optimize()}
             />
