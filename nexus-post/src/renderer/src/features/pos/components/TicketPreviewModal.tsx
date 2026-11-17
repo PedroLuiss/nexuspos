@@ -5,6 +5,7 @@ import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { formatBusinessAddress, getTaxLabel } from '../../../shared/lib/businessConfig'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
+import { formatProductQuantity } from '@shared/lib/product-quantity'
 
 interface TicketPreviewModalProps {
   isOpen: boolean
@@ -47,9 +48,7 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
         <div className="flex items-center justify-between px-4 py-3 bg-[#f8f9fa] border-b border-slate-200">
           <div className="flex items-center gap-2">
             <Receipt size={16} className="text-[#0078D4]" />
-            <h3 className="text-xs font-bold text-slate-800">
-              Vista Previa Ticket Térmico 80mm
-            </h3>
+            <h3 className="text-xs font-bold text-slate-800">Vista Previa Ticket Térmico 80mm</h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
             <X size={16} />
@@ -76,9 +75,7 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                 </div>
               )}
               {business.ticketShowAddress && (
-                <div className="text-[10px] text-slate-500">
-                  {formatBusinessAddress(business)}
-                </div>
+                <div className="text-[10px] text-slate-500">{formatBusinessAddress(business)}</div>
               )}
               {business.ticketShowAddress && business.phone && (
                 <div className="text-[10px] text-slate-500">Tel: {business.phone}</div>
@@ -93,12 +90,16 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Fecha: {new Date().toLocaleDateString('es-VE')}</span>
-                <span>{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>
+                  {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
               {business.ticketShowCashier && (
                 <div className="text-slate-600">Cajero: {cashierName}</div>
               )}
-              {customerName && <div className="text-slate-600 font-bold">Cliente: {customerName}</div>}
+              {customerName && (
+                <div className="text-slate-600 font-bold">Cliente: {customerName}</div>
+              )}
             </div>
 
             {/* Items Table */}
@@ -116,12 +117,18 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                       <td className="py-1">
                         <div className="font-bold line-clamp-1">{item.product.name}</div>
                         <div className="text-[9px] text-slate-500">
-                          {item.quantity} x ${item.product.salePrice.toFixed(2)}
+                          {formatProductQuantity(item.quantity)} {item.product.unit} x $
+                          {item.product.salePrice.toFixed(2)}
                           {item.discountPercent > 0 && ` (-${item.discountPercent}%)`}
                         </div>
                       </td>
                       <td className="text-right align-top py-1 font-bold">
-                        ${(item.product.salePrice * item.quantity * (1 - item.discountPercent / 100)).toFixed(2)}
+                        $
+                        {(
+                          item.product.salePrice *
+                          item.quantity *
+                          (1 - item.discountPercent / 100)
+                        ).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -156,7 +163,9 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
               </div>
               <div className="flex justify-between text-[10px] text-slate-500">
                 <span>Referencia en bolívares (BCV):</span>
-                <span>{exchangeRate ? formatVesAmount(total * exchangeRate.rate) : 'No disponible'}</span>
+                <span>
+                  {exchangeRate ? formatVesAmount(total * exchangeRate.rate) : 'No disponible'}
+                </span>
               </div>
 
               {payment && (

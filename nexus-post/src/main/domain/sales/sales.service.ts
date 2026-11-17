@@ -1,9 +1,4 @@
-import type {
-  CreateSaleInput,
-  SaleResult,
-  SuspendedSale,
-  KardexMovement
-} from '@shared/contracts'
+import type { CreateSaleInput, SaleResult, SuspendedSale, KardexMovement } from '@shared/contracts'
 import type { CustomerService } from '../customers/customer.service'
 import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
@@ -13,6 +8,7 @@ import type { CashRepository } from '../../ports/cash.repository'
 import type { SettingsRepository } from '../../ports/settings.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { ValidationError } from '../shared/errors'
+import { isValidProductQuantity } from '@shared/lib/product-quantity'
 
 const roundMoney = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100
 const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - roundMoney(b)) < 0.011
@@ -51,9 +47,6 @@ export class SalesService {
     for (const line of input.items) {
       const quantity = Number(line.quantity)
       const discountPercent = Number(line.discountPercent)
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new ValidationError('La cantidad debe ser mayor a cero.')
-      }
       if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
         throw new ValidationError('El descuento debe estar entre 0 y 100%.')
       }
@@ -69,12 +62,15 @@ export class SalesService {
       if (!product || !product.active || product.deleted) {
         throw new ValidationError('Un producto del carrito ya no está disponible.')
       }
+      if (!isValidProductQuantity(quantity, product.unit)) {
+        throw new ValidationError(`La cantidad de "${product.name}" no es válida para su unidad.`)
+      }
       if (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
         throw new ValidationError(`Stock insuficiente para "${product.name}".`)
       }
 
       const lineSubtotal = product.salePrice * quantity
-      const lineDiscount = lineSubtotal * discountPercent / 100
+      const lineDiscount = (lineSubtotal * discountPercent) / 100
       const lineTotal = roundMoney(lineSubtotal - lineDiscount)
       subtotal += lineSubtotal
       discount += lineDiscount
@@ -98,12 +94,10 @@ export class SalesService {
       ? roundMoney(
           config.pricesIncludeTax
             ? taxableBase - taxableBase / (1 + config.taxRate / 100)
-            : taxableBase * config.taxRate / 100
+            : (taxableBase * config.taxRate) / 100
         )
       : 0
-    const total = roundMoney(
-      subtotal - discount + (taxable && !config.pricesIncludeTax ? tax : 0)
-    )
+    const total = roundMoney(subtotal - discount + (taxable && !config.pricesIncludeTax ? tax : 0))
     if (total <= 0) throw new ValidationError('El total de la venta debe ser mayor a cero.')
 
     if (
@@ -145,7 +139,9 @@ export class SalesService {
     return this.tx.run(() => {
       const currentShift = this.cash.getActiveShift(user.id)
       if (!currentShift || currentShift.id !== activeShift.id) {
-        throw new ValidationError('La caja cambió de estado. Actualice la pantalla antes de cobrar.')
+        throw new ValidationError(
+          'La caja cambió de estado. Actualice la pantalla antes de cobrar.'
+        )
       }
       for (const item of items) {
         const product = this.products.findById(item.productId)
@@ -153,6 +149,7 @@ export class SalesService {
           !product ||
           !product.active ||
           product.deleted ||
+          !isValidProductQuantity(item.quantity, product.unit) ||
           (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && item.quantity > product.stock)
         ) {
           throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
@@ -177,19 +174,15 @@ export class SalesService {
       }
 
       if (input.payment.method === 'credit') {
-        this.customers.createCreditSale(
-          input.customerId!,
-          result.ticketNumber,
-          total,
-          now
-        )
+        this.customers.createCreditSale(input.customerId!, result.ticketNumber, total, now)
       }
       this.sales.insertSale(sale, items)
-      const cashReceived = input.payment.method === 'cash'
-        ? total
-        : input.payment.method === 'mixed'
-          ? input.payment.cashAmount ?? 0
-          : 0
+      const cashReceived =
+        input.payment.method === 'cash'
+          ? total
+          : input.payment.method === 'mixed'
+            ? (input.payment.cashAmount ?? 0)
+            : 0
       if (cashReceived > 0) {
         this.cash.insertMovement({
           shiftId: activeShift.id,
@@ -229,8 +222,7 @@ export class SalesService {
         !product ||
         !product.active ||
         product.deleted ||
-        !Number.isFinite(item.quantity) ||
-        item.quantity <= 0
+        !isValidProductQuantity(item.quantity, product.unit)
       ) {
         throw new ValidationError('La venta en espera contiene un producto no válido.')
       }
@@ -254,7 +246,9 @@ export class SalesService {
     }
     if (payment.method === 'credit') {
       if (!input.customerId || payment.amountPaid !== 0 || payment.change !== 0) {
-        throw new ValidationError('Las ventas a crédito requieren un cliente y no reciben pago inmediato.')
+        throw new ValidationError(
+          'Las ventas a crédito requieren un cliente y no reciben pago inmediato.'
+        )
       }
       return
     }

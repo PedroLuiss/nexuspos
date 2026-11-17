@@ -3,6 +3,7 @@ import type { ProductFormValues } from '../hooks/useProductForm'
 import { Sparkles } from '../../../shared/icons/Icons'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { getProductTaxLabel } from '../../../shared/lib/businessConfig'
+import { getProductQuantityStep } from '@shared/lib/product-quantity'
 
 interface ProductPricingFieldsProps {
   values: ProductFormValues
@@ -26,6 +27,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
 }) => {
   const { config: businessConfig } = useBusinessConfig()
   const taxLabel = getProductTaxLabel(businessConfig)
+  const quantityStep = getProductQuantityStep(values.unit)
 
   return (
     <div className="space-y-4">
@@ -133,7 +135,8 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
 
         <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[11px] text-slate-600">
           <span>
-            Fórmula: ${values.costPrice.toFixed(2)} costo + ${marginDollar.toFixed(2)} ({values.profitMarginPercent.toFixed(1)}%)
+            Fórmula: ${values.costPrice.toFixed(2)} costo + ${marginDollar.toFixed(2)} (
+            {values.profitMarginPercent.toFixed(1)}%)
           </span>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-slate-400">¿Ajuste directo?</span>
@@ -157,6 +160,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
           <input
             type="number"
             min="0"
+            step={quantityStep}
             value={values.stock}
             onChange={(e) => update('stock', Number(e.target.value))}
             className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
@@ -167,6 +171,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
           <input
             type="number"
             min="0"
+            step={quantityStep}
             value={values.minStock}
             onChange={(e) => update('minStock', Number(e.target.value))}
             className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"

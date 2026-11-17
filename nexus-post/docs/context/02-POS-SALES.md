@@ -8,8 +8,10 @@
 ## 1. Responsabilidad del Módulo
 
 El módulo POS es el núcleo transaccional de atención rápida:
+
 - Búsqueda reactiva de productos por nombre o código; lectores USB/Bluetooth tipo teclado agregan el código al presionar Enter.
 - Carrito conectado al catálogo SQLite, descuentos sujetos al permiso `CAN_APPLY_DISCOUNT` y validación de stock conforme a `CAN_OVERRIDE_NO_STOCK`.
+- La cantidad depende de la unidad del producto: kilogramo y litro admiten decimales (hasta 3 posiciones); pieza, unidad, caja y paquete requieren enteros. Esta regla se valida en el POS y nuevamente al registrar la venta.
 - Los importes se manejan en USD. Bajo el total se muestra la conversión informativa a bolívares con tasa oficial BCV.
 - Modal de Cobro Estándar (`[F12]`): Métodos de pago en Efectivo, Tarjeta, Mixto y Crédito.
 - Cobro Rápido en Efectivo (`[ALT + Q]`): Liquidación inmediata con un solo toque.
@@ -59,21 +61,21 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 
 ## 3. Atajos de Teclado del POS
 
-| Atajo | Acción | Descripción |
-| :---: | :--- | :--- |
-| `[F2]` | Buscar producto | Enfoca el campo de búsqueda/lector |
-| `[F12]` | Cobro Estándar | Despliega el modal de pago completo |
-| `[F6]` | Cobro en efectivo | Abre cobro con efectivo preseleccionado |
-| `[F7]` | Cobro con tarjeta | Abre cobro con tarjeta preseleccionada |
-| `[F8]` | Pago mixto | Abre el modal para combinar efectivo y tarjeta |
-| `[ALT + Q]` | Cobro Rápido | Cierra la venta asumiendo pago exacto en efectivo |
-| `[ALT + K]` | Asociar cliente | Enfoca la búsqueda de cliente |
-| `[ALT + L]` | Buscar en lista | Enfoca/abre los resultados de productos |
-| `[ALT + P]` | Suspender Venta | Guarda la venta actual en cola y libera el carrito |
-| `[ALT + E]` | Ventas en espera | Abre la lista de ventas pausadas |
-| `[ALT + T]` | Previsualizar Ticket | Muestra la previsualización del ticket |
-| `[Esc]` | Cancelar / Limpiar | Limpia el carrito o cierra el modal activo |
-| `[Enter]` | Agregar por código | Agrega la coincidencia exacta del lector o búsqueda |
+|    Atajo    | Acción               | Descripción                                         |
+| :---------: | :------------------- | :-------------------------------------------------- |
+|   `[F2]`    | Buscar producto      | Enfoca el campo de búsqueda/lector                  |
+|   `[F12]`   | Cobro Estándar       | Despliega el modal de pago completo                 |
+|   `[F6]`    | Cobro en efectivo    | Abre cobro con efectivo preseleccionado             |
+|   `[F7]`    | Cobro con tarjeta    | Abre cobro con tarjeta preseleccionada              |
+|   `[F8]`    | Pago mixto           | Abre el modal para combinar efectivo y tarjeta      |
+| `[ALT + Q]` | Cobro Rápido         | Cierra la venta asumiendo pago exacto en efectivo   |
+| `[ALT + K]` | Asociar cliente      | Enfoca la búsqueda de cliente                       |
+| `[ALT + L]` | Buscar en lista      | Enfoca/abre los resultados de productos             |
+| `[ALT + P]` | Suspender Venta      | Guarda la venta actual en cola y libera el carrito  |
+| `[ALT + E]` | Ventas en espera     | Abre la lista de ventas pausadas                    |
+| `[ALT + T]` | Previsualizar Ticket | Muestra la previsualización del ticket              |
+|   `[Esc]`   | Cancelar / Limpiar   | Limpia el carrito o cierra el modal activo          |
+|  `[Enter]`  | Agregar por código   | Agrega la coincidencia exacta del lector o búsqueda |
 
 ---
 
@@ -89,6 +91,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 
 - La migración `012_sales_exchange_rates` crea `sales`, `sale_items`, `suspended_sales` y `exchange_rates`. La venta guarda un snapshot de la tasa disponible.
 - `SalesService` recalcula precios e impuestos con los datos persistidos, valida el medio de pago y ejecuta venta, decremento de stock, Kardex y deuda de crédito en una transacción SQLite.
+- Carrito, ticket y ventas en espera muestran cantidad junto con su unidad; las cantidades fraccionarias se conservan en venta, stock y Kardex.
 - Las ventas pausadas se serializan en SQLite y pueden restaurarse o eliminarse desde el modal. Restaurar requiere un carrito activo vacío.
 - Los cuatro medios registrados son efectivo, tarjeta, mixto y crédito. Los montos de cobro se expresan exclusivamente en USD; la conversión VES es informativa.
 - La venta persiste el cliente y el turno asociados, guarda el costo histórico por artículo y sincroniza venta, stock, Kardex, crédito y movimiento de efectivo dentro de la transacción.

@@ -1,13 +1,19 @@
 import React, { useState } from 'react'
 import type { Product, KardexReason } from '@shared/contracts'
 import { Plus, Minus, X, Check } from '../../../shared/icons/Icons'
+import { getProductQuantityStep } from '@shared/lib/product-quantity'
 
 interface StockAdjustmentModalProps {
   isOpen: boolean
   mode: 'IN' | 'OUT'
   products: Product[]
   onClose: () => void
-  onConfirmAdjustment: (productId: string, quantity: number, reason: KardexReason, notes: string) => void
+  onConfirmAdjustment: (
+    productId: string,
+    quantity: number,
+    reason: KardexReason,
+    notes: string
+  ) => void
 }
 
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
@@ -19,9 +25,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '')
   const [quantity, setQuantity] = useState<number>(10)
-  const [reason, setReason] = useState<KardexReason>(
-    mode === 'IN' ? 'ENTRADA_MASIVA' : 'MERMA'
-  )
+  const [reason, setReason] = useState<KardexReason>(mode === 'IN' ? 'ENTRADA_MASIVA' : 'MERMA')
   const [notes, setNotes] = useState('')
 
   if (!isOpen) return null
@@ -30,6 +34,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const isInputMode = mode === 'IN'
 
   const currentStock = selectedProduct?.stock || 0
+  const quantityStep = getProductQuantityStep(selectedProduct?.unit || '')
   const calculatedStock = isInputMode
     ? currentStock + quantity
     : Math.max(0, currentStock - quantity)
@@ -59,7 +64,9 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800">
-                {isInputMode ? 'Entradas Masivas de Inventario' : 'Salidas Masivas / Ajuste de Merma'}
+                {isInputMode
+                  ? 'Entradas Masivas de Inventario'
+                  : 'Salidas Masivas / Ajuste de Merma'}
               </h2>
               <p className="text-[11px] text-slate-500">
                 Afecta directamente el stock y registra trazabilidad en el módulo Kardex
@@ -75,9 +82,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           <div className="p-6 space-y-4 text-xs">
             {/* Product Select */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Producto a Ajustar
-              </label>
+              <label className="block font-semibold text-slate-700 mb-1">Producto a Ajustar</label>
               <select
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(e.target.value)}
@@ -99,11 +104,12 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min={quantityStep}
+                  step={quantityStep}
                   required
                   autoFocus
                   value={quantity || ''}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setQuantity(Number(e.target.value) || 0)}
                   className="w-full px-3 py-2 text-lg font-bold font-tabular bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
                 />
               </div>
@@ -189,9 +195,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             <button
               type="submit"
               className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-sm ${
-                isInputMode
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-red-600 hover:bg-red-700'
+                isInputMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
               }`}
             >
               <Check size={15} />

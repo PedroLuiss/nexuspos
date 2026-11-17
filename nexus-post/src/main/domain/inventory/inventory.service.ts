@@ -4,6 +4,7 @@ import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { NotFoundError, ValidationError } from '../shared/errors'
+import { isValidProductQuantity } from '@shared/lib/product-quantity'
 
 /** Servicio de dominio de inventario: registra movimientos y ajusta stock. */
 export class InventoryService {
@@ -16,7 +17,11 @@ export class InventoryService {
   adjustStock(input: AdjustStockInput): AdjustStockResult {
     const product = this.products.findById(input.productId)
     if (!product) throw new NotFoundError('Producto no encontrado')
-    if (!(input.quantity > 0)) throw new ValidationError('La cantidad debe ser mayor a 0')
+    if (!isValidProductQuantity(input.quantity, product.unit)) {
+      throw new ValidationError(
+        'La cantidad debe ser positiva; solo los productos medibles aceptan fracciones de hasta 3 decimales.'
+      )
+    }
 
     const inbound = isInboundReason(input.reason)
     const previousStock = product.stock

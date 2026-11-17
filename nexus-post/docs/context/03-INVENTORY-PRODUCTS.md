@@ -8,8 +8,10 @@
 ## 1. Responsabilidad del Módulo
 
 El módulo de Inventario y Productos gestiona el catálogo comercial y las existencias físicas:
+
 - **Tabla Densa Estilo Excel (`ProductTable.tsx`):** Columnas con miniatura (32x32px), SKU / Código de barras, descripción, categoría, costo, precio de venta, stock actual con alertas visuales de mínimo/agotado y switch de estado activo/inactivo. Filas densas de 40px con resaltado hover y accesibilidad por teclado.
 - **CRUD Completo con Soporte de Imágenes:** Creación (`AddProductModal.tsx`), edición en caliente y selector de imagen totalmente opcional. Permite subida directa local (FileReader a base64 DataURL) o URL web externa (Unsplash, CDN), con previsualización en tiempo real. **Si el producto no tiene imagen, se genera un logo automático con la primera letra del nombre en mayúscula (`ProductAvatar.tsx`)** utilizando una paleta de color armónica y determinista.
+- **Unidades y precisión de existencias:** Se ofrecen pieza, unidad, kilogramo, litro, caja y paquete. Kilogramo/litro admiten stock, ajustes y ventas fraccionarias de hasta 3 decimales; pieza/unidad/caja/paquete requieren enteros. El backend valida la precisión según la unidad.
 - **Soft Delete Obligatorio:** Borrado lógico (`deleted = 1`, `active = 0`) para preservar la integridad referencial y la trazabilidad histórica de Kardex y tickets pasados.
 - **Entradas y Salidas Masivas de Stock (`StockAdjustmentModal.tsx` / `[ALT + E]` / `[ALT + S]`):** Recepción de mercancía por compras o bajas por merma/caducidad con motivo obligatorio e impacto directo e inmutable en el Kardex.
 - **Importación y Exportación a Excel (`ProductImportExportModal.tsx`):**
@@ -81,12 +83,12 @@ nexus-post/src/
 
 ## 3. Atajos de Teclado del Módulo
 
-| Atajo | Acción |
-| :---: | :--- |
-| `[F2]` | Cambiar a pestaña **Inventario & Productos** |
-| `[ALT + N]` | Abrir modal para **Nuevo Producto** |
-| `[ALT + E]` | Abrir modal de **Entradas Masivas** de stock |
-| `[ALT + S]` | Abrir modal de **Salidas Masivas / Mermas** |
+|    Atajo    | Acción                                             |
+| :---------: | :------------------------------------------------- |
+|   `[F2]`    | Cambiar a pestaña **Inventario & Productos**       |
+| `[ALT + N]` | Abrir modal para **Nuevo Producto**                |
+| `[ALT + E]` | Abrir modal de **Entradas Masivas** de stock       |
+| `[ALT + S]` | Abrir modal de **Salidas Masivas / Mermas**        |
 | `[ALT + B]` | Abrir modal del **Generador de Códigos de Barras** |
 
 ---
@@ -100,7 +102,7 @@ nexus-post/src/
 2. **Cálculo Automático de Precio de Venta por % de Ganancia:** El usuario ingresa el **Precio Costo ($)** y el **% de Ganancia deseado (%)** (ej: 10%, 15%, 20%, 30%). El sistema calcula en tiempo real:
    $$\text{Ganancia } \$ = \text{Precio Costo} \times \left(\frac{\%\text{ Ganancia}}{100}\right)$$
    $$\text{Precio Venta Final} = \text{Precio Costo} \times \left(1 + \frac{\%\text{ Ganancia}}{100}\right)$$
-   *(Ejemplo: Costo $100.00 con 10% de ganancia = $10.00 de ganancia y $110.00 de precio de venta final).* También permite ajuste manual bidireccional si se requiere redondear centavos.
+   _(Ejemplo: Costo $100.00 con 10% de ganancia = $10.00 de ganancia y $110.00 de precio de venta final)._ También permite ajuste manual bidireccional si se requiere redondear centavos.
 3. **División de Componentes:** Todos los modales y formularios deben seguir subdivididos en archivos independientes para garantizar que ninguno supere **300 líneas de código** y los hooks **200 líneas**.
 4. **Formato CSV con BOM:** Al exportar a Excel, el archivo debe comenzar con el byte order mark `\uFEFF` para asegurar compatibilidad total con Excel en Windows.
 5. **Persistencia de Imágenes:** El campo `image_url` almacena cadenas base64 (`data:image/...`) para archivos subidos localmente o URLs HTTP/HTTPS seguras para productos de catálogo web o demostración.

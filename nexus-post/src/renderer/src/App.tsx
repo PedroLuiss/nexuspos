@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  Product,
-  CartItem,
-  PaymentDetails,
-  SuspendedSale
-} from './shared/types/domain'
+import { Product, CartItem, PaymentDetails, SuspendedSale } from './shared/types/domain'
 import { HotkeysProvider, useRouter } from './app/providers/HotkeysProvider'
 import DashboardLayout from './app/DashboardLayout'
 import { BusinessConfigProvider } from './app/providers/BusinessConfigProvider'
@@ -35,16 +30,13 @@ import { useProducts } from './features/inventory/hooks/useProducts'
 import { useUsdVesRate } from './features/pos/hooks/useUsdVesRate'
 import { salesApi, salesErrorMessage } from './features/pos/api/sales.api'
 import { cashApi, cashErrorMessage } from './features/cash-shift/api/cash.api'
+import { isValidProductQuantity } from '@shared/lib/product-quantity'
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
   const { config: businessConfig } = useBusinessConfig()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const {
-    products,
-    error: productsError,
-    reload: reloadProducts
-  } = useProducts()
+  const { products, error: productsError, reload: reloadProducts } = useProducts()
   const {
     rate: usdVesRate,
     isLoading: isExchangeRateLoading,
@@ -89,9 +81,7 @@ function AppContent(): React.JSX.Element {
   const [notification, setNotification] = useState<{
     message: string
     type: 'success' | 'info' | 'error'
-  } | null>(
-    null
-  )
+  } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success'): void => {
     setNotification({ message, type })
@@ -126,7 +116,10 @@ function AppContent(): React.JSX.Element {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          showToast(`No se pudieron cargar las ventas en espera: ${salesErrorMessage(error)}`, 'error')
+          showToast(
+            `No se pudieron cargar las ventas en espera: ${salesErrorMessage(error)}`,
+            'error'
+          )
         }
       })
     return () => {
@@ -139,6 +132,13 @@ function AppContent(): React.JSX.Element {
     const catalogProduct = products.find((item) => item.id === product.id)
     if (!catalogProduct || !catalogProduct.active || catalogProduct.deleted) {
       showToast('El producto ya no está disponible en el catálogo.', 'error')
+      return
+    }
+    if (!isValidProductQuantity(quantity, catalogProduct.unit)) {
+      showToast(
+        'La cantidad debe ser entera para productos por unidad o decimal para productos medibles.',
+        'error'
+      )
       return
     }
     const alreadyInCart = cart.find((item) => item.product.id === product.id)?.quantity ?? 0
@@ -156,13 +156,13 @@ function AppContent(): React.JSX.Element {
         return prev.map((item) =>
           item.product.id === product.id
             ? {
-              ...item,
-              quantity: item.quantity + quantity,
-              total:
-                (item.quantity + quantity) *
-                catalogProduct.salePrice *
-                (1 - item.discountPercent / 100)
-            }
+                ...item,
+                quantity: item.quantity + quantity,
+                total:
+                  (item.quantity + quantity) *
+                  catalogProduct.salePrice *
+                  (1 - item.discountPercent / 100)
+              }
             : item
         )
       } else {
@@ -182,6 +182,15 @@ function AppContent(): React.JSX.Element {
 
   const handleUpdateQuantity = (productId: string, quantity: number): void => {
     const currentItem = cart.find((item) => item.product.id === productId)
+    if (currentItem && !isValidProductQuantity(quantity, currentItem.product.unit)) {
+      showToast(
+        isValidProductQuantity(0.001, currentItem.product.unit)
+          ? 'Ingrese una cantidad positiva con hasta 3 decimales.'
+          : 'Este producto solo se vende en cantidades enteras.',
+        'error'
+      )
+      return
+    }
     if (
       !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
       currentItem &&
@@ -198,10 +207,10 @@ function AppContent(): React.JSX.Element {
       prev.map((item) =>
         item.product.id === productId
           ? {
-            ...item,
-            quantity,
-            total: quantity * item.product.salePrice * (1 - item.discountPercent / 100)
-          }
+              ...item,
+              quantity,
+              total: quantity * item.product.salePrice * (1 - item.discountPercent / 100)
+            }
           : item
       )
     )
@@ -212,10 +221,10 @@ function AppContent(): React.JSX.Element {
       prev.map((item) =>
         item.product.id === productId
           ? {
-            ...item,
-            discountPercent,
-            total: item.quantity * item.product.salePrice * (1 - discountPercent / 100)
-          }
+              ...item,
+              discountPercent,
+              total: item.quantity * item.product.salePrice * (1 - discountPercent / 100)
+            }
           : item
       )
     )
@@ -234,8 +243,7 @@ function AppContent(): React.JSX.Element {
     if (cart.length === 0) return false
     const subtotal = cart.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0)
     const discount = cart.reduce(
-      (acc, item) =>
-        acc + item.product.salePrice * item.quantity * item.discountPercent / 100,
+      (acc, item) => acc + (item.product.salePrice * item.quantity * item.discountPercent) / 100,
       0
     )
     const netTotal = subtotal - discount
@@ -325,7 +333,10 @@ function AppContent(): React.JSX.Element {
   }
 
   const handleAddCustomer = async (
-    customerData: Omit<Customer, 'id' | 'currentDebt' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'>
+    customerData: Omit<
+      Customer,
+      'id' | 'currentDebt' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'
+    >
   ): Promise<Customer> => {
     const newCustomer = await createCustomer(customerData)
     showToast(`Cliente "${newCustomer.name}" registrado`)
@@ -364,7 +375,9 @@ function AppContent(): React.JSX.Element {
   const handleAddCashMovement = async (input: CreateCashMovementInput): Promise<boolean> => {
     try {
       setCashRegister(await cashApi.addMovement(input))
-      showToast(`Movimiento ${input.type.toLowerCase()} registrado por $${input.amount.toFixed(2)}.`)
+      showToast(
+        `Movimiento ${input.type.toLowerCase()} registrado por $${input.amount.toFixed(2)}.`
+      )
       return true
     } catch (error: unknown) {
       showToast(`No se pudo registrar el movimiento: ${cashErrorMessage(error)}`, 'error')
@@ -379,7 +392,9 @@ function AppContent(): React.JSX.Element {
       await reloadProducts()
       await reloadKardex()
       await reloadCustomers()
-      showToast('Factura devuelta: se repuso el inventario y se registró el movimiento de caja/Kardex.')
+      showToast(
+        'Factura devuelta: se repuso el inventario y se registró el movimiento de caja/Kardex.'
+      )
       return true
     } catch (error: unknown) {
       showToast(`No se pudo devolver la factura: ${cashErrorMessage(error)}`, 'error')
@@ -401,130 +416,128 @@ function AppContent(): React.JSX.Element {
   }
 
   if (!currentUser) {
-      return (
-        <LoginView
-          onLoginSuccess={(user) => {
-            setCurrentUser(user)
-            void reloadCashRegister()
-          }}
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          setCurrentUser(user)
+          void reloadCashRegister()
+        }}
+      />
+    )
+  }
+
+  return (
+    <DashboardLayout currentUser={currentUser} onLogout={handleLogout}>
+      {/* Toast Alert Feedback */}
+      {notification && (
+        <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
+          <CheckCircle2 size={16} className="text-emerald-400" />
+          <span className={`font-semibold ${notification.type === 'error' ? 'text-red-300' : ''}`}>
+            {notification.message}
+          </span>
+        </div>
+      )}
+      {customersError && (
+        <div
+          role="alert"
+          className="absolute top-14 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
+        >
+          No se pudieron cargar los clientes: {customersError}
+        </div>
+      )}
+      {productsError && (
+        <div
+          role="alert"
+          className="absolute top-24 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
+        >
+          No se pudo cargar el catálogo de productos: {productsError}
+        </div>
+      )}
+
+      {/* 1. MÓDULO DE VENTAS (POS) */}
+      {activeTab === 'pos' && (
+        <POSView
+          products={products}
+          cart={cart}
+          suspendedSales={suspendedSales}
+          customers={customers}
+          onAddCustomer={handleAddCustomer}
+          onAddToCart={handleAddToCart}
+          onUpdateQuantity={handleUpdateQuantity}
+          onUpdateDiscount={handleUpdateDiscount}
+          onRemoveFromCart={handleRemoveFromCart}
+          onClearCart={handleClearCart}
+          onCompleteSale={handleCompleteSale}
+          onSuspendSale={handleSuspendSale}
+          onResumeSale={handleResumeSale}
+          onDeleteSuspendedSale={handleDeleteSuspendedSale}
+          exchangeRate={usdVesRate}
+          exchangeRateLoading={isExchangeRateLoading}
+          exchangeRateError={exchangeRateError}
+          onRefreshExchangeRate={() => void refreshExchangeRate()}
+          cashierName={currentUser.name}
+          cashShiftOpen={Boolean(cashRegister.activeShiftId)}
+          canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}
+          canApplyDiscount={currentUser.permissions?.includes('CAN_APPLY_DISCOUNT') ?? false}
         />
-      )
-    }
+      )}
 
-  return (
-      <DashboardLayout currentUser={currentUser} onLogout={handleLogout}>
-        {/* Toast Alert Feedback */}
-        {notification && (
-          <div className="absolute top-3 right-4 z-50 flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs rounded-sm shadow-xl border border-slate-700 animate-modal backdrop-blur-xs select-none">
-            <CheckCircle2 size={16} className="text-emerald-400" />
-            <span className={`font-semibold ${notification.type === 'error' ? 'text-red-300' : ''}`}>
-              {notification.message}
-            </span>
-          </div>
-        )}
-        {customersError && (
-          <div
-            role="alert"
-            className="absolute top-14 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
-          >
-            No se pudieron cargar los clientes: {customersError}
-          </div>
-        )}
-        {productsError && (
-          <div
-            role="alert"
-            className="absolute top-24 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
-          >
-            No se pudo cargar el catálogo de productos: {productsError}
-          </div>
-        )}
+      {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
+      {activeTab === 'products' && canAccessTab(currentUser, 'products') && <ProductTable />}
 
-        {/* 1. MÓDULO DE VENTAS (POS) */}
-        {activeTab === 'pos' && (
-          <POSView
-            products={products}
-            cart={cart}
-            suspendedSales={suspendedSales}
-            customers={customers}
-            onAddCustomer={handleAddCustomer}
-            onAddToCart={handleAddToCart}
-            onUpdateQuantity={handleUpdateQuantity}
-            onUpdateDiscount={handleUpdateDiscount}
-            onRemoveFromCart={handleRemoveFromCart}
-            onClearCart={handleClearCart}
-            onCompleteSale={handleCompleteSale}
-            onSuspendSale={handleSuspendSale}
-            onResumeSale={handleResumeSale}
-            onDeleteSuspendedSale={handleDeleteSuspendedSale}
-            exchangeRate={usdVesRate}
-            exchangeRateLoading={isExchangeRateLoading}
-            exchangeRateError={exchangeRateError}
-            onRefreshExchangeRate={() => void refreshExchangeRate()}
-            cashierName={currentUser.name}
-            cashShiftOpen={Boolean(cashRegister.activeShiftId)}
-            canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}
-            canApplyDiscount={currentUser.permissions?.includes('CAN_APPLY_DISCOUNT') ?? false}
-          />
-        )}
+      {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
+      {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && (
+        <KardexView
+          movements={kardexMovements}
+          isLoading={isKardexLoading}
+          error={kardexError}
+          onRefresh={() => void reloadKardex()}
+        />
+      )}
 
-        {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
-        {activeTab === 'products' && canAccessTab(currentUser, 'products') && <ProductTable />}
+      {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
+      {activeTab === 'cash' && canAccessTab(currentUser, 'cash') && (
+        <CashShiftView
+          register={cashRegister}
+          isLoading={isCashLoading}
+          error={cashError}
+          isAdmin={currentUser.role === 'ADMIN'}
+          canManageMovements={
+            currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
+          }
+          onRefresh={() => void reloadCashRegister(cashRegister.shift?.id)}
+          onSelectShift={(shiftId) => void reloadCashRegister(shiftId)}
+          onOpenShift={handleOpenCashShift}
+          onAddCashMovement={handleAddCashMovement}
+          onCloseShift={handleCloseShift}
+          onReturnSale={handleReturnSale}
+        />
+      )}
 
-        {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
-        {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && (
-          <KardexView
-            movements={kardexMovements}
-            isLoading={isKardexLoading}
-            error={kardexError}
-            onRefresh={() => void reloadKardex()}
-          />
-        )}
+      {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
+      {activeTab === 'customers' && canAccessTab(currentUser, 'customers') && (
+        <CustomersView onPaymentReceived={handleCustomerPaymentReceived} />
+      )}
 
-        {/* 4. MÓDULO DE CAJA (CORTE DE TURNO) */}
-        {activeTab === 'cash' && canAccessTab(currentUser, 'cash') && (
-          <CashShiftView
-            register={cashRegister}
-            isLoading={isCashLoading}
-            error={cashError}
-            isAdmin={currentUser.role === 'ADMIN'}
-            canManageMovements={
-              currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
-            }
-            onRefresh={() => void reloadCashRegister(cashRegister.shift?.id)}
-            onSelectShift={(shiftId) => void reloadCashRegister(shiftId)}
-            onOpenShift={handleOpenCashShift}
-            onAddCashMovement={handleAddCashMovement}
-            onCloseShift={handleCloseShift}
-            onReturnSale={handleReturnSale}
-          />
-        )}
+      {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
+      {activeTab === 'reports' && canAccessTab(currentUser, 'reports') && <ReportsView />}
 
-        {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
-        {activeTab === 'customers' && canAccessTab(currentUser, 'customers') && (
-          <CustomersView
-            onPaymentReceived={handleCustomerPaymentReceived}
-          />
-        )}
-
-        {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
-        {activeTab === 'reports' && canAccessTab(currentUser, 'reports') && <ReportsView />}
-
-        {/* 7. MÓDULO DE AJUSTES DEL SISTEMA */}
-        {activeTab === 'settings' && canAccessTab(currentUser, 'settings') && (
-          <SettingsGrid currentUser={currentUser} />
-        )}
-      </DashboardLayout>
-      )
+      {/* 7. MÓDULO DE AJUSTES DEL SISTEMA */}
+      {activeTab === 'settings' && canAccessTab(currentUser, 'settings') && (
+        <SettingsGrid currentUser={currentUser} />
+      )}
+    </DashboardLayout>
+  )
 }
 
-      export function App(): React.JSX.Element {
+export function App(): React.JSX.Element {
   return (
-      <HotkeysProvider>
-        <BusinessConfigProvider>
-          <AppContent />
-        </BusinessConfigProvider>
-      </HotkeysProvider>
-      )
+    <HotkeysProvider>
+      <BusinessConfigProvider>
+        <AppContent />
+      </BusinessConfigProvider>
+    </HotkeysProvider>
+  )
 }
 
-      export default App
+export default App

@@ -1,4 +1,5 @@
 import type { Product, ProductInput } from '@shared/contracts'
+import { isValidProductQuantity } from '@shared/lib/product-quantity'
 import { roundMoney } from '../shared/money'
 
 const DEFAULT_UNIT = 'Pieza (pza)'
@@ -11,12 +12,12 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
     category: (input.category ?? '').trim(),
     costPrice: roundMoney(Math.max(0, Number(input.costPrice) || 0)),
     salePrice: roundMoney(Math.max(0, Number(input.salePrice) || 0)),
-    stock: Math.max(0, Math.floor(Number(input.stock) || 0)),
-    minStock: Math.max(0, Math.floor(Number(input.minStock) || 0)),
+    stock: Math.max(0, Number(input.stock) || 0),
+    minStock: Math.max(0, Number(input.minStock) || 0),
     maxStock:
       input.maxStock === undefined || input.maxStock === null
         ? undefined
-        : Math.max(0, Math.floor(Number(input.maxStock) || 0)),
+        : Math.max(0, Number(input.maxStock) || 0),
     unit: input.unit?.trim() || DEFAULT_UNIT,
     hasTax: Boolean(input.hasTax),
     active: input.active ?? true,
@@ -35,6 +36,24 @@ export function validateProductInput(input: ProductInput): string[] {
   if (Number(input.costPrice) < 0) errors.push('El precio de costo no puede ser negativo')
   if (Number(input.stock) < 0) errors.push('El stock no puede ser negativo')
   if (Number(input.minStock) < 0) errors.push('El stock mínimo no puede ser negativo')
+  if (!isValidProductQuantity(Number(input.stock), input.unit, true)) {
+    errors.push(
+      'El stock debe ser entero para productos por unidad o tener hasta 3 decimales para productos medibles'
+    )
+  }
+  if (!isValidProductQuantity(Number(input.minStock), input.unit, true)) {
+    errors.push(
+      'El stock mínimo no coincide con la precisión permitida para la unidad del producto'
+    )
+  }
+  if (
+    input.maxStock !== undefined &&
+    !isValidProductQuantity(Number(input.maxStock), input.unit, true)
+  ) {
+    errors.push(
+      'El stock máximo no coincide con la precisión permitida para la unidad del producto'
+    )
+  }
   return errors
 }
 

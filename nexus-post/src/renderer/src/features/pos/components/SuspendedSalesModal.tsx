@@ -3,6 +3,7 @@ import { SuspendedSale } from '../../../shared/types/domain'
 import { Clock, Play, Trash2, X, ShoppingCart } from '../../../shared/icons/Icons'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
+import { formatProductQuantity } from '@shared/lib/product-quantity'
 
 interface SuspendedSalesModalProps {
   isOpen: boolean
@@ -43,7 +44,10 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="kbd-badge">ESC</span>
-            <button onClick={onClose} className="text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] p-1 rounded transition-colors cursor-pointer">
+            <button
+              onClick={onClose}
+              className="text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] p-1 rounded transition-colors cursor-pointer"
+            >
               <X size={16} />
             </button>
           </div>
@@ -57,7 +61,9 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
               <p className="font-bold text-[#1B1B1B]">No hay ventas pausadas actualmente</p>
               <p className="text-[11px] text-[#717783] mt-1 flex items-center justify-center gap-1">
                 <span>Puedes pausar cualquier venta activa en el POS presionando</span>
-                <span className="kbd-badge text-[#0067C0] bg-[#EBF0F5] border-[#0067C0]/30">ALT+P</span>
+                <span className="kbd-badge text-[#0067C0] bg-[#EBF0F5] border-[#0067C0]/30">
+                  ALT+P
+                </span>
               </p>
             </div>
           ) : (
@@ -69,15 +75,18 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-[#1B1B1B] text-xs">{sale.name}</span>
-                    <span className="kbd-badge text-[10px] text-[#5C5C5C]">
-                      {sale.timestamp}
-                    </span>
+                    <span className="kbd-badge text-[10px] text-[#5C5C5C]">{sale.timestamp}</span>
                   </div>
 
                   <div className="text-[11px] text-[#5C5C5C]">
                     {sale.items.length} artículos en ticket:
                     <span className="text-[#1B1B1B] font-medium ml-1">
-                      {sale.items.map((i) => `${i.product.name} (x${i.quantity})`).join(', ')}
+                      {sale.items
+                        .map(
+                          (i) =>
+                            `${i.product.name} (${formatProductQuantity(i.quantity)} ${i.product.unit})`
+                        )
+                        .join(', ')}
                     </span>
                   </div>
                 </div>

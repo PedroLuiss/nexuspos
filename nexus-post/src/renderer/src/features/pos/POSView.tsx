@@ -9,8 +9,6 @@ import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import { computeGrandTotal, computeTaxAmount, getTaxLabel } from '../../shared/lib/businessConfig'
 import {
   Search,
-  Plus,
-  Minus,
   Trash2,
   Banknote,
   CreditCard,
@@ -32,6 +30,7 @@ import {
 import { POSViewProps } from './types'
 import type { Customer } from '@shared/contracts'
 import { formatVesAmount } from '../../shared/lib/currency'
+import { CartQuantityControl } from './components/CartQuantityControl'
 
 const createTicketNumber = (): string => `TK-${Date.now()}`
 const createSuspendedSaleId = (): string => `susp-${Date.now()}`
@@ -94,9 +93,10 @@ export const POSView: React.FC<POSViewProps> = ({
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false)
   const [isSuspendedModalOpen, setIsSuspendedModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
-  const [lastPaymentDetails, setLastPaymentDetails] = useState<PaymentDetails | undefined>(undefined)
-  const [initialPaymentMethod, setInitialPaymentMethod] =
-    useState<PaymentMethodType>('cash')
+  const [lastPaymentDetails, setLastPaymentDetails] = useState<PaymentDetails | undefined>(
+    undefined
+  )
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<PaymentMethodType>('cash')
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => {
@@ -117,22 +117,22 @@ export const POSView: React.FC<POSViewProps> = ({
   const taxTotal = computeTaxAmount(taxableAmount, businessConfig)
   const finalTotal = computeGrandTotal(subtotal - discountTotal, taxableAmount, businessConfig)
   const taxLabel = getTaxLabel(businessConfig)
-  const totalItemCount = cart.reduce((acc, item) => acc + item.quantity, 0)
+  const totalItemCount = cart.length
 
   // Detección de déficit de stock
   const hasStockDeficit = cart.some((item) => item.quantity > item.product.stock)
   const cannotCompleteSale = hasStockDeficit && !canOverrideNoStock
 
   const searchMatches = useMemo(() => {
-    if (!searchInput.trim()) return products.filter((product) => product.active && !product.deleted).slice(0, 100)
+    if (!searchInput.trim())
+      return products.filter((product) => product.active && !product.deleted).slice(0, 100)
     const query = searchInput.toLowerCase().trim()
     return products
       .filter(
         (product) =>
           product.active &&
           !product.deleted &&
-          (product.name.toLowerCase().includes(query) ||
-            product.code.toLowerCase().includes(query))
+          (product.name.toLowerCase().includes(query) || product.code.toLowerCase().includes(query))
       )
       .slice(0, 6)
   }, [searchInput, products])
@@ -299,12 +299,12 @@ export const POSView: React.FC<POSViewProps> = ({
       setSelectedCustomer(null)
       setCustomerCedulaInput('')
     }
-    }
+  }
 
   const handleResumeSuspendedSale = async (sale: SuspendedSale): Promise<boolean> => {
     if (!(await onResumeSale(sale))) return false
     const customer = sale.customerId
-      ? customers.find((item) => item.id === sale.customerId) ?? null
+      ? (customers.find((item) => item.id === sale.customerId) ?? null)
       : null
     setAssignCustomer(Boolean(sale.customerId))
     setSelectedCustomer(customer)
@@ -322,120 +322,120 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Global hotkeys listener for keyboard-first POS flow
   const handleGlobalKeyDown = useEffectEvent((e: KeyboardEvent): void => {
-      // If modal is active, let modal handle keys
-      if (
-        isSaleModalOpen ||
-        isSplitModalOpen ||
-        isSuspendedModalOpen ||
-        isPreviewModalOpen ||
-        isCreateCustomerModalOpen
-      ) {
-        return
-      }
+    // If modal is active, let modal handle keys
+    if (
+      isSaleModalOpen ||
+      isSplitModalOpen ||
+      isSuspendedModalOpen ||
+      isPreviewModalOpen ||
+      isCreateCustomerModalOpen
+    ) {
+      return
+    }
 
-      // [F2]: Focus barcode / product search
-      if (e.key === 'F2') {
-        e.preventDefault()
-        searchInputRef.current?.focus()
-        searchInputRef.current?.select()
-        return
-      }
+    // [F2]: Focus barcode / product search
+    if (e.key === 'F2') {
+      e.preventDefault()
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+      return
+    }
 
-      // [F12]: Open Checkout modal
-      if (e.key === 'F12') {
-        e.preventDefault()
-        if (cart.length > 0 && cashShiftOpen) {
-          setInitialPaymentMethod('cash')
-          setIsSaleModalOpen(true)
-        }
-        return
+    // [F12]: Open Checkout modal
+    if (e.key === 'F12') {
+      e.preventDefault()
+      if (cart.length > 0 && cashShiftOpen) {
+        setInitialPaymentMethod('cash')
+        setIsSaleModalOpen(true)
       }
+      return
+    }
 
-      // [F6]: Fast Cash checkout
-      if (e.key === 'F6') {
-        e.preventDefault()
-        if (cart.length > 0 && cashShiftOpen) {
-          setInitialPaymentMethod('cash')
-          setIsSaleModalOpen(true)
-        }
-        return
+    // [F6]: Fast Cash checkout
+    if (e.key === 'F6') {
+      e.preventDefault()
+      if (cart.length > 0 && cashShiftOpen) {
+        setInitialPaymentMethod('cash')
+        setIsSaleModalOpen(true)
       }
+      return
+    }
 
-      // [F7]: Fast Card checkout
-      if (e.key === 'F7') {
-        e.preventDefault()
-        if (cart.length > 0 && cashShiftOpen) {
-          setInitialPaymentMethod('card')
-          setIsSaleModalOpen(true)
-        }
-        return
+    // [F7]: Fast Card checkout
+    if (e.key === 'F7') {
+      e.preventDefault()
+      if (cart.length > 0 && cashShiftOpen) {
+        setInitialPaymentMethod('card')
+        setIsSaleModalOpen(true)
       }
+      return
+    }
 
-      // [F8]: Split payment modal
-      if (e.key === 'F8') {
-        e.preventDefault()
-        if (cart.length > 0 && cashShiftOpen) setIsSplitModalOpen(true)
-        return
-      }
+    // [F8]: Split payment modal
+    if (e.key === 'F8') {
+      e.preventDefault()
+      if (cart.length > 0 && cashShiftOpen) setIsSplitModalOpen(true)
+      return
+    }
 
-      // [ALT+K]: Toggle and focus customer cédula input
-      if (e.altKey && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault()
-        setAssignCustomer(true)
-        setTimeout(() => {
-          customerCedulaRef.current?.focus()
-          customerCedulaRef.current?.select()
-        }, 50)
-        return
-      }
+    // [ALT+K]: Toggle and focus customer cédula input
+    if (e.altKey && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault()
+      setAssignCustomer(true)
+      setTimeout(() => {
+        customerCedulaRef.current?.focus()
+        customerCedulaRef.current?.select()
+      }, 50)
+      return
+    }
 
-      // [ALT+Q]: Quick cash payment
-      if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
-        e.preventDefault()
-        handleQuickCash()
-        return
-      }
+    // [ALT+Q]: Quick cash payment
+    if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+      e.preventDefault()
+      handleQuickCash()
+      return
+    }
 
-      // [ALT+P]: Pause / suspend sale
-      if (e.altKey && (e.key === 'p' || e.key === 'P')) {
-        e.preventDefault()
-        if (cart.length > 0 && cashShiftOpen) void handleSuspendCurrentSale()
-        return
-      }
+    // [ALT+P]: Pause / suspend sale
+    if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault()
+      if (cart.length > 0 && cashShiftOpen) void handleSuspendCurrentSale()
+      return
+    }
 
-      // [ALT+L]: Toggle search list
-      if (e.altKey && (e.key === 'l' || e.key === 'L')) {
-        e.preventDefault()
-        setShowSearchResults((prev) => !prev)
-        searchInputRef.current?.focus()
-        return
-      }
+    // [ALT+L]: Toggle search list
+    if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+      e.preventDefault()
+      setShowSearchResults((prev) => !prev)
+      searchInputRef.current?.focus()
+      return
+    }
 
-      // [ALT+E]: Open suspended sales
-      if (e.altKey && (e.key === 'e' || e.key === 'E')) {
-        e.preventDefault()
-        if (cashShiftOpen) setIsSuspendedModalOpen(true)
-        return
-      }
+    // [ALT+E]: Open suspended sales
+    if (e.altKey && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault()
+      if (cashShiftOpen) setIsSuspendedModalOpen(true)
+      return
+    }
 
-      // [ALT+T]: View ticket receipt
-      if (e.altKey && (e.key === 't' || e.key === 'T')) {
-        e.preventDefault()
-        if (cart.length > 0) setIsPreviewModalOpen(true)
-        return
-      }
+    // [ALT+T]: View ticket receipt
+    if (e.altKey && (e.key === 't' || e.key === 'T')) {
+      e.preventDefault()
+      if (cart.length > 0) setIsPreviewModalOpen(true)
+      return
+    }
 
-      // [Escape]: Clear cart / Close dropdowns
-      if (e.key === 'Escape') {
-        if (showSearchResults) {
-          setShowSearchResults(false)
-        } else if (showCustomerDropdown) {
-          setShowCustomerDropdown(false)
-        } else if (cart.length > 0) {
-          handleClearActiveSale()
-        }
-        return
+    // [Escape]: Clear cart / Close dropdowns
+    if (e.key === 'Escape') {
+      if (showSearchResults) {
+        setShowSearchResults(false)
+      } else if (showCustomerDropdown) {
+        setShowCustomerDropdown(false)
+      } else if (cart.length > 0) {
+        handleClearActiveSale()
       }
+      return
+    }
   })
 
   useEffect(() => {
@@ -472,7 +472,10 @@ export const POSView: React.FC<POSViewProps> = ({
       {/* ========================================================= */}
       <div className="flex-[62] flex flex-col p-3 pr-1.5 overflow-hidden space-y-2.5">
         {!cashShiftOpen && (
-          <div role="alert" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          <div
+            role="alert"
+            className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900"
+          >
             Abre tu caja desde el módulo Caja antes de cobrar o pausar ventas.
           </div>
         )}
@@ -497,9 +500,7 @@ export const POSView: React.FC<POSViewProps> = ({
                 onKeyDown={handleSearchKeyDown}
                 className="w-full pl-9 pr-24 py-2 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] focus:bg-white focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] font-medium text-[#1B1B1B] placeholder:text-[#717783]"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 kbd-badge">
-                ENTER
-              </span>
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 kbd-badge">ENTER</span>
             </div>
 
             {/* Buscar en Lista [ALT+L] */}
@@ -509,9 +510,7 @@ export const POSView: React.FC<POSViewProps> = ({
             >
               <List size={14} className="text-[#0067C0]" />
               <span>Lista</span>
-              <span className="kbd-badge">
-                ALT+L
-              </span>
+              <span className="kbd-badge">ALT+L</span>
             </button>
 
             {/* Pausar Venta [ALT+P] */}
@@ -522,9 +521,7 @@ export const POSView: React.FC<POSViewProps> = ({
             >
               <Pause size={13} className="text-amber-600" />
               <span>Pausar</span>
-              <span className="kbd-badge">
-                ALT+P
-              </span>
+              <span className="kbd-badge">ALT+P</span>
             </button>
 
             {/* Tickets en Espera [ALT+E] */}
@@ -540,9 +537,7 @@ export const POSView: React.FC<POSViewProps> = ({
                   {suspendedSales.length}
                 </span>
               )}
-              <span className="kbd-badge">
-                ALT+E
-              </span>
+              <span className="kbd-badge">ALT+E</span>
             </button>
           </div>
 
@@ -553,34 +548,40 @@ export const POSView: React.FC<POSViewProps> = ({
                 <div className="p-3 text-xs text-[#717783]">
                   No se encontraron productos por nombre o código.
                 </div>
-              ) : searchMatches.map((prod) => (
-                <div
-                  key={prod.id}
-                  onClick={() => {
-                    onAddToCart(prod, 1)
-                    setSearchInput('')
-                    setShowSearchResults(false)
-                  }}
-                  className="flex items-center justify-between p-2.5 hover:bg-[#EBF0F5] cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <ProductAvatar name={prod.name} imageUrl={prod.imageUrl} size="xs" />
-                    <span className="font-mono text-xs text-[#5C5C5C] bg-[#F3F3F3] px-1.5 py-0.5 rounded-[2px] border border-[#E5E5E5]">
-                      {prod.code}
-                    </span>
-                    <div>
-                      <div className="font-semibold text-xs text-[#1B1B1B]">{prod.name}</div>
-                      <div className="text-[11px] text-[#717783]">{prod.category} | Stock: {prod.stock}</div>
+              ) : (
+                searchMatches.map((prod) => (
+                  <div
+                    key={prod.id}
+                    onClick={() => {
+                      onAddToCart(prod, 1)
+                      setSearchInput('')
+                      setShowSearchResults(false)
+                    }}
+                    className="flex items-center justify-between p-2.5 hover:bg-[#EBF0F5] cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ProductAvatar name={prod.name} imageUrl={prod.imageUrl} size="xs" />
+                      <span className="font-mono text-xs text-[#5C5C5C] bg-[#F3F3F3] px-1.5 py-0.5 rounded-[2px] border border-[#E5E5E5]">
+                        {prod.code}
+                      </span>
+                      <div>
+                        <div className="font-semibold text-xs text-[#1B1B1B]">{prod.name}</div>
+                        <div className="text-[11px] text-[#717783]">
+                          {prod.category} | Stock: {prod.stock}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold font-mono text-[#0067C0]">
+                        ${prod.salePrice.toFixed(2)}
+                      </div>
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        Click para agregar
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs font-bold font-mono text-[#0067C0]">
-                      ${prod.salePrice.toFixed(2)}
-                    </div>
-                    <span className="text-[10px] text-emerald-700 font-semibold">Click para agregar</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>
@@ -610,7 +611,8 @@ export const POSView: React.FC<POSViewProps> = ({
                       <ShoppingCart size={42} className="mx-auto mb-2 text-[#D1D1D1] stroke-1" />
                       <p className="text-sm font-semibold text-[#1B1B1B]">Ticket de venta vacío</p>
                       <p className="text-xs text-[#717783] mt-0.5">
-                        Escanea un código de barras o presiona [F2] / [ALT+L] para agregar productos al ticket
+                        Escanea un código de barras o presiona [F2] / [ALT+L] para agregar productos
+                        al ticket
                       </p>
                     </td>
                   </tr>
@@ -642,53 +644,32 @@ export const POSView: React.FC<POSViewProps> = ({
                         {/* DESCRIPCIÓN */}
                         <td className="py-2 px-3">
                           <div className="flex items-center gap-2">
-                            <ProductAvatar name={item.product.name} imageUrl={item.product.imageUrl} size="xs" />
+                            <ProductAvatar
+                              name={item.product.name}
+                              imageUrl={item.product.imageUrl}
+                              size="xs"
+                            />
                             <div className="min-w-0">
-                              <div className="font-semibold text-xs text-[#1B1B1B] truncate">{item.product.name}</div>
+                              <div className="font-semibold text-xs text-[#1B1B1B] truncate">
+                                {item.product.name}
+                              </div>
                               {isOverStock && (
                                 <span className="text-[10px] text-[#C42B1C] font-bold flex items-center gap-1 mt-0.5">
-                                  <AlertCircle size={11} /> Stock insuficiente (Solo hay {item.product.stock})
+                                  <AlertCircle size={11} /> Stock insuficiente (Solo hay{' '}
+                                  {item.product.stock})
                                 </span>
                               )}
                             </div>
                           </div>
                         </td>
 
-                        {/* CANTIDAD (Steppers) */}
+                        {/* CANTIDAD */}
                         <td className="py-2 px-3 text-center">
-                          <div className="inline-flex items-center border border-[#D1D1D1] rounded-[2px] bg-white overflow-hidden shadow-xs">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onUpdateQuantity(item.product.id, Math.max(1, item.quantity - 1))
-                              }}
-                              className="px-2 py-0.5 text-[#5C5C5C] hover:bg-[#F3F3F3] transition-colors cursor-pointer"
-                            >
-                              <Minus size={11} />
-                            </button>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) =>
-                                onUpdateQuantity(
-                                  item.product.id,
-                                  Math.max(1, parseInt(e.target.value) || 1)
-                                )
-                              }
-                              className="w-10 text-center text-xs font-bold font-mono text-[#1B1B1B] border-x border-[#E5E5E5] py-0.5"
-                            />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onUpdateQuantity(item.product.id, item.quantity + 1)
-                              }}
-                              className="px-2 py-0.5 text-[#5C5C5C] hover:bg-[#F3F3F3] transition-colors cursor-pointer"
-                            >
-                              <Plus size={11} />
-                            </button>
-                          </div>
+                          <CartQuantityControl
+                            product={item.product}
+                            quantity={item.quantity}
+                            onUpdate={(quantity) => onUpdateQuantity(item.product.id, quantity)}
+                          />
                         </td>
 
                         {/* P. UNITARIO */}
@@ -752,12 +733,14 @@ export const POSView: React.FC<POSViewProps> = ({
               </span>
               <span>•</span>
               <span>
-                Unidades: <strong className="text-[#1B1B1B]">{totalItemCount}</strong>
+                Productos: <strong className="text-[#1B1B1B]">{totalItemCount}</strong>
               </span>
             </div>
 
             {hasStockDeficit && (
-              <span className={`${canOverrideNoStock ? 'text-amber-700' : 'text-[#C42B1C]'} font-bold flex items-center gap-1 text-[11px]`}>
+              <span
+                className={`${canOverrideNoStock ? 'text-amber-700' : 'text-[#C42B1C]'} font-bold flex items-center gap-1 text-[11px]`}
+              >
                 <AlertCircle size={13} /> Alerta: Existen productos con stock insuficiente
               </span>
             )}
@@ -802,9 +785,7 @@ export const POSView: React.FC<POSViewProps> = ({
                 }}
                 className="w-4 h-4 text-[#0067C0] rounded border-[#D1D1D1] focus:ring-[#0067C0]"
               />
-              <span className="font-bold text-[#1B1B1B]">
-                Asociar cliente a la factura
-              </span>
+              <span className="font-bold text-[#1B1B1B]">Asociar cliente a la factura</span>
             </label>
 
             <span className="text-[10px] font-mono text-[#717783] bg-[#F3F3F3] px-1.5 py-0.5 rounded border border-[#E5E5E5]">
@@ -865,7 +846,9 @@ export const POSView: React.FC<POSViewProps> = ({
                         )}
                       </div>
                       <div className="text-[11px] font-mono text-[#5C5C5C] flex items-center gap-2 mt-0.5">
-                        <span>Cédula/RFC: <strong>{selectedCustomer.taxId}</strong></span>
+                        <span>
+                          Cédula/RFC: <strong>{selectedCustomer.taxId}</strong>
+                        </span>
                         {selectedCustomer.phone && <span>• Tel: {selectedCustomer.phone}</span>}
                       </div>
                     </div>
@@ -939,7 +922,8 @@ export const POSView: React.FC<POSViewProps> = ({
                             <div>
                               <div className="font-bold text-[#1B1B1B]">{c.name}</div>
                               <div className="text-[11px] font-mono text-[#5C5C5C]">
-                                Cédula/RFC: <strong className="text-[#0067C0]">{c.taxId}</strong> • {c.code}
+                                Cédula/RFC: <strong className="text-[#0067C0]">{c.taxId}</strong> •{' '}
+                                {c.code}
                               </div>
                             </div>
                             <button className="px-2 py-0.5 bg-[#0067C0] text-white rounded text-[10px] font-bold">
@@ -978,7 +962,9 @@ export const POSView: React.FC<POSViewProps> = ({
                         className="w-full flex items-center justify-center gap-1.5 py-1 px-2.5 bg-white hover:bg-blue-50 text-[#0067C0] border border-[#0067C0]/30 font-semibold text-xs rounded-[4px] transition-colors cursor-pointer"
                       >
                         <UserPlus size={13} />
-                        <span>Crear cliente con cédula &quot;{customerCedulaInput.trim()}&quot;</span>
+                        <span>
+                          Crear cliente con cédula &quot;{customerCedulaInput.trim()}&quot;
+                        </span>
                       </button>
                     </div>
                   )}
@@ -997,10 +983,8 @@ export const POSView: React.FC<POSViewProps> = ({
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-[#5C5C5C]">
-                <span>Subtotal ({totalItemCount} artículos):</span>
-                <span className="font-mono font-medium text-[#1B1B1B]">
-                  ${subtotal.toFixed(2)}
-                </span>
+                <span>Subtotal ({totalItemCount} productos):</span>
+                <span className="font-mono font-medium text-[#1B1B1B]">${subtotal.toFixed(2)}</span>
               </div>
 
               {discountTotal > 0 && (
@@ -1012,7 +996,10 @@ export const POSView: React.FC<POSViewProps> = ({
 
               {businessConfig.taxEnabled && (
                 <div className="flex justify-between text-[#5C5C5C]">
-                  <span>{taxLabel}{businessConfig.pricesIncludeTax ? ' incluido' : ''}:</span>
+                  <span>
+                    {taxLabel}
+                    {businessConfig.pricesIncludeTax ? ' incluido' : ''}:
+                  </span>
                   <span className="font-mono font-medium text-[#1B1B1B]">
                     ${taxTotal.toFixed(2)}
                   </span>
@@ -1099,9 +1086,7 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <Banknote size={16} className="text-[#107C41] mb-0.5" />
                 <span>Efectivo</span>
-                <span className="kbd-badge mt-0.5 text-[10px]">
-                  F6
-                </span>
+                <span className="kbd-badge mt-0.5 text-[10px]">F6</span>
               </button>
 
               {/* Tarjeta F7 */}
@@ -1115,9 +1100,7 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <CreditCard size={16} className="text-[#0067C0] mb-0.5" />
                 <span>Tarjeta</span>
-                <span className="kbd-badge mt-0.5 text-[10px]">
-                  F7
-                </span>
+                <span className="kbd-badge mt-0.5 text-[10px]">F7</span>
               </button>
 
               {/* Pago Mixto F8 */}
@@ -1128,9 +1111,7 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <Layers size={16} className="text-purple-700 mb-0.5" />
                 <span>Mixto</span>
-                <span className="kbd-badge mt-0.5 text-[10px]">
-                  F8
-                </span>
+                <span className="kbd-badge mt-0.5 text-[10px]">F8</span>
               </button>
             </div>
 
@@ -1155,9 +1136,7 @@ export const POSView: React.FC<POSViewProps> = ({
               >
                 <Receipt size={14} className="text-[#0067C0]" />
                 <span>Ver Ticket</span>
-                <span className="kbd-badge">
-                  ALT+T
-                </span>
+                <span className="kbd-badge">ALT+T</span>
               </button>
             </div>
           </div>
@@ -1165,40 +1144,44 @@ export const POSView: React.FC<POSViewProps> = ({
       </div>
 
       {/* Sale Modal (F12) */}
-      {isSaleModalOpen && <SaleModal
-        isOpen={isSaleModalOpen}
-        total={finalTotal}
-        subtotal={subtotal}
-        tax={taxTotal}
-        discount={discountTotal}
-        items={cart}
-        customerId={assignCustomer ? selectedCustomer?.id : undefined}
-        ticketNumber={ticketNumber}
-        initialMethod={initialPaymentMethod}
-        exchangeRate={exchangeRate}
-        onClose={() => setIsSaleModalOpen(false)}
-        onConfirmSale={async (details) => {
-          const completed = await onCompleteSale(details)
-          if (completed === false) return false
-          setLastPaymentDetails(details)
-          setLastTicketNumber(ticketNumber)
-          setLastCustomerDisplayName(activeCustomerDisplayName)
-          setTicketNumber(`TK-${Date.now()}`)
-          setAssignCustomer(false)
-          setSelectedCustomer(null)
-          setIsSaleModalOpen(false)
-          return true
-        }}
-      />}
+      {isSaleModalOpen && (
+        <SaleModal
+          isOpen={isSaleModalOpen}
+          total={finalTotal}
+          subtotal={subtotal}
+          tax={taxTotal}
+          discount={discountTotal}
+          items={cart}
+          customerId={assignCustomer ? selectedCustomer?.id : undefined}
+          ticketNumber={ticketNumber}
+          initialMethod={initialPaymentMethod}
+          exchangeRate={exchangeRate}
+          onClose={() => setIsSaleModalOpen(false)}
+          onConfirmSale={async (details) => {
+            const completed = await onCompleteSale(details)
+            if (completed === false) return false
+            setLastPaymentDetails(details)
+            setLastTicketNumber(ticketNumber)
+            setLastCustomerDisplayName(activeCustomerDisplayName)
+            setTicketNumber(`TK-${Date.now()}`)
+            setAssignCustomer(false)
+            setSelectedCustomer(null)
+            setIsSaleModalOpen(false)
+            return true
+          }}
+        />
+      )}
 
       {/* Split Payment Modal (F8) */}
-      {isSplitModalOpen && <SplitPaymentModal
-        isOpen={isSplitModalOpen}
-        total={finalTotal}
-        exchangeRate={exchangeRate}
-        onClose={() => setIsSplitModalOpen(false)}
-        onConfirmSplit={handleConfirmSplit}
-      />}
+      {isSplitModalOpen && (
+        <SplitPaymentModal
+          isOpen={isSplitModalOpen}
+          total={finalTotal}
+          exchangeRate={exchangeRate}
+          onClose={() => setIsSplitModalOpen(false)}
+          onConfirmSplit={handleConfirmSplit}
+        />
+      )}
 
       {/* Suspended Sales Modal */}
       <SuspendedSalesModal
@@ -1220,7 +1203,7 @@ export const POSView: React.FC<POSViewProps> = ({
         discount={discountTotal}
         total={finalTotal}
         payment={lastPaymentDetails}
-        ticketNumber={cart.length > 0 ? ticketNumber : lastTicketNumber ?? ticketNumber}
+        ticketNumber={cart.length > 0 ? ticketNumber : (lastTicketNumber ?? ticketNumber)}
         cashierName={cashierName}
         customerName={cart.length > 0 ? activeCustomerDisplayName : lastCustomerDisplayName}
         exchangeRate={exchangeRate}

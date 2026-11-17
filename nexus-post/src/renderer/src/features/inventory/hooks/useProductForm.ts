@@ -3,6 +3,7 @@ import type { Product, ProductInput } from '@shared/contracts'
 
 export const PRODUCT_UNITS = [
   'Pieza (pza)',
+  'Unidad (und)',
   'Kilogramo (kg)',
   'Litro (lt)',
   'Caja (caja)',
