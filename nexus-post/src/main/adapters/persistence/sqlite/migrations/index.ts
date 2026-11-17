@@ -38,6 +38,8 @@ const MIGRATIONS: Migration[] = [
   migration014CashSaleMovementSource
 ]
 
+export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version
+
 /** Ejecuta de forma idempotente las migraciones pendientes. */
 export function runMigrations(db: Database.Database): void {
   db.exec(

@@ -40,8 +40,13 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - Parámetros: Puerto (`COM1` a `COM4`), velocidad en baudios (9600, 19200 bps), lectura en vivo de peso estabilizado.
 - **Impresoras Térmicas y Periféricos (pendiente):**
   - La configuración/impresión ESC/POS, ancho de papel, corte automático y pulso de gaveta todavía no están conectados a un adaptador de hardware.
-- **Mantenimiento y Respaldo de Base de Datos SQLite (pendiente):**
-  - La interfaz del asistente existe, pero no genera ni restaura una copia SQLite real.
+- **Mantenimiento y Respaldo de Base de Datos SQLite (operativo para ADMIN):**
+  - Estado de integridad (`PRAGMA integrity_check`), tamaño (base + WAL), páginas reutilizables, versión de esquema, conteos de productos/facturas/clientes y fecha de último respaldo.
+  - Copia consistente mediante `better-sqlite3.backup()` en `userData/backups`, validada abriendo el respaldo, revisando integridad/esquema y calculando SHA-256. El historial presenta los últimos 20 archivos.
+  - La optimización crea primero un respaldo de seguridad, ejecuta checkpoint WAL, `PRAGMA optimize` y `VACUUM`.
+  - La restauración selecciona un archivo `.sqlite`, `.sqlite3` o `.db`; valida integridad, tablas y versión compatible, crea un respaldo preventivo, reemplaza la base activa y reinicia NexusPOS.
+  - Las operaciones están validadas por rol `ADMIN` en `DatabaseMaintenanceService` además de ocultar/deshabilitar la tarjeta en la interfaz.
+  - El envío a Laravel está implementado como carga multipart `POST` (archivo en `database`, además de `created_at`, `sha256` y `source`). Se activa únicamente configurando `NEXUS_BACKUP_API_URL`; `NEXUS_BACKUP_API_TOKEN` es opcional para Bearer. La API aún no está publicada ni se configuró el URL; sin endpoint, se crea el respaldo local y el modal informa que el envío está pendiente.
 
 ---
 
@@ -64,14 +69,14 @@ useUsers(enabled)  →  users.api.ts  →  window.api.users.*  →  IPC  →  Us
 
 ### Canales IPC (`IPC_CHANNELS.users`)
 
-| Canal | Acción | Autorización |
-| :--- | :--- | :--- |
-| `users:list` | Lista todos los usuarios (incluye inactivos) | Sesión `ADMIN` |
-| `users:getById` | Obtiene un usuario por id | Sesión `ADMIN` |
-| `users:create` | Crea operador con rol y permisos | Sesión `ADMIN` |
-| `users:update` | Edita datos, rol, permisos y estado | Sesión `ADMIN` |
-| `users:delete` | Baja lógica (`active = 0`) | Sesión `ADMIN` |
-| `users:toggleStatus` | Activa / desactiva la cuenta | Sesión `ADMIN` |
+| Canal                | Acción                                       | Autorización   |
+| :------------------- | :------------------------------------------- | :------------- |
+| `users:list`         | Lista todos los usuarios (incluye inactivos) | Sesión `ADMIN` |
+| `users:getById`      | Obtiene un usuario por id                    | Sesión `ADMIN` |
+| `users:create`       | Crea operador con rol y permisos             | Sesión `ADMIN` |
+| `users:update`       | Edita datos, rol, permisos y estado          | Sesión `ADMIN` |
+| `users:delete`       | Baja lógica (`active = 0`)                   | Sesión `ADMIN` |
+| `users:toggleStatus` | Activa / desactiva la cuenta                 | Sesión `ADMIN` |
 
 ### Gating de módulos en el renderer
 
@@ -100,10 +105,10 @@ Consumidores de la configuración:
 
 ### Canales IPC (`IPC_CHANNELS.settings`)
 
-| Canal | Acción | Autorización |
-| :--- | :--- | :--- |
-| `settings:getBusiness` | Lee la configuración única del establecimiento | Cualquier sesión (el POS necesita la tasa) |
-| `settings:updateBusiness` | Persiste identidad, propietario, contacto, domicilio, ticket e impuestos | Sesión `ADMIN` |
+| Canal                     | Acción                                                                   | Autorización                               |
+| :------------------------ | :----------------------------------------------------------------------- | :----------------------------------------- |
+| `settings:getBusiness`    | Lee la configuración única del establecimiento                           | Cualquier sesión (el POS necesita la tasa) |
+| `settings:updateBusiness` | Persiste identidad, propietario, contacto, domicilio, ticket e impuestos | Sesión `ADMIN`                             |
 
 ### Reglas de validación del dominio (`SettingsService`)
 
@@ -176,7 +181,7 @@ nexus-post/src/
             ├── BusinessIdentityForm.tsx     # Identidad fiscal, propietario, contacto y domicilio
             ├── TicketTemplateForm.tsx       # Encabezado, pie, leyenda legal y toggles
             ├── TaxSettingsModal.tsx         # IVA configurable (tasa, nombre, precio con impuesto incluido) + simulación Bs.
-            ├── DatabaseBackupModal.tsx      # Respaldo/restauración SQLite
+            ├── DatabaseBackupModal.tsx      # Integridad, historial, respaldo, optimización y restauración
             └── ScaleSettingsModal.tsx       # Calibración de báscula serial
 ```
 
@@ -184,19 +189,20 @@ nexus-post/src/
 
 ## 5. Atajos de Teclado del Módulo
 
-| Atajo | Acción |
-| :---: | :--- |
-| `[F7]` | Cambiar a pestaña **Ajustes del Sistema** |
-| `[ALT + U]` | Abrir **Gestión de Usuarios, Roles y Permisos** (solo `ADMIN`) |
+|    Atajo    | Acción                                                           |
+| :---------: | :--------------------------------------------------------------- |
+|   `[F7]`    | Cambiar a pestaña **Ajustes del Sistema**                        |
+| `[ALT + U]` | Abrir **Gestión de Usuarios, Roles y Permisos** (solo `ADMIN`)   |
 | `[ALT + A]` | Abrir **Datos del Negocio y Plantilla de Ticket** (solo `ADMIN`) |
-| `[ALT + T]` | Abrir **Impuestos y Facturación (IVA)** (solo `ADMIN`) |
+| `[ALT + T]` | Abrir **Impuestos y Facturación (IVA)** (solo `ADMIN`)           |
 
 ---
 
 ## 6. Tareas Pendientes / Deuda Técnica
 
 - ⚠️ **Impresora y gaveta:** no existe integración física ESC/POS ni pulso de gaveta; la previsualización del ticket no imprime.
-- ⚠️ **Backup real:** `DatabaseBackupModal` solo muestra confirmaciones simuladas; debe invocar una operación segura de backup/restauración vía IPC y validar el archivo antes de reemplazar la base.
+- ⚠️ **Endpoint de respaldo Laravel:** falta publicar/configurar el endpoint compatible con el multipart documentado y establecer `NEXUS_BACKUP_API_URL`; hasta entonces solo está activo el respaldo local verificado.
+- ⚠️ **Recuperación ante falla eléctrica durante restauración:** hacer prueba manual en Windows con copias reales antes de certificar el flujo como recuperación de contingencia.
 - ⚠️ **Validación con hardware físico:** el adaptador serial y el flujo IPC existen, pero la integración debe probarse con los modelos y protocolos reales de báscula soportados antes de certificarla para producción.
 - ⚠️ **Contraseñas:** se comparan en texto plano en `users.password_hash`; migrar a hash con `scrypt`/`argon2` (requiere migración de credenciales).
 - ⚠️ **Impuesto por producto:** `hasTax` decide si el producto es gravable, pero la tasa es global; evaluar tasas múltiples (exento / tasa reducida) en una fase posterior.
@@ -207,5 +213,7 @@ nexus-post/src/
 - Usuarios, roles/permisos, identidad comercial, plantilla de ticket e impuestos se leen/guardan mediante servicios e IPC conectados a SQLite; las guardias de administración se validan en `main`.
 - La configuración de báscula está persistida y expuesta por IPC. `ScaleService` controla permisos para configurar/abrir/cerrar el puerto, y `SerialScaleAdapter` implementa enumeración de puertos y lectura serial.
 - `SettingsGrid` todavía conserva parte del estado de conexión de la báscula en React para presentar el estado de UI; la configuración persistente es la fuente de parámetros.
-- El modal de respaldo/restauración no tiene efecto sobre SQLite: sus acciones son simuladas. No ofrecerlo como respaldo real hasta completar backend y pruebas de restauración.
+- El mantenimiento de DB usa los canales `database:getStatus`, `database:listBackups`, `database:createBackup`, `database:verifyIntegrity`, `database:optimize` y `database:restoreBackup`; las mutaciones y consultas administrativas requieren `ADMIN` en backend.
+- Los respaldos locales quedan en `app.getPath('userData')/backups`. La restauración guarda primero un respaldo preventivo y requiere reiniciar la aplicación para reabrir la conexión en la base recuperada.
+- El endpoint Laravel es configurable, no hardcodeado. Si `NEXUS_BACKUP_API_URL` está vacía, ninguna solicitud remota se intenta; la copia local se completa y su respuesta indica `not-configured`. Un error HTTP conserva el respaldo local e informa `failed`.
 - El cajero recibe `CAN_MANUAL_CASH_MOVEMENTS` por el preset de rol y la migración de Caja, mientras que la administración de usuarios y permisos permanece exclusiva de ADMIN.

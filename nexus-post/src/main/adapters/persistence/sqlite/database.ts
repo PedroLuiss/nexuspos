@@ -3,6 +3,7 @@ import { app } from 'electron'
 import { join } from 'path'
 
 let instance: Database.Database | null = null
+let databaseFilePath: string | null = null
 
 /**
  * Devuelve la conexión SQLite única de la aplicación.
@@ -17,7 +18,16 @@ export function getDatabase(): Database.Database {
   db.pragma('foreign_keys = ON')
   db.pragma('busy_timeout = 5000')
   instance = db
+  databaseFilePath = file
   return db
+}
+
+export function getDatabaseFilePath(): string {
+  if (!databaseFilePath) {
+    databaseFilePath =
+      process.env.NEXUSPOS_DB_PATH ?? join(app.getPath('userData'), 'nexuspos.sqlite')
+  }
+  return databaseFilePath
 }
 
 export function closeDatabase(): void {

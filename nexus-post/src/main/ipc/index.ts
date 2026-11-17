@@ -1,4 +1,8 @@
-import { getDatabase } from '../adapters/persistence/sqlite/database'
+import {
+  closeDatabase,
+  getDatabase,
+  getDatabaseFilePath
+} from '../adapters/persistence/sqlite/database'
 import { runMigrations } from '../adapters/persistence/sqlite/migrations'
 import { SqliteProductRepository } from '../adapters/persistence/sqlite/products.sqlite'
 import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/stock-movements.sqlite'
@@ -10,11 +14,13 @@ import { SqliteSalesRepository } from '../adapters/persistence/sqlite/sales.sqli
 import { SqliteExchangeRateRepository } from '../adapters/persistence/sqlite/exchange-rates.sqlite'
 import { SqliteCashRepository } from '../adapters/persistence/sqlite/cash.sqlite'
 import { SqliteReportsRepository } from '../adapters/persistence/sqlite/reports.sqlite'
+import { SqliteDatabaseMaintenanceRepository } from '../adapters/persistence/sqlite/database-maintenance.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
 import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
+import { LaravelDatabaseBackupAdapter } from '../adapters/remote/laravel-database-backup.adapter'
 import { ProductService } from '../domain/products/product.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
@@ -27,6 +33,7 @@ import { SalesService } from '../domain/sales/sales.service'
 import { ExchangeRateService } from '../domain/exchange-rate/exchange-rate.service'
 import { CashService } from '../domain/cash/cash.service'
 import { ReportsService } from '../domain/reports/reports.service'
+import { DatabaseMaintenanceService } from '../domain/settings/database-maintenance.service'
 import { registerProductIpc } from './products.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
@@ -39,6 +46,10 @@ import { registerSalesIpc } from './sales.ipc'
 import { registerExchangeRateIpc } from './exchange-rate.ipc'
 import { registerCashIpc } from './cash.ipc'
 import { registerReportsIpc } from './reports.ipc'
+import { registerDatabaseIpc } from './database.ipc'
+import { LATEST_MIGRATION_VERSION } from '../adapters/persistence/sqlite/migrations'
+import { app } from 'electron'
+import { join } from 'node:path'
 
 /**
  * Composition root: inicializa persistencia, migraciones, servicios y canales IPC.
@@ -102,6 +113,17 @@ export function registerIpcHandlers(): void {
     transactionRunner
   )
   const reportsService = new ReportsService(reportsRepository, authService, customerService)
+  const databaseMaintenanceService = new DatabaseMaintenanceService(
+    new SqliteDatabaseMaintenanceRepository(
+      db,
+      join(app.getPath('userData'), 'backups'),
+      LATEST_MIGRATION_VERSION,
+      getDatabaseFilePath(),
+      closeDatabase
+    ),
+    new LaravelDatabaseBackupAdapter(),
+    authService
+  )
 
   // Conectar el adaptador serial al servicio de dominio
   const serialAdapter = new SerialScaleAdapter()
@@ -119,4 +141,5 @@ export function registerIpcHandlers(): void {
   registerExchangeRateIpc(exchangeRateService)
   registerCashIpc(cashService)
   registerReportsIpc(reportsService)
+  registerDatabaseIpc(databaseMaintenanceService)
 }

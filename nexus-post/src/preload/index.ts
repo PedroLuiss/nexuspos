@@ -74,6 +74,14 @@ const api: NexusApi = {
     getCustomerDetail: (customerId: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.reports.getCustomerDetail, customerId)
   },
+  database: {
+    getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.database.getStatus),
+    listBackups: () => ipcRenderer.invoke(IPC_CHANNELS.database.listBackups),
+    createBackup: () => ipcRenderer.invoke(IPC_CHANNELS.database.createBackup),
+    verifyIntegrity: () => ipcRenderer.invoke(IPC_CHANNELS.database.verifyIntegrity),
+    optimize: () => ipcRenderer.invoke(IPC_CHANNELS.database.optimize),
+    restoreBackup: () => ipcRenderer.invoke(IPC_CHANNELS.database.restoreBackup)
+  },
   categories: {
     list: (filter?: CategoryFilter) => ipcRenderer.invoke(IPC_CHANNELS.categories.list, filter),
     create: (input: CategoryInput) => ipcRenderer.invoke(IPC_CHANNELS.categories.create, input),

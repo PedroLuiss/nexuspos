@@ -18,14 +18,14 @@
 
 ## 2. Stack Tecnológico Estándar
 
-| Capa | Tecnologías |
-| :--- | :--- |
-| **Shell Nativo** | Electron + `@electron-toolkit/preload` + `electron-vite` |
-| **Frontend UI** | React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons |
-| **Persistencia Local** | SQLite nativo mediante `better-sqlite3` + sistema de migraciones versionadas |
-| **Arquitectura Backend** | Hexagonal (Puertos y Adaptadores) + Domain-Driven Design (DDD) |
-| **Arquitectura Frontend** | Feature-Sliced Design (FSD) |
-| **Contratos Compartidos** | TypeScript Interfaces & DTOs en `@shared/contracts` |
+| Capa                      | Tecnologías                                                                  |
+| :------------------------ | :--------------------------------------------------------------------------- |
+| **Shell Nativo**          | Electron + `@electron-toolkit/preload` + `electron-vite`                     |
+| **Frontend UI**           | React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons                   |
+| **Persistencia Local**    | SQLite nativo mediante `better-sqlite3` + sistema de migraciones versionadas |
+| **Arquitectura Backend**  | Hexagonal (Puertos y Adaptadores) + Domain-Driven Design (DDD)               |
+| **Arquitectura Frontend** | Feature-Sliced Design (FSD)                                                  |
+| **Contratos Compartidos** | TypeScript Interfaces & DTOs en `@shared/contracts`                          |
 
 ---
 
@@ -105,31 +105,31 @@ nexus-post/src/
 
 Para trabajar de manera eficiente sin saturar la ventana de contexto de la IA, cada módulo del sistema está documentado en su archivo independiente. **Carga solo el archivo necesario para tu tarea:**
 
-| Código | Archivo de Contexto | Descripción del Módulo | Atajo Principal |
-| :---: | :--- | :--- | :---: |
-| **01** | [`01-AUTH-SESSION.md`](./01-AUTH-SESSION.md) | Login empresarial, PIN rápido, OTP recovery, reset password, RBAC | `[F10]` / `[F1]` |
-| **02** | [`02-POS-SALES.md`](./02-POS-SALES.md) | Terminal de ventas, carrito reactivo, cobro normal/rápido/mixto, ticket 80mm | `[F1]` / `[F12]` / `[ALT+Q]` |
+| Código | Archivo de Contexto                                      | Descripción del Módulo                                                       |        Atajo Principal         |
+| :----: | :------------------------------------------------------- | :--------------------------------------------------------------------------- | :----------------------------: |
+| **01** | [`01-AUTH-SESSION.md`](./01-AUTH-SESSION.md)             | Login empresarial, PIN rápido, OTP recovery, reset password, RBAC            |        `[F10]` / `[F1]`        |
+| **02** | [`02-POS-SALES.md`](./02-POS-SALES.md)                   | Terminal de ventas, carrito reactivo, cobro normal/rápido/mixto, ticket 80mm |  `[F1]` / `[F12]` / `[ALT+Q]`  |
 | **03** | [`03-INVENTORY-PRODUCTS.md`](./03-INVENTORY-PRODUCTS.md) | Catálogo tabular denso, CRUD, soft delete, ajustes masivos, código de barras | `[F2]` / `[ALT+N]` / `[ALT+B]` |
-| **04** | [`04-KARDEX-AUDIT.md`](./04-KARDEX-AUDIT.md) | Trazabilidad inmutable de existencias, motivos de ajuste, auditoría contable | `[F3]` |
-| **05** | [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md) | Arqueo Z, fondo inicial, balance físico vs esperado, gastos y abonos | `[F4]` / `[ALT+G]` |
-| **06** | [`06-CUSTOMERS-CREDIT.md`](./06-CUSTOMERS-CREDIT.md) | Cuentas por cobrar, estados de deuda, abonos automáticos a gaveta | `[F5]` / `[ALT+C]` |
-| **07** | [`07-REPORTS-ANALYTICS.md`](./07-REPORTS-ANALYTICS.md) | Métricas gerenciales, KPIs de rentabilidad, ranking top ventas, gráficos SVG | `[F6]` |
-| **08** | [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md) | Conexión serial RS-232 básculas, impresoras ESC/POS, backup SQLite, permisos | `[F7]` / `[ALT+U]` |
+| **04** | [`04-KARDEX-AUDIT.md`](./04-KARDEX-AUDIT.md)             | Trazabilidad inmutable de existencias, motivos de ajuste, auditoría contable |             `[F3]`             |
+| **05** | [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md)                 | Arqueo Z, fondo inicial, balance físico vs esperado, gastos y abonos         |       `[F4]` / `[ALT+G]`       |
+| **06** | [`06-CUSTOMERS-CREDIT.md`](./06-CUSTOMERS-CREDIT.md)     | Cuentas por cobrar, estados de deuda, abonos automáticos a gaveta            |       `[F5]` / `[ALT+C]`       |
+| **07** | [`07-REPORTS-ANALYTICS.md`](./07-REPORTS-ANALYTICS.md)   | Métricas gerenciales, KPIs de rentabilidad, ranking top ventas, gráficos SVG |             `[F6]`             |
+| **08** | [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md)   | Conexión serial RS-232 básculas, impresoras ESC/POS, backup SQLite, permisos |       `[F7]` / `[ALT+U]`       |
 
 ### Estado operativo conocido de los módulos
 
 Este resumen distingue integración persistida de prototipos visuales; no sustituye el contexto específico de cada módulo.
 
-| Módulo | Funcionamiento actual y límites relevantes |
-| :--- | :--- |
-| **01 Auth** | Usuarios locales se autentican sin red; si no existen localmente, el flujo puede consultar Laravel. Sesión en memoria. Revisar deuda de hash y almacenamiento seguro de tokens en el contexto. |
-| **02 POS** | Ventas y pausas se persisten en SQLite. El cobro requiere turno propio abierto y actualiza stock, Kardex, cliente/crédito y caja dentro del flujo transaccional. La impresión física sigue pendiente. |
-| **03 Inventario** | Catálogo, categorías y ajustes de existencias están conectados a SQLite; productos utilizan baja lógica. Las ventas y devoluciones también generan sus movimientos de inventario/Kardex. |
-| **04 Kardex** | Consulta historial SQLite; ajustes, ventas y devoluciones agregan movimientos desde sus flujos transaccionales. Los movimientos se tratan como append-only. |
-| **05 Caja** | Turnos y libro de efectivo persistidos por cajero; historial administrativo de turnos cerrados de todos los cajeros solo para ADMIN, con detalle, tickets y devoluciones sujetas a las reglas del contexto 05. |
-| **06 Clientes** | Directorio, créditos y abonos persistidos. Los abonos se asocian al turno; la devolución a crédito cancela deuda pendiente y convierte abonos previos en saldo a favor. |
-| **07 Reportes** | KPIs y rankings netos por fecha de emisión/devolución, agregados a centavos, conversión informativa de montos a VES con tasa BCV y detalle de cuenta real del cliente; utilidad bruta dependiente del costo histórico del ticket. |
-| **08 Ajustes** | Usuarios/RBAC, datos del negocio e impuestos usan SQLite. Configuración y lectura de báscula serial tienen servicio e IPC; impresoras y respaldo/restauración real siguen pendientes. |
+| Módulo            | Funcionamiento actual y límites relevantes                                                                                                                                                                                                                                   |
+| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **01 Auth**       | Usuarios locales se autentican sin red; si no existen localmente, el flujo puede consultar Laravel. Sesión en memoria. Revisar deuda de hash y almacenamiento seguro de tokens en el contexto.                                                                               |
+| **02 POS**        | Ventas y pausas se persisten en SQLite. El cobro requiere turno propio abierto y actualiza stock, Kardex, cliente/crédito y caja dentro del flujo transaccional. La impresión física sigue pendiente.                                                                        |
+| **03 Inventario** | Catálogo, categorías y ajustes de existencias están conectados a SQLite; productos utilizan baja lógica. Las ventas y devoluciones también generan sus movimientos de inventario/Kardex.                                                                                     |
+| **04 Kardex**     | Consulta historial SQLite; ajustes, ventas y devoluciones agregan movimientos desde sus flujos transaccionales. Los movimientos se tratan como append-only.                                                                                                                  |
+| **05 Caja**       | Turnos y libro de efectivo persistidos por cajero; historial administrativo de turnos cerrados de todos los cajeros solo para ADMIN, con detalle, tickets y devoluciones sujetas a las reglas del contexto 05.                                                               |
+| **06 Clientes**   | Directorio, créditos y abonos persistidos. Los abonos se asocian al turno; la devolución a crédito cancela deuda pendiente y convierte abonos previos en saldo a favor.                                                                                                      |
+| **07 Reportes**   | KPIs y rankings netos por fecha de emisión/devolución, agregados a centavos, conversión informativa de montos a VES con tasa BCV y detalle de cuenta real del cliente; utilidad bruta dependiente del costo histórico del ticket.                                            |
+| **08 Ajustes**    | Usuarios/RBAC, datos fiscales, impuestos y mantenimiento SQLite real para ADMIN (respaldo verificado, integridad, historial, optimización y restauración segura); envío multipart a Laravel preparado y pendiente de configurar endpoint. Impresión térmica sigue pendiente. |
 
 ---
 
@@ -159,12 +159,12 @@ Este resumen distingue integración persistida de prototipos visuales; no sustit
    - **Transparencia en Frontend:** Como el frontend consume puertos y contratos (`@shared/contracts`) a través de la capa `api/`, cambiar de SQLite local a conexión LAN requerirá únicamente alternar el adaptador de infraestructura sin reescribir componentes visuales ni formularios.
    - **Resiliencia ante Caídas de WiFi:** Las terminales satélite contarán con cola local de ventas (Local Queue) para no frenar la venta en caja si el router WiFi sufre micro-cortes, sincronizando en lote al reanudar enlace.
 
-
 ---
 
 ## 8. Protocolo Obligatorio para IAs: Ciclo de Actualización
 
 Cada vez que una IA o programador agregue, modifique o refactorice código en un módulo:
+
 1. **Identificar el módulo afectado** en el índice modular.
 2. **Implementar los cambios** respetando las reglas de tamaño (UI $\le 300$, Hooks $\le 200$) y aislamiento FSD.
 3. **Actualizar el archivo de contexto del módulo correspondiente** (ej. actualizar el estado actual, nuevas props, canales IPC añadidos o tareas completadas).

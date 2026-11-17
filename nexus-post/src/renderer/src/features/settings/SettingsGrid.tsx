@@ -1,27 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import type { User } from '@shared/contracts'
-import {
-  Users,
-  Building2,
-  Database,
-  Scale,
-  Percent,
-  CheckCircle2,
-  AlertCircle,
-  ShieldAlert
-} from '../../shared/icons/Icons'
+import { AlertCircle, CheckCircle2, ShieldAlert } from '../../shared/icons/Icons'
 import { canManageUsers } from '../../shared/lib/permissions'
-import { getCurrencySymbol } from '../../shared/lib/businessConfig'
 import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import { useUsers } from './hooks/useUsers'
-import SettingsCard from './components/SettingsCard'
 import UserManagerModal from './components/UserManagerModal'
 import BusinessInfoModal from './components/BusinessInfoModal'
 import TaxSettingsModal from './components/TaxSettingsModal'
 import DatabaseBackupModal from './components/DatabaseBackupModal'
 import ScaleSettingsModal from './components/ScaleSettingsModal'
-
-type SettingsModal = 'users' | 'business' | 'tax' | 'database' | 'scale' | null
+import {
+  SettingsCards,
+  type ScaleConfigView,
+  type SettingsModalAction
+} from './components/SettingsCards'
 
 interface SettingsGridProps {
   currentUser?: User | null
@@ -32,16 +24,9 @@ interface Feedback {
   type: 'success' | 'error'
 }
 
-interface ScaleConfigView {
-  comPort: string
-  baudRate: number
-  isEnabled: boolean
-  isConnected: boolean
-}
-
 export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
   const isAdmin = canManageUsers(currentUser ?? null)
-  const [activeModal, setActiveModal] = useState<SettingsModal>(null)
+  const [activeModal, setActiveModal] = useState<SettingsModalAction | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [scaleConfig, setScaleConfig] = useState<ScaleConfigView>({
     comPort: 'COM3',
@@ -69,7 +54,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     setTimeout(() => setFeedback(null), 3500)
   }
 
-  const openModal = (modal: Exclude<SettingsModal, null>): void => {
+  const openModal = (modal: SettingsModalAction): void => {
     if (modal === 'users' && !isAdmin) {
       showFeedback('Acceso denegado: solo el Administrador gestiona usuarios y permisos.', 'error')
       return
@@ -81,11 +66,15 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       )
       return
     }
-    if (modal === 'scale' && !isAdmin) {
+    if (modal === 'database' && !isAdmin) {
       showFeedback(
-        'Acceso denegado: solo el Administrador configura la báscula serial.',
+        'Acceso denegado: solo el Administrador puede administrar la base de datos.',
         'error'
       )
+      return
+    }
+    if (modal === 'scale' && !isAdmin) {
+      showFeedback('Acceso denegado: solo el Administrador configura la báscula serial.', 'error')
       return
     }
     clearError()
@@ -136,11 +125,6 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
 
   const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active).length
   const activeUsers = users.filter((u) => u.active).length
-  const currencySymbol = getCurrencySymbol(business.currency)
-  const fiscalId =
-    business.taxIdType === 'NONE'
-      ? 'Sin identificación fiscal'
-      : `${business.taxIdType}: ${business.taxId || '—'}`
 
   return (
     <div className="flex flex-col h-full p-3 space-y-2.5 overflow-y-auto bg-[#F3F3F3]">
@@ -169,170 +153,16 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 flex-1">
-        <SettingsCard
-          icon={<Users size={22} />}
-          title="Usuarios, Roles y Permisos"
-          subtitle="Control granular de acceso por módulo"
-          accent="blue"
-          badge={
-            isAdmin
-              ? {
-                  label: 'Administrador',
-                  className: 'bg-[#0067C0]/10 text-[#0067C0] border-[#0067C0]/20'
-                }
-              : { label: 'Solo Admin', className: 'bg-slate-100 text-slate-500 border-slate-200' }
-          }
-          description="Registre cajeros y supervisores, asigne su rol comercial y habilite los módulos y acciones críticas que podrá usar durante el turno."
-          facts={[
-            {
-              label: 'Usuarios registrados:',
-              value: isAdmin ? `${users.length} (${activeUsers} activos)` : 'Requiere sesión ADMIN'
-            },
-            {
-              label: 'Administradores activos:',
-              value: isAdmin ? activeAdmins : '—'
-            },
-            {
-              label: 'Acceso al submódulo:',
-              value: isAdmin ? 'Habilitado' : 'Solo Administrador',
-              valueClassName: isAdmin ? 'text-[#107C41] font-mono' : 'text-[#C42B1C] font-mono'
-            }
-          ]}
-          footerNote={isAdmin ? 'RBAC persistido en SQLite' : 'Requiere sesión ADMIN'}
-          actionLabel="Gestionar Usuarios"
-          actionHotkey="ALT+U"
-          onAction={() => openModal('users')}
-          disabled={!isAdmin}
-          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
-        />
-
-        <SettingsCard
-          icon={<Building2 size={22} />}
-          title="Datos del Negocio y Ticket"
-          subtitle="Identidad fiscal, propietario y comprobante"
-          accent="green"
-          badge={{
-            label: isConfigLoading ? 'Cargando…' : business.taxIdType,
-            className: 'bg-emerald-50 text-[#107C41] border-emerald-200'
-          }}
-          description="Razón social, identificación fiscal, propietario, contacto, domicilio, moneda y plantilla del ticket térmico de 80mm."
-          facts={[
-            {
-              label: 'Razón Social:',
-              value: business.legalName || '—',
-              valueClassName: 'font-mono max-w-[200px]'
-            },
-            { label: 'Propietario:', value: business.ownerName || '—' },
-            { label: 'ID Fiscal:', value: fiscalId, valueClassName: 'font-mono' },
-            {
-              label: 'Moneda:',
-              value: `${business.currency} (${currencySymbol})`,
-              valueClassName: 'font-mono'
-            }
-          ]}
-          footerNote={isAdmin ? 'Guardado en SQLite' : 'Solo lectura'}
-          actionLabel="Editar Datos"
-          actionHotkey="ALT+A"
-          onAction={() => openModal('business')}
-          disabled={!isAdmin}
-          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
-        />
-
-        <SettingsCard
-          icon={<Percent size={22} />}
-          title="Impuestos y Facturación (IVA)"
-          subtitle="Tasa trasladada en ventas y ticket"
-          accent="amber"
-          badge={
-            business.taxEnabled
-              ? {
-                  label: `${business.taxName} ${business.taxRate}%`,
-                  className: 'bg-amber-50 text-amber-700 border-amber-200'
-                }
-              : { label: 'Desactivado', className: 'bg-slate-100 text-slate-500 border-slate-200' }
-          }
-          description="Defina el nombre local del impuesto (IVA, IGV, ITBMS), su tasa y si los precios de venta ya lo incluyen. El POS y el ticket usan esta configuración."
-          facts={[
-            {
-              label: 'Estado del impuesto:',
-              value: business.taxEnabled ? 'Activo' : 'Desactivado',
-              valueClassName: business.taxEnabled ? 'text-[#107C41]' : 'text-slate-500'
-            },
-            {
-              label: 'Tasa aplicada:',
-              value: business.taxEnabled ? `${business.taxName} ${business.taxRate}%` : '—',
-              valueClassName: 'font-mono'
-            },
-            {
-              label: 'Tratamiento del precio:',
-              value: business.pricesIncludeTax ? 'Impuesto incluido' : 'Se suma al subtotal',
-              valueClassName: 'font-mono'
-            }
-          ]}
-          footerNote={isAdmin ? 'Configuración tributaria' : 'Solo lectura'}
-          actionLabel="Configurar IVA"
-          actionHotkey="ALT+T"
-          onAction={() => openModal('tax')}
-          disabled={!isAdmin}
-          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
-        />
-
-        <SettingsCard
-          icon={<Database size={22} />}
-          title="Base de Datos SQLite Local"
-          subtitle="Copias de seguridad y restauración"
-          accent="purple"
-          badge={{ label: 'SQLite 3.4', className: 'bg-purple-50 text-purple-700 border-purple-200' }}
-          description="Genere copias de seguridad locales en archivos .sqlite y restaure el sistema ante cualquier contingencia."
-          facts={[
-            { label: 'Motor Local:', value: 'better-sqlite3' },
-            { label: 'Integridad:', value: 'OK (Sin corrupción)', valueClassName: 'text-[#107C41]' },
-            { label: 'Registros de ajustes:', value: '1 configuración activa' }
-          ]}
-          footerNote="Offline-first"
-          actionLabel="Backup / Restore"
-          onAction={() => openModal('database')}
-        />
-
-        <SettingsCard
-          icon={<Scale size={22} />}
-          title="Báscula y Puerto Serial (RS-232)"
-          subtitle="Comunicación COM por hardware"
-          accent="amber"
-          badge={{
-            label: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
-            className: scaleConfig.isConnected
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : 'bg-slate-100 text-slate-500 border-slate-200'
-          }}
-          description="Conexión para balanzas de peso comercial (Torrey, Rhino, Dibal) mediante puerto serial. Transmite el peso al POS."
-          facts={[
-            {
-              label: 'Puerto COM:',
-              value: scaleConfig.comPort,
-              valueClassName: 'font-mono'
-            },
-            {
-              label: 'Baud Rate:',
-              value: `${scaleConfig.baudRate} bps`,
-              valueClassName: 'font-mono'
-            },
-            {
-              label: 'Estado de Enlace:',
-              value: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
-              valueClassName: scaleConfig.isConnected
-                ? 'text-[#107C41] font-mono'
-                : 'text-slate-500 font-mono'
-            }
-          ]}
-          footerNote={scaleConfig.isEnabled ? 'Habilitada en POS' : 'Deshabilitada'}
-          actionLabel="Configurar Puerto Serial"
-          onAction={() => openModal('scale')}
-          disabled={!isAdmin}
-          disabledHint={isAdmin ? undefined : 'Solo Administrador'}
-        />
-      </div>
+      <SettingsCards
+        isAdmin={isAdmin}
+        userCount={users.length}
+        activeUsers={activeUsers}
+        activeAdmins={activeAdmins}
+        business={business}
+        isConfigLoading={isConfigLoading}
+        scaleConfig={scaleConfig}
+        onOpenModal={openModal}
+      />
 
       <UserManagerModal
         isOpen={activeModal === 'users'}
@@ -380,7 +210,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
       <DatabaseBackupModal
         isOpen={activeModal === 'database'}
         onClose={() => setActiveModal(null)}
-        onFeedback={(msg) => showFeedback(msg)}
+        onFeedback={(msg, type) => showFeedback(msg, type)}
       />
 
       <ScaleSettingsModal
@@ -394,7 +224,8 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
           <ShieldAlert size={14} className="text-slate-500" />
           <span>
             Sesión sin privilegios de Administrador: la gestión de usuarios, los datos fiscales del
-            negocio y la tasa de impuesto están en modo lectura.
+            negocio, la tasa de impuesto y el mantenimiento de base de datos están restringidos a
+            ADMIN.
           </span>
         </div>
       )}

@@ -10,6 +10,7 @@ import type { SalesApi } from './sales.contract'
 import type { ExchangeRateApi } from './exchange-rate.contract'
 import type { CashApi } from './cash.contract'
 import type { ReportsApi } from './reports.contract'
+import type { DatabaseMaintenanceApi } from './database.contract'
 
 /**
  * Nombres canónicos de los canales IPC.
@@ -47,6 +48,14 @@ export const IPC_CHANNELS = {
   reports: {
     getDashboard: 'reports:getDashboard',
     getCustomerDetail: 'reports:getCustomerDetail'
+  },
+  database: {
+    getStatus: 'database:getStatus',
+    listBackups: 'database:listBackups',
+    createBackup: 'database:createBackup',
+    verifyIntegrity: 'database:verifyIntegrity',
+    optimize: 'database:optimize',
+    restoreBackup: 'database:restoreBackup'
   },
   categories: {
     list: 'categories:list',
@@ -137,4 +146,5 @@ export interface NexusApi {
   exchangeRate: ExchangeRateApi
   cash: CashApi
   reports: ReportsApi
+  database: DatabaseMaintenanceApi
 }
