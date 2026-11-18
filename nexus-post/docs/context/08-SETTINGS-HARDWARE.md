@@ -183,7 +183,8 @@ nexus-post/src/
 │   │       ├── 017_product_barcodes.ts      # Tabla `product_barcodes` (códigos múltiples)
 │   │       ├── 018_product_price_tiers.ts   # Tabla `product_price_tiers` (escalas de mayoreo)
 │   │       ├── 019_combo_items.ts           # Tabla `combo_items` (bundles con desglose a Kardex)
-│   │       └── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
+│   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
+│   │       └── 021_product_batches.ts       # product_batches + products.track_batches (FEFO)
 │   ├── adapters/hardware/
 │   │   ├── scale.serial.ts                  # Puerto serial para báscula (SerialPort)
 │   │   └── scale.sqlite.ts                  # Persistencia de configuración
@@ -265,6 +266,7 @@ nexus-post/src/
 - ✅ **Códigos de barras múltiples y precios por mayoreo:** migraciones 017 (`product_barcodes`) y 018 (`product_price_tiers`). Se gestionan en la pestaña de edición de producto; el POS resuelve el precio por cantidad y el backend recalcula con la misma lógica (`shared/lib/product-pricing.ts` + `computeSaleTotals`).
 - ✅ **Combos / bundles reales:** migración 019 (`combo_items`). Se configuran en la pestaña de edición de producto cuando el tipo es Combo / Kit; al cobrar, `SalesService` desglosa el consumo entre componentes y genera movimientos Kardex `COMBO` (stock del combo derivado de sus componentes).
 - ✅ **Variantes talla/color:** migración 020 (`products.parent_id`, `attributes`, `variant_attrs`). Cada variante es un producto hijo independiente con SKU/precio/stock propios; se prohíben variantes anidadas. Se gestionan desde la pestaña "Variantes" del producto padre.
+- ✅ **Lotes y caducidad:** migración 021 (`product_batches`, `products.track_batches`). Salidas FEFO con movimientos Kardex por lote; lote inicial automático al activar control de lotes; UI con insignias de vencimiento. Se gestionan desde la pestaña "Lotes y Caducidad" del producto.
 - ⚠️ **Multi-caja LAN:** los contratos `UsersApi` y `SettingsApi` ya están desacoplados; la fase maestro-satélite solo debe cambiar los adaptadores de repositorio, sin tocar UI ni dominio.
 
 ## 7. Estado de integración

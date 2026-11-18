@@ -27,6 +27,7 @@ export interface ProductFormValues {
   typeId: string
   taxId: string
   variantAttrs: string
+  trackBatches: boolean
   active: boolean
 }
 
@@ -68,6 +69,7 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
       typeId: initialData?.typeId ?? '',
       taxId: initialData?.taxId ?? '',
       variantAttrs: initialData?.variantAttrs ?? '',
+      trackBatches: initialData?.trackBatches ?? false,
       active: initialData?.active ?? true
     }
   }
@@ -89,6 +91,7 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
     typeId: initialData?.typeId ?? '',
     taxId: initialData?.taxId ?? '',
     variantAttrs: initialData?.variantAttrs ?? '',
+    trackBatches: initialData?.trackBatches ?? false,
     active: initialData?.active ?? true
   }
 }
@@ -174,6 +177,7 @@ export function useProductForm(
       typeId: values.typeId || undefined,
       taxId: values.taxId || undefined,
       variantAttrs: values.variantAttrs || undefined,
+      trackBatches: values.trackBatches,
       active: values.active
     }
   }, [values])

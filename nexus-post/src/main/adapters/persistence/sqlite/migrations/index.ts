@@ -26,6 +26,7 @@ import { migration017ProductBarcodes } from './017_product_barcodes'
 import { migration018ProductPriceTiers } from './018_product_price_tiers'
 import { migration019ComboItems } from './019_combo_items'
 import { migration020ProductVariants } from './020_product_variants'
+import { migration021ProductBatches } from './021_product_batches'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -47,7 +48,8 @@ const MIGRATIONS: Migration[] = [
   migration017ProductBarcodes,
   migration018ProductPriceTiers,
   migration019ComboItems,
-  migration020ProductVariants
+  migration020ProductVariants,
+  migration021ProductBatches
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

@@ -12,6 +12,7 @@ El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos
 - **Tipos de Movimiento:**
   - `ENTRADA (+)`: Actualmente soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION`.
   - `SALIDA (-)`: Actualmente soporta `VENTA`, `COMBO`, `SALIDA_AJUSTE` y `MERMA`. El motivo `COMBO` se genera al cobrar un producto tipo bundle: se descuenta cada componente del combo (no el combo directamente) y se registra una salida por componente con las cantidades consumidas.
+  - **Lotes (FEFO):** cuando un producto controla lotes (`track_batches`), cada salida (`VENTA`, `COMBO` o ajuste) se desglosa en un movimiento por lote consumido, con el nº de lote en las notas. Las salidas descuentan primero el lote que vence antes (First Expired, First Out); los lotes sin vencimiento salen al final.
 - **Filtrado Avanzado:** Búsqueda reactiva por nombre de producto, SKU o usuario responsable; filtros por tipo (`ENTRADA`/`SALIDA`) y motivo específico.
 - **Exportación Contable:** El botón de exportación está presente como placeholder visual; la generación real de `.xlsx`/`.csv` sigue pendiente.
 

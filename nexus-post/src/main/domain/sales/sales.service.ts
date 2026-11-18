@@ -4,6 +4,7 @@ import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { ProductPriceTierRepository } from '../../ports/product-price-tier.repository'
 import type { ComboItemRepository } from '../../ports/combo-item.repository'
+import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
 import type { CashRepository } from '../../ports/cash.repository'
@@ -13,6 +14,7 @@ import { ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
 import { computeSaleTotals, resolveProductTax, type SaleLineInput } from '@shared/lib/tax'
 import { resolveUnitPrice } from '@shared/lib/product-pricing'
+import { issueFromBatches } from '@shared/lib/product-batches'
 
 const roundMoney = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100
 const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - roundMoney(b)) < 0.011
@@ -22,6 +24,7 @@ export class SalesService {
     private readonly products: ProductRepository,
     private readonly priceTiers: ProductPriceTierRepository,
     private readonly combos: ComboItemRepository,
+    private readonly batches: ProductBatchRepository,
     private readonly movements: StockMovementRepository,
     private readonly sales: SalesRepository,
     private readonly cash: CashRepository,
@@ -192,44 +195,19 @@ export class SalesService {
                 `Stock insuficiente de "${componentProduct.name}" para el combo "${product.name}".`
               )
             }
-            const componentNewStock = componentProduct.stock - consumptionQty
-            this.products.setStock(componentProduct.id, componentNewStock)
-            const movement: KardexMovement = {
-              id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              timestamp: now,
-              productId: componentProduct.id,
-              productName: componentProduct.name,
-              productCode: componentProduct.code,
-              type: 'SALIDA',
-              reason: 'COMBO',
-              previousStock: componentProduct.stock,
-              quantity: consumptionQty,
-              newStock: componentNewStock,
-              responsibleUser: user.name,
-              notes: `Combo "${product.name}" × ${item.quantity} · Ticket ${result.ticketNumber}`
-            }
-            this.movements.insert(movement)
+            this.deductStock(
+              componentProduct,
+              consumptionQty,
+              'COMBO',
+              user.name,
+              `Combo "${product.name}" × ${item.quantity} · Ticket ${result.ticketNumber}`,
+              now
+            )
           }
           continue
         }
 
-        const newStock = product.stock - item.quantity
-        this.products.setStock(product.id, newStock)
-        const movement: KardexMovement = {
-          id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: now,
-          productId: product.id,
-          productName: product.name,
-          productCode: product.code,
-          type: 'SALIDA',
-          reason: 'VENTA',
-          previousStock: product.stock,
-          quantity: item.quantity,
-          newStock,
-          responsibleUser: user.name,
-          notes: `Ticket ${result.ticketNumber}`
-        }
-        this.movements.insert(movement)
+        this.deductStock(product, item.quantity, 'VENTA', user.name, result.ticketNumber, now)
       }
 
       if (input.payment.method === 'credit') {
@@ -296,6 +274,75 @@ export class SalesService {
     }
     if (!id.trim()) throw new ValidationError('El ticket pausado no es válido.')
     this.sales.deleteSuspended(id, user.id)
+  }
+
+  /**
+   * Descuenta stock de un producto. Si controla lotes, descuenta FEFO y registra
+   * un movimiento Kardex por lote consumido; si no, descuento y movimiento normales.
+   */
+  private deductStock(
+    product: NonNullable<ReturnType<ProductRepository['findById']>>,
+    quantity: number,
+    reason: 'VENTA' | 'COMBO',
+    responsibleUser: string,
+    notes: string,
+    now: string
+  ): void {
+    if (product.trackBatches) {
+      const batchRows = this.batches.findByProductId(product.id, true)
+      const result = issueFromBatches(batchRows, quantity, 'FEFO')
+      if (result.shortfall > 0) {
+        throw new ValidationError(
+          `Stock insuficiente en los lotes de "${product.name}" (faltan ${result.shortfall}).`
+        )
+      }
+      let runningStock = product.stock
+      for (const issue of result.issues) {
+        const batch = this.batches.findById(issue.batchId)
+        if (batch) {
+          this.batches.update({
+            ...batch,
+            quantity: batch.quantity - issue.quantity,
+            updatedAt: now
+          })
+        }
+        const newStock = runningStock - issue.quantity
+        this.movements.insert({
+          id: `mov-lot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          timestamp: now,
+          productId: product.id,
+          productName: product.name,
+          productCode: product.code,
+          type: 'SALIDA',
+          reason,
+          previousStock: runningStock,
+          quantity: issue.quantity,
+          newStock,
+          responsibleUser,
+          notes: `${notes} · Lote ${issue.batchNumber}`
+        })
+        runningStock = newStock
+      }
+      this.products.setStock(product.id, runningStock)
+      return
+    }
+
+    const newStock = product.stock - quantity
+    this.products.setStock(product.id, newStock)
+    this.movements.insert({
+      id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: now,
+      productId: product.id,
+      productName: product.name,
+      productCode: product.code,
+      type: 'SALIDA',
+      reason,
+      previousStock: product.stock,
+      quantity,
+      newStock,
+      responsibleUser,
+      notes
+    })
   }
 
   private validatePayment(input: CreateSaleInput, total: number): void {

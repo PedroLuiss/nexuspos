@@ -20,6 +20,8 @@ export interface Product {
   attributes?: string
   /** Nombres de atributos que definen las variantes del padre (JSON). Solo en el padre. */
   variantAttrs?: string
+  /** Si es true, el producto controla stock por lotes con fecha de caducidad. */
+  trackBatches?: boolean
   /** Marca del producto (catálogo `brands`). Opcional. */
   brandId?: string
   /** Nombre de la marca resuelto por el repositorio (solo lectura). */

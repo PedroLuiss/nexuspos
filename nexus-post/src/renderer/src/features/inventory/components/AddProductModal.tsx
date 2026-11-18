@@ -7,6 +7,7 @@ import ProductBarcodesEditor from './ProductBarcodesEditor'
 import ProductPriceTiersEditor from './ProductPriceTiersEditor'
 import ComboItemsEditor from './ComboItemsEditor'
 import VariantEditor from './VariantEditor'
+import BatchEditor from './BatchEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
 
 interface AddProductModalProps {
@@ -116,6 +117,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                   parent={initialProduct}
                   variantAttrs={values.variantAttrs}
                   onVariantAttrsChange={(json) => update('variantAttrs', json)}
+                />
+              )}
+              {!initialProduct.parentId && (
+                <BatchEditor
+                  productId={initialProduct.id}
+                  productName={initialProduct.name}
+                  trackBatches={values.trackBatches}
+                  onEnableTracking={() => update('trackBatches', true)}
                 />
               )}
             </div>

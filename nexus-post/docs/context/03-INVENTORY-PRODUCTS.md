@@ -37,6 +37,7 @@ nexus-post/src/
 │   ├── domain/product-barcodes/             # Entidad ProductBarcode, ProductBarcodeService (códigos múltiples)
 │   ├── domain/product-price-tiers/          # Entidad ProductPriceTier, ProductPriceTierService (escalas de mayoreo + resolver)
 │   ├── domain/combo-items/                  # Entidad ComboItem, ComboItemService (bundles + validaciones de anidamiento)
+│   ├── domain/product-batches/              # Entidad ProductBatch, ProductBatchService (entradas + salidas FEFO)
 │   ├── domain/categories/                   # Entidad Category, CategoryService
 │   ├── ports/
 │   │   ├── product.repository.ts            # Puerto ProductRepository
@@ -47,6 +48,7 @@ nexus-post/src/
 │   │   ├── product-barcode.repository.ts    # Puerto ProductBarcodeRepository
 │   │   ├── product-price-tier.repository.ts # Puerto ProductPriceTierRepository
 │   │   ├── combo-item.repository.ts         # Puerto ComboItemRepository
+│   │   ├── product-batch.repository.ts      # Puerto ProductBatchRepository
 │   │   └── category.repository.ts           # Puerto CategoryRepository
 │   ├── adapters/persistence/sqlite/
 │   │   ├── products.sqlite.ts               # Queries SQLite (CRUD + JOIN taxes, brands, suppliers, product_types)
@@ -57,6 +59,7 @@ nexus-post/src/
 │   │   ├── product-barcode.sqlite.ts        # CRUD de códigos de barras múltiples
 │   │   ├── product-price-tier.sqlite.ts     # CRUD de escalas de mayoreo
 │   │   ├── combo-items.sqlite.ts            # CRUD de componentes de combo
+│   │   ├── product-batch.sqlite.ts          # CRUD de lotes + SUM de stock por producto
 │   │   ├── categories.sqlite.ts             # Queries SQLite para categorías (con stock derivado de combos)
 │   │   └── migrations/                      # Migraciones versionadas
 │   │       ├── 001_initial.ts               # Tabla products inicial
@@ -68,7 +71,8 @@ nexus-post/src/
 │   │       ├── 017_product_barcodes.ts      # product_barcodes + migración del código legacy
 │   │       ├── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
 │   │       ├── 019_combo_items.ts           # combo_items + índice único combo+componente
-│   │       └── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
+│   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
+│   │       └── 021_product_batches.ts       # product_batches + products.track_batches
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*'
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
@@ -78,6 +82,7 @@ nexus-post/src/
 │       ├── product-barcode.ipc.ts           # Handlers 'productBarcodes:*'
 │       ├── product-price-tier.ipc.ts        # Handlers 'productPriceTiers:*'
 │       ├── combo-item.ipc.ts                # Handlers 'comboItems:*'
+│       ├── product-batch.ipc.ts             # Handlers 'productBatches:*'
 │       └── categories.ipc.ts                # Handlers 'categories:*'
 │
 ├── shared/
@@ -90,11 +95,13 @@ nexus-post/src/
 │   │   ├── product-barcode.contract.ts      # ProductBarcode, ProductBarcodeInput, BarcodeFormat
 │   │   ├── product-price-tier.contract.ts   # ProductPriceTier, ProductPriceTierInput
 │   │   ├── combo-item.contract.ts           # ComboItem, ComboItemInput, ComboItemFilter
+│   │   ├── product-batch.contract.ts        # ProductBatch, ProductBatchInput, ProductBatchView
 │   │   └── inventory.contract.ts            # AdjustStockInput, KardexMovement, KardexReason (incluye 'COMBO')
 │   └── lib/
 │       ├── tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
 │       ├── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
-│       └── product-variants.ts              # parse/serialize/format de atributos de variantes
+│       ├── product-variants.ts              # parse/serialize/format de atributos de variantes
+│       └── product-batches.ts               # issueFromBatches (FEFO/FIFO) + caducidad — main + renderer
 │
 └── renderer/src/
     ├── shared/hooks/
@@ -107,7 +114,8 @@ nexus-post/src/
     │   ├── useProductPriceTiers.ts          # Escalas de mayoreo + resolvePrice local
     │   ├── useAllPriceTiers.ts              # Todas las escalas agrupadas por producto (POS)
     │   ├── useComboItems.ts                 # Componentes de un producto combo
-    │   └── useProductVariants.ts            # Variantes (productos hijo) de un padre
+    │   ├── useProductVariants.ts            # Variantes (productos hijo) de un padre
+    │   └── useProductBatches.ts             # Lotes + cálculo de caducidad (re-exporta helpers)
     ├── shared/ui/
     │   └── ProductAvatar.tsx                # Logo con primera letra o miniatura de imagen
     └── features/inventory/
@@ -138,6 +146,8 @@ nexus-post/src/
             ├── ProductPriceTiersEditor.tsx      # Editor de escalas de precios por mayoreo
             ├── ComboItemsEditor.tsx             # Editor de componentes de combo (solo tipo combo)
             ├── VariantEditor.tsx                # Editor de variantes (talla/color) del producto padre
+            ├── VariantForm.tsx                  # Formulario de variante (extraído para cumplir 300 líneas)
+            ├── BatchEditor.tsx                  # Editor de lotes y caducidad con insignias de vencimiento
             ├── ProductImportExportModal.tsx     # Modal contenedor de importación / exportación Excel
             ├── ProductExportTab.tsx             # Pestaña de exportación con BOM UTF-8
             ├── ProductImportTab.tsx             # Pestaña de importación CSV con preview y plantilla
@@ -204,6 +214,13 @@ nexus-post/src/
    - La resolución del precio efectivo vive en `src/shared/lib/product-pricing.ts` (`resolveUnitPrice`): entre los tiers aplicables gana el de mayor `minQuantity`; si ninguno aplica se usa `salePrice`.
    - `computeSaleTotals` (en `src/shared/lib/tax.ts`) aplica internamente los tiers recibidos en `SaleLineInput.priceTiers`, de modo que **main y renderer calculan exactamente el mismo subtotal/impuesto/total**. El backend vuelve a resolver los tiers desde SQLite antes de persistir (`SalesService` inyecta `ProductPriceTierRepository`).
    - Se gestionan en la pestaña del producto al editarlo; el POS muestra el precio de mayoreo aplicado y lo resalta frente al precio estándar.
+12. **Lotes y caducidad (migración 021):** un producto puede activar `track_batches` para controlar stock por lotes (`product_batches`: nº de lote, cantidad, `expiration_date` opcional y fecha de entrada). Reglas:
+    - El stock efectivo de un producto con lotes es la suma de sus lotes activos (`products.sqlite.ts`), de modo que el POS y el backend validan disponibilidad con el mismo número.
+    - **Salidas FEFO** (First Expired, First Out): al cobrar (`SalesService.deductStock`) o al ajustar stock a la baja (`InventoryService`), se descuenta primero el lote que vence antes (los lotes sin vencimiento salen al final). Cada lote consumido genera su propio movimiento Kardex con el nº de lote en las notas.
+    - La matemática de salida vive en `src/shared/lib/product-batches.ts` (`issueFromBatches`, `sortBatches`, `isBatchExpired`, `daysToExpiry`) — compartida por main y renderer.
+    - Al activar `track_batches` en un producto con stock, se crea automáticamente un lote inicial (`INICIAL-YYYY-MM-DD`) con el stock actual para no perder inventario.
+    - Las entradas de lote suman cantidad al producto; las entradas manuales de stock crean un lote `AJUSTE-YYYY-MM-DD`.
+    - Se gestionan en la pestaña "Lotes y Caducidad" del formulario de producto; la UI muestra insignias de VENCIDO / vence en Nd / sin vencimiento.
 
 ## 5. Estado de integración operativa
 

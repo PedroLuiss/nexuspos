@@ -26,6 +26,7 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
     parentId: input.parentId?.trim() || undefined,
     attributes: (input.attributes ?? '').trim(),
     variantAttrs: (input.variantAttrs ?? '').trim(),
+    trackBatches: Boolean(input.trackBatches),
     description: (input.description ?? '').trim(),
     imageUrl: input.imageUrl?.trim() || undefined
   }

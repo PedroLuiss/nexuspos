@@ -12,6 +12,7 @@ import { SqliteProductTypeRepository } from '../adapters/persistence/sqlite/prod
 import { SqliteProductBarcodeRepository } from '../adapters/persistence/sqlite/product-barcode.sqlite'
 import { SqliteProductPriceTierRepository } from '../adapters/persistence/sqlite/product-price-tier.sqlite'
 import { SqliteComboItemRepository } from '../adapters/persistence/sqlite/combo-items.sqlite'
+import { SqliteProductBatchRepository } from '../adapters/persistence/sqlite/product-batch.sqlite'
 import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/stock-movements.sqlite'
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
@@ -36,6 +37,7 @@ import { ProductTypeService } from '../domain/product-types/product-type.service
 import { ProductBarcodeService } from '../domain/product-barcodes/product-barcode.service'
 import { ProductPriceTierService } from '../domain/product-price-tiers/product-price-tier.service'
 import { ComboItemService } from '../domain/combo-items/combo-item.service'
+import { ProductBatchService } from '../domain/product-batches/product-batch.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
 import { AuthService } from '../domain/auth/auth.service'
@@ -56,6 +58,7 @@ import { registerProductTypeIpc } from './product-types.ipc'
 import { registerProductBarcodeIpc } from './product-barcode.ipc'
 import { registerProductPriceTierIpc } from './product-price-tier.ipc'
 import { registerComboItemIpc } from './combo-items.ipc'
+import { registerProductBatchIpc } from './product-batch.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
 import { registerAuthIpc } from './auth.ipc'
@@ -89,6 +92,7 @@ export function registerIpcHandlers(): void {
   const productBarcodeRepository = new SqliteProductBarcodeRepository(db)
   const productPriceTierRepository = new SqliteProductPriceTierRepository(db)
   const comboItemRepository = new SqliteComboItemRepository(db)
+  const productBatchRepository = new SqliteProductBatchRepository(db)
   const stockMovementRepository = new SqliteStockMovementRepository(db)
   const categoryRepository = new SqliteCategoryRepository(db)
   const userRepository = new SqliteUserRepository(db)
@@ -103,7 +107,8 @@ export function registerIpcHandlers(): void {
     taxRepository,
     brandRepository,
     supplierRepository,
-    productTypeRepository
+    productTypeRepository,
+    productBatchRepository
   )
   const brandService = new BrandService(brandRepository)
   const supplierService = new SupplierService(supplierRepository)
@@ -111,9 +116,11 @@ export function registerIpcHandlers(): void {
   const productBarcodeService = new ProductBarcodeService(productBarcodeRepository)
   const productPriceTierService = new ProductPriceTierService(productPriceTierRepository)
   const comboItemService = new ComboItemService(comboItemRepository, productRepository)
+  const productBatchService = new ProductBatchService(productBatchRepository, productRepository)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
+    productBatchRepository,
     transactionRunner
   )
   const categoryService = new CategoryService(categoryRepository)
@@ -135,6 +142,7 @@ export function registerIpcHandlers(): void {
     productRepository,
     productPriceTierRepository,
     comboItemRepository,
+    productBatchRepository,
     stockMovementRepository,
     salesRepository,
     cashRepository,
@@ -181,6 +189,7 @@ export function registerIpcHandlers(): void {
   registerProductBarcodeIpc(productBarcodeService)
   registerProductPriceTierIpc(productPriceTierService)
   registerComboItemIpc(comboItemService)
+  registerProductBatchIpc(productBatchService)
   registerInventoryIpc(inventoryService)
   registerCategoryIpc(categoryService)
   registerAuthIpc(authService)

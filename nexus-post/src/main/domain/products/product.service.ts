@@ -12,6 +12,7 @@ import type { TaxRepository } from '../../ports/tax.repository'
 import type { BrandRepository } from '../../ports/brand.repository'
 import type { SupplierRepository } from '../../ports/supplier.repository'
 import type { ProductTypeRepository } from '../../ports/product-type.repository'
+import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeProductInput, validateProductInput } from './product.entity'
 
@@ -22,7 +23,8 @@ export class ProductService {
     private readonly taxes: TaxRepository,
     private readonly brands: BrandRepository,
     private readonly suppliers: SupplierRepository,
-    private readonly productTypes: ProductTypeRepository
+    private readonly productTypes: ProductTypeRepository,
+    private readonly batches: ProductBatchRepository
   ) {}
 
   list(filter?: ProductFilter): Product[] {
@@ -59,12 +61,14 @@ export class ProductService {
     }
 
     const now = new Date().toISOString()
-    return this.products.create({
+    const created = this.products.create({
       ...normalized,
       id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       createdAt: now,
       updatedAt: now
     })
+    if (created.trackBatches) this.ensureInitialBatch(created)
+    return created
   }
 
   update(product: Product): Product {
@@ -92,7 +96,25 @@ export class ProductService {
       throw new ValidationError(`El código ${normalized.code} ya pertenece a otro producto`)
     }
 
-    return this.products.update({ ...normalized, id: product.id })
+    const updated = this.products.update({ ...normalized, id: product.id })
+    if (updated.trackBatches && !existing.trackBatches) this.ensureInitialBatch(updated)
+    return updated
+  }
+
+  /** Crea un lote inicial con el stock actual del producto si aún no tiene lotes. */
+  private ensureInitialBatch(product: Product): void {
+    if (this.batches.findByProductId(product.id, false).length > 0) return
+    const now = new Date().toISOString()
+    this.batches.create({
+      id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      productId: product.id,
+      batchNumber: `INICIAL-${now.slice(0, 10)}`,
+      quantity: product.stock,
+      active: true,
+      enteredAt: now,
+      createdAt: now,
+      updatedAt: now
+    })
   }
 
   softDelete(id: string): void {

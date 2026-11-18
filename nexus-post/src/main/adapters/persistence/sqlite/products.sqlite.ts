@@ -17,6 +17,7 @@ interface ProductRow {
   parent_id: string | null
   attributes: string | null
   variant_attrs: string | null
+  track_batches: number
   brand_id: string | null
   brand_name: string | null
   supplier_id: string | null
@@ -58,6 +59,12 @@ const SELECT_PRODUCTS = `
           JOIN products cp ON cp.id = ci.component_id
           WHERE ci.combo_id = p.id AND ci.deleted = 0 AND ci.active = 1 AND cp.deleted = 0
         ), 0)
+      WHEN p.track_batches = 1 THEN
+        COALESCE((
+          SELECT SUM(pb.quantity)
+          FROM product_batches pb
+          WHERE pb.product_id = p.id AND pb.deleted = 0 AND pb.active = 1
+        ), 0)
       ELSE p.stock
     END AS effective_stock
   FROM products p
@@ -85,6 +92,7 @@ function mapRow(row: ProductRow): Product {
     parentId: row.parent_id ?? undefined,
     attributes: row.attributes ?? undefined,
     variantAttrs: row.variant_attrs ?? undefined,
+    trackBatches: Boolean(row.track_batches),
     brandId: row.brand_id ?? undefined,
     brandName: row.brand_name ?? undefined,
     supplierId: row.supplier_id ?? undefined,
@@ -170,10 +178,10 @@ export class SqliteProductRepository implements ProductRepository {
       .prepare(
         `INSERT INTO products (
           id, code, name, category, cost_price, sale_price, stock, min_stock, max_stock,
-          unit, parent_id, attributes, variant_attrs, brand_id, supplier_id, type_id, tax_id, has_tax, active, deleted, description, image_url, created_at, updated_at
+          unit, parent_id, attributes, variant_attrs, track_batches, brand_id, supplier_id, type_id, tax_id, has_tax, active, deleted, description, image_url, created_at, updated_at
         ) VALUES (
           @id, @code, @name, @category, @costPrice, @salePrice, @stock, @minStock, @maxStock,
-          @unit, @parentId, @attributes, @variantAttrs, @brandId, @supplierId, @typeId, @taxId, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
+          @unit, @parentId, @attributes, @variantAttrs, @trackBatches, @brandId, @supplierId, @typeId, @taxId, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
         )`
       )
       .run({
@@ -190,6 +198,7 @@ export class SqliteProductRepository implements ProductRepository {
         parentId: input.parentId ?? null,
         attributes: input.attributes ?? '',
         variantAttrs: input.variantAttrs ?? '',
+        trackBatches: input.trackBatches ? 1 : 0,
         brandId: input.brandId ?? null,
         supplierId: input.supplierId ?? null,
         typeId: input.typeId ?? null,
@@ -222,6 +231,7 @@ export class SqliteProductRepository implements ProductRepository {
           parent_id = @parentId,
           attributes = @attributes,
           variant_attrs = @variantAttrs,
+          track_batches = @trackBatches,
           brand_id = @brandId,
           supplier_id = @supplierId,
           type_id = @typeId,
@@ -248,6 +258,7 @@ export class SqliteProductRepository implements ProductRepository {
         parentId: product.parentId ?? null,
         attributes: product.attributes ?? '',
         variantAttrs: product.variantAttrs ?? '',
+        trackBatches: product.trackBatches ? 1 : 0,
         brandId: product.brandId ?? null,
         supplierId: product.supplierId ?? null,
         typeId: product.typeId ?? null,

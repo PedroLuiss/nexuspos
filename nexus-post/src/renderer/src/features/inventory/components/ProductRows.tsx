@@ -76,11 +76,18 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                         <div className="font-semibold text-xs text-[#1B1B1B] truncate">
                           {p.name}
                         </div>
-                        {p.parentId && (
-                          <span className="inline-block text-[9px] font-bold text-[#0067C0] bg-blue-50 border border-blue-200 rounded-[3px] px-1 mt-0.5">
-                            Variante
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {p.parentId && (
+                            <span className="inline-block text-[9px] font-bold text-[#0067C0] bg-blue-50 border border-blue-200 rounded-[3px] px-1">
+                              Variante
+                            </span>
+                          )}
+                          {p.trackBatches && (
+                            <span className="inline-block text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-[3px] px-1">
+                              Lotes
+                            </span>
+                          )}
+                        </div>
                         {p.description && (
                           <div className="text-[10px] text-[#717783] truncate max-w-sm">
                             {p.description}

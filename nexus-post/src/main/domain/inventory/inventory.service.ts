@@ -2,15 +2,18 @@ import type { AdjustStockInput, AdjustStockResult, KardexMovement } from '@share
 import { isInboundReason } from '@shared/contracts'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
+import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
+import { issueFromBatches } from '@shared/lib/product-batches'
 
 /** Servicio de dominio de inventario: registra movimientos y ajusta stock. */
 export class InventoryService {
   constructor(
     private readonly products: ProductRepository,
     private readonly movements: StockMovementRepository,
+    private readonly batches: ProductBatchRepository,
     private readonly tx: TransactionRunner
   ) {}
 
@@ -45,6 +48,40 @@ export class InventoryService {
     }
 
     return this.tx.run(() => {
+      // Productos con lotes: reflejar el ajuste en los lotes (FEFO para salidas).
+      if (product.trackBatches && !inbound) {
+        const batchRows = this.batches.findByProductId(product.id, true)
+        const result = issueFromBatches(batchRows, input.quantity, 'FEFO')
+        if (result.shortfall > 0) {
+          throw new ValidationError(
+            `Stock insuficiente en los lotes de "${product.name}" (faltan ${result.shortfall}).`
+          )
+        }
+        for (const issue of result.issues) {
+          const batch = this.batches.findById(issue.batchId)
+          if (batch) {
+            this.batches.update({
+              ...batch,
+              quantity: batch.quantity - issue.quantity,
+              updatedAt: new Date().toISOString()
+            })
+          }
+        }
+      } else if (product.trackBatches && inbound) {
+        // Entrada manual: crear un lote genérico con la fecha de hoy.
+        const now = new Date().toISOString()
+        this.batches.create({
+          id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          productId: product.id,
+          batchNumber: `AJUSTE-${now.slice(0, 10)}`,
+          quantity: input.quantity,
+          active: true,
+          enteredAt: now,
+          createdAt: now,
+          updatedAt: now
+        })
+      }
+
       const updated = this.products.setStock(product.id, newStock)
       this.movements.insert(movement)
       return { product: updated, movement }
