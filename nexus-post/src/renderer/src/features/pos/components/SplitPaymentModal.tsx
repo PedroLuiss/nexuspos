@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Banknote, CreditCard, Layers, X, Check } from '../../../shared/icons/Icons'
+import { AlertCircle, Banknote, CreditCard, Layers, X, Check } from '../../../shared/icons/Icons'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
 
@@ -7,6 +7,7 @@ interface SplitPaymentModalProps {
   isOpen: boolean
   total: number
   exchangeRate: UsdVesExchangeRate | null
+  canCompleteSale: boolean
   onClose: () => void
   onConfirmSplit: (cashAmount: number, cardAmount: number) => void | Promise<void>
 }
@@ -15,6 +16,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   isOpen,
   total,
   exchangeRate,
+  canCompleteSale,
   onClose,
   onConfirmSplit
 }) => {
@@ -32,7 +34,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
 
   const handleConfirm = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
-    if (!isComplete || isSubmitting) return
+    if (!canCompleteSale || !isComplete || isSubmitting) return
     setIsSubmitting(true)
     try {
       await onConfirmSplit(cashAmount, cardRemainder)
@@ -76,6 +78,16 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
               : 'Tasa BCV no disponible'}
           </div>
         </div>
+
+        {!canCompleteSale && (
+          <div
+            role="alert"
+            className="mx-5 mt-4 flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-[#C42B1C]"
+          >
+            <AlertCircle size={14} />
+            No se puede generar la venta: hay productos sin stock suficiente.
+          </div>
+        )}
 
         <form onSubmit={handleConfirm}>
           <div className="p-5 space-y-4 text-xs">
@@ -144,7 +156,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={!isComplete || isSubmitting}
+              disabled={!canCompleteSale || !isComplete || isSubmitting}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#0078D4] hover:bg-[#106EBE] rounded-sm"
             >
               <Check size={15} />

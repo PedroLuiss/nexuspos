@@ -271,6 +271,16 @@ function AppContent(): React.JSX.Element {
 
   const handleCompleteSale = async (details: PaymentDetails): Promise<boolean> => {
     if (cart.length === 0) return false
+    const unavailableItem = cart.find(
+      (item) => item.product.trackStock !== false && item.product.stock <= 0
+    )
+    if (unavailableItem) {
+      showToast(
+        `"${unavailableItem.product.name}" no tiene existencias y no se puede facturar.`,
+        'error'
+      )
+      return false
+    }
     const totals = computeSaleTotals(
       cart.map((item) => {
         const tax = resolveProductTax(item.product, businessConfig)

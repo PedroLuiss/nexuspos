@@ -20,13 +20,13 @@ interface SaleModalProps {
   isOpen: boolean
   total: number
   subtotal: number
-  tax: number
   discount: number
   items: CartItem[]
   customerId?: string
   ticketNumber: string
   initialMethod: PaymentMethodType
   exchangeRate: UsdVesExchangeRate | null
+  canCompleteSale: boolean
   onClose: () => void
   onConfirmSale: (details: PaymentDetails) => Promise<boolean | void> | boolean | void
 }
@@ -35,13 +35,13 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   isOpen,
   total,
   subtotal,
-  tax,
   discount,
   items,
   customerId,
   ticketNumber,
   initialMethod,
   exchangeRate,
+  canCompleteSale,
   onClose,
   onConfirmSale
 }) => {
@@ -117,6 +117,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const handleConfirm = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
 
+    if (!canCompleteSale || isSubmitting) return
     if (method === 'cash' && !isCashSufficient) {
       return
     }
@@ -212,6 +213,15 @@ export const SaleModal: React.FC<SaleModalProps> = ({
 
         <form onSubmit={handleConfirm}>
           <div className="p-5 space-y-4">
+            {!canCompleteSale && (
+              <div
+                role="alert"
+                className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-[#C42B1C]"
+              >
+                <AlertCircle size={14} />
+                No se puede generar la venta: hay productos sin stock suficiente.
+              </div>
+            )}
             {/* Payment Method Selector Tabs */}
             <div>
               <label className="block text-[11px] font-bold text-[#5C5C5C] uppercase tracking-wider mb-2">
@@ -430,6 +440,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             <button
               type="submit"
               disabled={
+                !canCompleteSale ||
                 isSubmitting ||
                 (method === 'cash' && !isCashSufficient) ||
                 (method === 'credit' && !customerId)

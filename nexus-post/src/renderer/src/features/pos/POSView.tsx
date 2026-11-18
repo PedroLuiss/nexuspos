@@ -1095,13 +1095,13 @@ export const POSView: React.FC<POSViewProps> = ({
           isOpen={isSaleModalOpen}
           total={finalTotal}
           subtotal={subtotal}
-          tax={taxTotal}
           discount={discountTotal}
           items={cart}
           customerId={assignCustomer ? selectedCustomer?.id : undefined}
           ticketNumber={ticketNumber}
           initialMethod={initialPaymentMethod}
           exchangeRate={exchangeRate}
+          canCompleteSale={!cannotCompleteSale}
           onClose={() => setIsSaleModalOpen(false)}
           onConfirmSale={async (details) => {
             const completed = await completeSale(details)
@@ -1124,6 +1124,7 @@ export const POSView: React.FC<POSViewProps> = ({
           isOpen={isSplitModalOpen}
           total={finalTotal}
           exchangeRate={exchangeRate}
+          canCompleteSale={!cannotCompleteSale}
           onClose={() => setIsSplitModalOpen(false)}
           onConfirmSplit={handleConfirmSplit}
         />

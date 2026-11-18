@@ -134,8 +134,17 @@ const POSProductSearch = forwardRef<POSProductSearchHandle, POSProductSearchProp
                       key={product.id}
                       type="button"
                       disabled={outOfStock}
+                      title={
+                        outOfStock
+                          ? 'Producto sin stock; no se puede agregar al carrito'
+                          : 'Agregar al carrito'
+                      }
                       onClick={() => selectProduct(product)}
-                      className="flex w-full items-center justify-between gap-3 p-2.5 text-left hover:bg-[#EBF0F5] disabled:cursor-not-allowed disabled:bg-red-50/50 transition-colors"
+                      className={`flex w-full items-center justify-between gap-3 border-l-2 p-2.5 text-left transition-colors ${
+                        outOfStock
+                          ? 'cursor-not-allowed border-l-red-300 bg-red-50'
+                          : 'cursor-pointer border-l-transparent hover:bg-[#EBF0F5]'
+                      }`}
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
                         <ProductAvatar name={product.name} imageUrl={product.imageUrl} size="xs" />
@@ -146,8 +155,14 @@ const POSProductSearch = forwardRef<POSProductSearchHandle, POSProductSearchProp
                           <div className="truncate font-semibold text-xs text-[#1B1B1B]">
                             {product.name}
                           </div>
-                          <div className="text-[11px] text-[#717783]">
-                            {product.category} |{' '}
+                          <div className="text-[11px] text-[#717783]">{product.category}</div>
+                          <div
+                            className={`mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              outOfStock
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
                             {product.trackStock === false ? 'Servicio' : `Stock: ${product.stock}`}
                           </div>
                         </div>
