@@ -1,5 +1,5 @@
 import type { Product, ProductInput, ProductFilter } from './product.contract'
-import type { TaxRate, TaxesApi } from './tax.contract'
+import type { TaxesApi } from './tax.contract'
 import type { Brand, BrandInput, BrandFilter } from './brand.contract'
 import type { Supplier, SupplierInput, SupplierFilter } from './supplier.contract'
 import type { ProductType, ProductTypeInput, ProductTypeFilter } from './product-type.contract'
@@ -14,11 +14,7 @@ import type {
   ProductPriceTierFilter
 } from './product-price-tier.contract'
 import type { ComboItem, ComboItemInput, ComboItemFilter } from './combo-item.contract'
-import type {
-  ProductBatch,
-  ProductBatchInput,
-  ProductBatchFilter
-} from './product-batch.contract'
+import type { ProductBatch, ProductBatchInput, ProductBatchFilter } from './product-batch.contract'
 import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'

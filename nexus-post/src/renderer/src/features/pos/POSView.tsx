@@ -129,8 +129,10 @@ export const POSView: React.FC<POSViewProps> = ({
   const taxBreakdown = totals.taxBreakdown
   const totalItemCount = cart.length
 
-  // Detección de déficit de stock
-  const hasStockDeficit = cart.some((item) => item.quantity > item.product.stock)
+  // Detección de déficit de stock (los servicios no controlan existencias)
+  const hasStockDeficit = cart.some(
+    (item) => item.product.trackStock !== false && item.quantity > item.product.stock
+  )
   const cannotCompleteSale = hasStockDeficit && !canOverrideNoStock
 
   const searchMatches = useMemo(() => {
@@ -151,8 +153,7 @@ export const POSView: React.FC<POSViewProps> = ({
         (product) =>
           product.active &&
           !product.deleted &&
-          (product.name.toLowerCase().includes(query) ||
-            product.code.toLowerCase().includes(query))
+          (product.name.toLowerCase().includes(query) || product.code.toLowerCase().includes(query))
       )
       .slice(0, 6)
   }, [searchInput, products, barcodeToProduct])

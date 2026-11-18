@@ -20,6 +20,22 @@ export class InventoryService {
   adjustStock(input: AdjustStockInput): AdjustStockResult {
     const product = this.products.findById(input.productId)
     if (!product) throw new NotFoundError('Producto no encontrado')
+
+    // Los servicios no controlan existencias: ajustar sería un dato sin sentido.
+    if (product.trackStock === false) {
+      throw new ValidationError(
+        `"${product.name}" es un servicio y no maneja stock; no se pueden registrar entradas o salidas.`
+      )
+    }
+    // El stock de un combo se deriva de sus componentes (MIN stock/cantidad). Escribir
+    // directamente en products.stock sería ignorado por la consulta efectiva: se bloquea
+    // con un mensaje claro en lugar de "ajustar" sin efecto.
+    if (product.typeKind === 'combo') {
+      throw new ValidationError(
+        `El stock de "${product.name}" se calcula desde sus componentes. Ajuste el stock de los componentes del combo.`
+      )
+    }
+
     if (!isValidProductQuantity(input.quantity, product.unit)) {
       throw new ValidationError(
         'La cantidad debe ser positiva; solo los productos medibles aceptan fracciones de hasta 3 decimales.'

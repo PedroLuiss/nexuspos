@@ -26,6 +26,11 @@
 - La tabla de facturas permite filtrar por coincidencia parcial del código/número de factura y paginar los resultados en bloques de 10. El filtro y la paginación operan sobre las facturas del turno seleccionado; la carga de datos y los totales siguen usando el registro persistido completo del turno.
 - Solo se puede devolver una factura completa, desde el turno abierto que la generó y con reintegro según el método original. El backend comprueba que haya efectivo suficiente para el componente del reintegro en efectivo y rechaza duplicados.
 - La devolución restaura existencias y crea un movimiento de entrada en Kardex. Si era una venta a crédito, se cancela la deuda pendiente y los abonos ya recibidos pasan al saldo a favor del cliente.
+- **Reposición correcta por tipo de producto (auditoría de integración, migración 022):** cada `sale_item` persiste `is_combo`, `combo_id` y `batches_json` (lotes FEFO descontados con su `productId`). `CashService` inyecta `ComboItemRepository` y `ProductBatchRepository` y repone:
+  - **Combos:** los componentes (`cantidad_componente × cantidad_vendida`), no el producto combo (que nunca se descontó);
+  - **Lotes:** los lotes exactos descontados en la venta, con un movimiento `DEVOLUCION` por lote; si la venta es anterior a la trazabilidad, crea un lote `DEVOLUCION-YYYY-MM-DD` para que el stock efectivo (suma de lotes) aumente realmente;
+  - **Servicios:** no repone stock (nunca se descontó, `trackStock = false`).
+- `CashService` depende ahora de `ComboItemRepository` y `ProductBatchRepository` (inyectados en `ipc/index.ts`) además de `SalesRepository`, `ProductRepository` y `StockMovementRepository`.
 - Ventas creadas antes de la migración no tienen `cash_shift_id`; no se asignan retrospectivamente a un cajero.
 
 ## Archivos principales

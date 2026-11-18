@@ -27,6 +27,7 @@ import { migration018ProductPriceTiers } from './018_product_price_tiers'
 import { migration019ComboItems } from './019_combo_items'
 import { migration020ProductVariants } from './020_product_variants'
 import { migration021ProductBatches } from './021_product_batches'
+import { migration022SaleItemTraceability } from './022_sale_item_traceability'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -49,7 +50,8 @@ const MIGRATIONS: Migration[] = [
   migration018ProductPriceTiers,
   migration019ComboItems,
   migration020ProductVariants,
-  migration021ProductBatches
+  migration021ProductBatches,
+  migration022SaleItemTraceability
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

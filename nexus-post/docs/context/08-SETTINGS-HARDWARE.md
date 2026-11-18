@@ -184,7 +184,8 @@ nexus-post/src/
 │   │       ├── 018_product_price_tiers.ts   # Tabla `product_price_tiers` (escalas de mayoreo)
 │   │       ├── 019_combo_items.ts           # Tabla `combo_items` (bundles con desglose a Kardex)
 │   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
-│   │       └── 021_product_batches.ts       # product_batches + products.track_batches (FEFO)
+│   │       ├── 021_product_batches.ts       # product_batches + products.track_batches (FEFO)
+│   │       └── 022_sale_item_traceability.ts  # sale_items.is_combo / combo_id / batches_json
 │   ├── adapters/hardware/
 │   │   ├── scale.serial.ts                  # Puerto serial para báscula (SerialPort)
 │   │   └── scale.sqlite.ts                  # Persistencia de configuración
@@ -267,6 +268,7 @@ nexus-post/src/
 - ✅ **Combos / bundles reales:** migración 019 (`combo_items`). Se configuran en la pestaña de edición de producto cuando el tipo es Combo / Kit; al cobrar, `SalesService` desglosa el consumo entre componentes y genera movimientos Kardex `COMBO` (stock del combo derivado de sus componentes).
 - ✅ **Variantes talla/color:** migración 020 (`products.parent_id`, `attributes`, `variant_attrs`). Cada variante es un producto hijo independiente con SKU/precio/stock propios; se prohíben variantes anidadas. Se gestionan desde la pestaña "Variantes" del producto padre.
 - ✅ **Lotes y caducidad:** migración 021 (`product_batches`, `products.track_batches`). Salidas FEFO con movimientos Kardex por lote; lote inicial automático al activar control de lotes; UI con insignias de vencimiento. Se gestionan desde la pestaña "Lotes y Caducidad" del producto.
+- ✅ **Auditoría de integración (migración 022):** se corrigió la devolución de combos y lotes (antes reponía el producto equivocado y perdía stock de lotes) con trazabilidad en `sale_items`; los servicios (`trackStock = false`) ahora se pueden vender sin stock; los ajustes manuales sobre servicios/combos se bloquean con mensaje claro; la baja de producto cascadea a variantes, lotes y relaciones de combo. Ver contextos 02/03/04/05.
 - ⚠️ **Multi-caja LAN:** los contratos `UsersApi` y `SettingsApi` ya están desacoplados; la fase maestro-satélite solo debe cambiar los adaptadores de repositorio, sin tocar UI ni dominio.
 
 ## 7. Estado de integración

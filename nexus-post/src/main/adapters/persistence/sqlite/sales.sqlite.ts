@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { CashTicket, SalePayment, SuspendedSale } from '@shared/contracts'
+import type { CashTicket, SaleItemBatch, SalePayment, SuspendedSale } from '@shared/contracts'
 import type { SaleItemRecord, SaleRecord, SalesRepository } from '../../../ports/sales.repository'
 
 interface SuspendedSaleRow {
@@ -33,6 +33,9 @@ interface TicketItemRow {
   unit_cost: number
   discount_percent: number
   line_total: number
+  is_combo: number
+  combo_id: string | null
+  batches_json: string | null
 }
 
 interface TicketTaxRow {
@@ -80,17 +83,29 @@ export class SqliteSalesRepository implements SalesRepository {
     const insertItem = this.db.prepare(`
       INSERT INTO sale_items (
         id, sale_id, product_id, product_name, product_code,
-        quantity, unit_price, unit_cost, discount_percent, line_total
+        quantity, unit_price, unit_cost, discount_percent, line_total,
+        is_combo, combo_id, batches_json
       ) VALUES (
         @id, @saleId, @productId, @productName, @productCode,
-        @quantity, @unitPrice, @unitCost, @discountPercent, @lineTotal
+        @quantity, @unitPrice, @unitCost, @discountPercent, @lineTotal,
+        @isCombo, @comboId, @batchesJson
       )
     `)
     for (const item of items) {
       insertItem.run({
         id: `sale-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         saleId: sale.id,
-        ...item
+        productId: item.productId,
+        productName: item.productName,
+        productCode: item.productCode,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unitCost: item.unitCost,
+        discountPercent: item.discountPercent,
+        lineTotal: item.lineTotal,
+        isCombo: item.isCombo ? 1 : 0,
+        comboId: item.comboId ?? null,
+        batchesJson: item.batches?.length ? JSON.stringify(item.batches) : ''
       })
     }
 
@@ -131,7 +146,7 @@ export class SqliteSalesRepository implements SalesRepository {
       .prepare(
         `
       SELECT product_id, product_name, product_code, quantity, unit_price,
-        unit_cost, discount_percent, line_total
+        unit_cost, discount_percent, line_total, is_combo, combo_id, batches_json
       FROM sale_items WHERE sale_id = ? ORDER BY rowid
     `
       )
@@ -167,16 +182,29 @@ export class SqliteSalesRepository implements SalesRepository {
             }))
           : undefined,
       payment: JSON.parse(row.payment_json) as SalePayment,
-      items: items.map((item) => ({
-        productId: item.product_id,
-        productName: item.product_name,
-        productCode: item.product_code,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        unitCost: item.unit_cost,
-        discountPercent: item.discount_percent,
-        lineTotal: item.line_total
-      })),
+      items: items.map((item) => {
+        let batches: SaleItemBatch[] | undefined
+        if (item.batches_json) {
+          try {
+            batches = JSON.parse(item.batches_json) as SaleItemBatch[]
+          } catch {
+            batches = undefined
+          }
+        }
+        return {
+          productId: item.product_id,
+          productName: item.product_name,
+          productCode: item.product_code,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          unitCost: item.unit_cost,
+          discountPercent: item.discount_percent,
+          lineTotal: item.line_total,
+          isCombo: item.is_combo === 1,
+          comboId: item.combo_id ?? undefined,
+          batches
+        }
+      }),
       returnedAt: row.returned_at ?? undefined,
       returnPayment: row.return_payment_json
         ? (JSON.parse(row.return_payment_json) as SalePayment)

@@ -24,7 +24,14 @@ Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryServi
 
 La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; un listado vacío no se sustituye por registros de demostración.
 
-La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. Para productos tipo combo (`product_types.kind = 'combo'`), el cobro genera salidas `COMBO` por cada componente consumido (`cantidad_combo × cantidad_componente`) en lugar de descontar el combo directamente; el stock disponible del combo se deriva de sus componentes en `products.sqlite.ts`. `CashService.returnSale()` repone existencias e inserta una entrada `DEVOLUCION` en la misma transacción de devolución. Por lo tanto, el Kardex refleja ajustes manuales, cobros, combos y devoluciones vinculados a operaciones persistidas.
+La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. Para productos tipo combo (`product_types.kind = 'combo'`), el cobro genera salidas `COMBO` por cada componente consumido (`cantidad_combo × cantidad_componente`) en lugar de descontar el combo directamente; el stock disponible del combo se deriva de sus componentes en `products.sqlite.ts`. Los productos servicio (`trackStock = false`) no generan movimientos Kardex porque no manejan existencias.
+
+**Devoluciones correctas (auditoría de integración):** antes `CashService.returnSale()` reponía stock sobre el producto del `sale_item`, lo cual era incorrecto para combos (se reponía el combo, nunca descontado) y para lotes (no se reponía el lote exacto). Ahora cada línea de venta persiste `is_combo`, `combo_id` y `batches_json` (migración 022), y la devolución:
+- para combos → repone cada **componente** (`cantidad_componente × cantidad_vendida`) con movimiento `COMBO` de entrada;
+- para lotes → repone el **lote exacto** descontado (o crea un lote `DEVOLUCION-YYYY-MM-DD` si la venta es histórica sin trazabilidad), con un movimiento `DEVOLUCION` por lote;
+- para productos simples → comportamiento original.
+
+Por lo tanto, el Kardex refleja fielmente ajustes manuales, cobros, combos, lotes FEFO y devoluciones vinculados a operaciones persistidas.
 
 ## 3. Mapa de Archivos del Módulo
 

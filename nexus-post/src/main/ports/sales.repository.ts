@@ -1,5 +1,5 @@
 import type { CreateSaleInput, SaleResult } from '@shared/contracts'
-import type { CashTicket, SalePayment } from '@shared/contracts'
+import type { CashTicket, SaleItemBatch, SalePayment } from '@shared/contracts'
 
 export interface SaleRecord extends SaleResult {
   cashierName: string
@@ -17,6 +17,11 @@ export interface SaleItemRecord {
   unitCost: number
   discountPercent: number
   lineTotal: number
+  /** true si la línea es un combo/bundle. */
+  isCombo?: boolean
+  comboId?: string
+  /** Lotes descontados (FEFO) en esta línea, para trazabilidad y devoluciones. */
+  batches?: SaleItemBatch[]
 }
 
 export interface SalesRepository {

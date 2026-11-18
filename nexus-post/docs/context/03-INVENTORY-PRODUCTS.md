@@ -72,7 +72,8 @@ nexus-post/src/
 │   │       ├── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
 │   │       ├── 019_combo_items.ts           # combo_items + índice único combo+componente
 │   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
-│   │       └── 021_product_batches.ts       # product_batches + products.track_batches
+│   │       ├── 021_product_batches.ts       # product_batches + products.track_batches
+│   │       └── 022_sale_item_traceability.ts  # sale_items.is_combo / combo_id / batches_json
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*'
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
@@ -221,6 +222,8 @@ nexus-post/src/
     - Al activar `track_batches` en un producto con stock, se crea automáticamente un lote inicial (`INICIAL-YYYY-MM-DD`) con el stock actual para no perder inventario.
     - Las entradas de lote suman cantidad al producto; las entradas manuales de stock crean un lote `AJUSTE-YYYY-MM-DD`.
     - Se gestionan en la pestaña "Lotes y Caducidad" del formulario de producto; la UI muestra insignias de VENCIDO / vence en Nd / sin vencimiento.
+13. **Servicios e insumos vendibles (auditoría de integración):** `Product` expone `trackStock` (resuelto desde `product_types.track_stock`). Los productos de tipo **Servicio** (`trackStock = false`) **no validan ni descuentan stock** en `SalesService`, `App.tsx` ni `POSView`, y no generan movimientos Kardex — antes con stock 0 eran invendibles. `InventoryService` bloquea con mensaje claro los ajustes manuales de stock sobre servicios (no manejan existencias) y sobre combos (su stock se deriva de componentes; hay que ajustar los componentes).
+14. **Trazabilidad de devoluciones (migración 022) y baja en cascada:** `sale_items` guarda `is_combo`, `combo_id` y `batches_json` (lotes FEFO descontados con su `productId`). `CashService.returnSale()` usa esa información para reponer **los componentes** de un combo y **los lotes exactos** de cada línea (creando lote `DEVOLUCION-YYYY-MM-DD` si la venta es anterior a la trazabilidad). `ProductService.softDelete()` da de baja en cascada variantes, lotes y relaciones de combo, evitando huérfanos.
 
 ## 5. Estado de integración operativa
 

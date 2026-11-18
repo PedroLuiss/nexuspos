@@ -1,4 +1,4 @@
-import type { CreateSaleInput, SaleResult, SuspendedSale, KardexMovement } from '@shared/contracts'
+import type { CreateSaleInput, SaleResult, SaleItemBatch, SuspendedSale } from '@shared/contracts'
 import type { CustomerService } from '../customers/customer.service'
 import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
@@ -72,7 +72,11 @@ export class SalesService {
       if (!isValidProductQuantity(quantity, product.unit)) {
         throw new ValidationError(`La cantidad de "${product.name}" no es válida para su unidad.`)
       }
-      if (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
+      if (
+        product.trackStock !== false &&
+        !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+        quantity > product.stock
+      ) {
         throw new ValidationError(`Stock insuficiente para "${product.name}".`)
       }
 
@@ -101,7 +105,9 @@ export class SalesService {
         unitPrice,
         unitCost: product.costPrice,
         discountPercent,
-        lineTotal
+        lineTotal,
+        isCombo: product.typeKind === 'combo',
+        comboId: product.typeKind === 'combo' ? product.id : undefined
       })
     }
 
@@ -163,7 +169,9 @@ export class SalesService {
           !product.active ||
           product.deleted ||
           !isValidProductQuantity(item.quantity, product.unit) ||
-          (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && item.quantity > product.stock)
+          (product.trackStock !== false &&
+            !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+            item.quantity > product.stock)
         ) {
           throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
         }
@@ -188,6 +196,7 @@ export class SalesService {
               )
             }
             if (
+              componentProduct.trackStock !== false &&
               !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
               consumptionQty > componentProduct.stock
             ) {
@@ -195,7 +204,9 @@ export class SalesService {
                 `Stock insuficiente de "${componentProduct.name}" para el combo "${product.name}".`
               )
             }
-            this.deductStock(
+            // Los componentes servicio (sin control de stock) no descuentan existencias.
+            if (componentProduct.trackStock === false) continue
+            const issues = this.deductStock(
               componentProduct,
               consumptionQty,
               'COMBO',
@@ -203,11 +214,24 @@ export class SalesService {
               `Combo "${product.name}" × ${item.quantity} · Ticket ${result.ticketNumber}`,
               now
             )
+            // Los lotes de los componentes se asocian a la línea del combo con el
+            // productId del componente, para poder reponerlos tal cual al devolver.
+            item.batches = [...(item.batches ?? []), ...issues]
           }
           continue
         }
 
-        this.deductStock(product, item.quantity, 'VENTA', user.name, result.ticketNumber, now)
+        // Los servicios (trackStock = false) no descuentan stock ni generan Kardex.
+        if (product.trackStock !== false) {
+          item.batches = this.deductStock(
+            product,
+            item.quantity,
+            'VENTA',
+            user.name,
+            result.ticketNumber,
+            now
+          )
+        }
       }
 
       if (input.payment.method === 'credit') {
@@ -279,6 +303,7 @@ export class SalesService {
   /**
    * Descuenta stock de un producto. Si controla lotes, descuenta FEFO y registra
    * un movimiento Kardex por lote consumido; si no, descuento y movimiento normales.
+   * Devuelve los lotes descontados para persistirlos en la línea de venta (trazabilidad).
    */
   private deductStock(
     product: NonNullable<ReturnType<ProductRepository['findById']>>,
@@ -287,7 +312,7 @@ export class SalesService {
     responsibleUser: string,
     notes: string,
     now: string
-  ): void {
+  ): SaleItemBatch[] {
     if (product.trackBatches) {
       const batchRows = this.batches.findByProductId(product.id, true)
       const result = issueFromBatches(batchRows, quantity, 'FEFO')
@@ -296,6 +321,7 @@ export class SalesService {
           `Stock insuficiente en los lotes de "${product.name}" (faltan ${result.shortfall}).`
         )
       }
+      const consumed: SaleItemBatch[] = []
       let runningStock = product.stock
       for (const issue of result.issues) {
         const batch = this.batches.findById(issue.batchId)
@@ -321,10 +347,16 @@ export class SalesService {
           responsibleUser,
           notes: `${notes} · Lote ${issue.batchNumber}`
         })
+        consumed.push({
+          batchId: issue.batchId,
+          batchNumber: issue.batchNumber,
+          productId: product.id,
+          quantity: issue.quantity
+        })
         runningStock = newStock
       }
       this.products.setStock(product.id, runningStock)
-      return
+      return consumed
     }
 
     const newStock = product.stock - quantity
@@ -343,6 +375,7 @@ export class SalesService {
       responsibleUser,
       notes
     })
+    return []
   }
 
   private validatePayment(input: CreateSaleInput, total: number): void {

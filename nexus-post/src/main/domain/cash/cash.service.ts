@@ -4,12 +4,16 @@ import type {
   CreateCashMovementInput,
   OpenCashShiftInput,
   CloseCashShiftInput,
+  SaleItemBatch,
+  CashSaleItem,
   SalePayment
 } from '@shared/contracts'
 import type { AuthService } from '../auth/auth.service'
 import type { CashRepository } from '../../ports/cash.repository'
 import type { SalesRepository } from '../../ports/sales.repository'
 import type { ProductRepository } from '../../ports/product.repository'
+import type { ComboItemRepository } from '../../ports/combo-item.repository'
+import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import type { CustomerService } from '../customers/customer.service'
@@ -23,6 +27,8 @@ export class CashService {
     private readonly cash: CashRepository,
     private readonly sales: SalesRepository,
     private readonly products: ProductRepository,
+    private readonly combos: ComboItemRepository,
+    private readonly batches: ProductBatchRepository,
     private readonly movements: StockMovementRepository,
     private readonly customers: CustomerService,
     private readonly auth: AuthService,
@@ -146,29 +152,7 @@ export class CashService {
       }
 
       for (const item of currentTicket.items) {
-        const product = this.products.findById(item.productId)
-        if (!product) {
-          throw new ValidationError(
-            `No se puede reponer "${item.productName}": producto inexistente.`
-          )
-        }
-        const newStock = product.stock + item.quantity
-        this.products.setStock(product.id, newStock)
-        const movement: KardexMovement = {
-          id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: returnedAt,
-          productId: product.id,
-          productName: product.name,
-          productCode: product.code,
-          type: 'ENTRADA',
-          reason: 'DEVOLUCION',
-          previousStock: product.stock,
-          quantity: item.quantity,
-          newStock,
-          responsibleUser: user.name,
-          notes: `Devolución completa de ticket ${currentTicket.ticketNumber}`
-        }
-        this.movements.insert(movement)
+        this.restockSaleItem(item, returnedAt, user.name, currentTicket.ticketNumber)
       }
 
       if (currentTicket.payment.method === 'credit' && currentTicket.customerId) {
@@ -204,6 +188,172 @@ export class CashService {
     const updated = this.sales.findTicket(saleId)
     if (!updated) throw new Error('La factura devuelta no pudo volver a cargarse.')
     return updated
+  }
+
+  /**
+   * Repone el stock de una línea devuelta.
+   * - Combo: repone sus COMPONENTES (fueron los que se descontaron al cobrar),
+   *   no el producto combo (que nunca se descontó).
+   * - Producto con lotes: repone los lotes exactos descontados en la venta;
+   *   si la venta es anterior a la trazabilidad, crea un lote de devolución.
+   */
+  private restockSaleItem(
+    item: CashSaleItem,
+    returnedAt: string,
+    responsibleUser: string,
+    ticketNumber: string
+  ): void {
+    if (item.isCombo && item.comboId) {
+      const components = this.combos
+        .findByComboId(item.comboId)
+        .filter((c) => c.active && !c.deleted)
+      for (const component of components) {
+        const componentProduct = this.products.findById(component.componentId)
+        if (!componentProduct) continue
+        this.restockProduct(
+          componentProduct,
+          component.quantity * item.quantity,
+          'COMBO',
+          item.batches,
+          returnedAt,
+          responsibleUser,
+          `Devolución de combo "${item.productName}" (ticket ${ticketNumber})`
+        )
+      }
+      return
+    }
+
+    const product = this.products.findById(item.productId)
+    if (!product) {
+      throw new ValidationError(`No se puede reponer "${item.productName}": producto inexistente.`)
+    }
+    this.restockProduct(
+      product,
+      item.quantity,
+      'DEVOLUCION',
+      item.batches,
+      returnedAt,
+      responsibleUser,
+      `Devolución completa de ticket ${ticketNumber}`
+    )
+  }
+
+  /** Repone cantidad sobre un producto, respetando lotes si los controla. */
+  private restockProduct(
+    product: NonNullable<ReturnType<ProductRepository['findById']>>,
+    quantity: number,
+    reason: 'DEVOLUCION' | 'COMBO',
+    recordedBatches: SaleItemBatch[] | undefined,
+    returnedAt: string,
+    responsibleUser: string,
+    notes: string
+  ): void {
+    let runningStock = product.stock
+
+    if (product.trackBatches) {
+      const saved = (recordedBatches ?? []).filter((b) => b.productId === product.id)
+      if (saved.length > 0) {
+        for (const entry of saved) {
+          const batch = this.batches.findById(entry.batchId)
+          if (batch) {
+            this.batches.update({
+              ...batch,
+              quantity: batch.quantity + entry.quantity,
+              updatedAt: returnedAt
+            })
+          } else {
+            const now = returnedAt
+            this.batches.create({
+              id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              productId: product.id,
+              batchNumber: entry.batchNumber,
+              quantity: entry.quantity,
+              active: true,
+              enteredAt: now,
+              createdAt: now,
+              updatedAt: now
+            })
+          }
+          this.insertRestockMovement(
+            product,
+            entry.quantity,
+            reason,
+            `${notes} · Lote ${entry.batchNumber}`,
+            runningStock,
+            runningStock + entry.quantity,
+            returnedAt,
+            responsibleUser
+          )
+          runningStock += entry.quantity
+        }
+      } else {
+        // Venta histórica sin trazabilidad de lotes: se crea un lote de devolución
+        // para que el stock efectivo (SUM de lotes) realmente aumente.
+        const now = returnedAt
+        this.batches.create({
+          id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          productId: product.id,
+          batchNumber: `DEVOLUCION-${now.slice(0, 10)}`,
+          quantity,
+          active: true,
+          enteredAt: now,
+          createdAt: now,
+          updatedAt: now
+        })
+        this.insertRestockMovement(
+          product,
+          quantity,
+          reason,
+          notes,
+          runningStock,
+          runningStock + quantity,
+          returnedAt,
+          responsibleUser
+        )
+        runningStock += quantity
+      }
+    } else {
+      this.insertRestockMovement(
+        product,
+        quantity,
+        reason,
+        notes,
+        runningStock,
+        runningStock + quantity,
+        returnedAt,
+        responsibleUser
+      )
+      runningStock += quantity
+    }
+
+    this.products.setStock(product.id, runningStock)
+  }
+
+  private insertRestockMovement(
+    product: NonNullable<ReturnType<ProductRepository['findById']>>,
+    quantity: number,
+    reason: 'DEVOLUCION' | 'COMBO',
+    notes: string,
+    previousStock: number,
+    newStock: number,
+    timestamp: string,
+    responsibleUser: string
+  ): void {
+    const movement: KardexMovement = {
+      id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp,
+      productId: product.id,
+      productName: product.name,
+      productCode: product.code,
+      type: 'ENTRADA',
+      reason,
+      previousStock,
+      quantity,
+      newStock,
+      responsibleUser,
+      notes
+    }
+    this.movements.insert(movement)
   }
 
   private getReturnPayment(original: SalePayment, total: number): SalePayment {

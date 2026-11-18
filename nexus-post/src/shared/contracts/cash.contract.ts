@@ -43,6 +43,15 @@ export interface CashMovement {
   sourceId?: string
 }
 
+/** Lote descontado de una línea de venta (para reponer en devoluciones). */
+export interface SaleItemBatch {
+  batchId: string
+  batchNumber: string
+  /** Producto dueño del lote (un combo puede consumir lotes de varios componentes). */
+  productId: string
+  quantity: number
+}
+
 export interface CashSaleItem {
   productId: string
   productName: string
@@ -52,6 +61,12 @@ export interface CashSaleItem {
   unitCost: number
   discountPercent: number
   lineTotal: number
+  /** true si la línea es un combo/bundle (el stock se descontó de sus componentes). */
+  isCombo?: boolean
+  /** id del producto combo cuando isCombo = true. */
+  comboId?: string
+  /** Lotes FEFO descontados en esta línea (para reponer exactamente al devolver). */
+  batches?: SaleItemBatch[]
 }
 
 export interface CashTicket {

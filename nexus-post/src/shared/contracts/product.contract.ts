@@ -36,6 +36,8 @@ export interface Product {
   typeName?: string
   /** Clave del tipo (simple/combo/service/raw_material), resuelta por el repositorio (solo lectura). */
   typeKind?: import('./product-type.contract').ProductTypeKind
+  /** Si el tipo no controla stock (ej. servicios). Resuelto por el repositorio (solo lectura). */
+  trackStock?: boolean
   /** Impuesto asignado del catálogo (`taxes`). 0% / `undefined` = exento. */
   taxId?: string
   /** Nombre de la tasa resuelto por el repositorio (solo lectura). */
@@ -65,6 +67,7 @@ export type ProductInput = Omit<
   | 'taxRate'
   | 'typeName'
   | 'typeKind'
+  | 'trackStock'
   | 'brandName'
   | 'supplierName'
 >

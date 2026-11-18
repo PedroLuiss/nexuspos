@@ -26,6 +26,7 @@ import { canAccessTab } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from './shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
+import { resolveUnitPrice } from '@shared/lib/product-pricing'
 import { useCustomers } from './features/customers/hooks/useCustomers'
 import { useKardex } from './features/kardex/hooks/useKardex'
 import { useProducts } from './features/inventory/hooks/useProducts'
@@ -138,6 +139,7 @@ function AppContent(): React.JSX.Element {
     }
     const alreadyInCart = cart.find((item) => item.product.id === product.id)?.quantity ?? 0
     if (
+      catalogProduct.trackStock !== false &&
       !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
       alreadyInCart + quantity > catalogProduct.stock
     ) {
@@ -154,8 +156,12 @@ function AppContent(): React.JSX.Element {
                 ...item,
                 quantity: item.quantity + quantity,
                 total:
+                  resolveUnitPrice(
+                    appTiersByProduct.get(catalogProduct.id),
+                    item.quantity + quantity,
+                    catalogProduct.salePrice
+                  ) *
                   (item.quantity + quantity) *
-                  catalogProduct.salePrice *
                   (1 - item.discountPercent / 100)
               }
             : item
@@ -167,7 +173,12 @@ function AppContent(): React.JSX.Element {
             product: catalogProduct,
             quantity,
             discountPercent: 0,
-            total: quantity * catalogProduct.salePrice
+            total:
+              resolveUnitPrice(
+                appTiersByProduct.get(catalogProduct.id),
+                quantity,
+                catalogProduct.salePrice
+              ) * quantity
           }
         ]
       }
@@ -187,6 +198,7 @@ function AppContent(): React.JSX.Element {
       return
     }
     if (
+      currentItem?.product.trackStock !== false &&
       !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
       currentItem &&
       quantity > currentItem.product.stock
@@ -204,7 +216,14 @@ function AppContent(): React.JSX.Element {
           ? {
               ...item,
               quantity,
-              total: quantity * item.product.salePrice * (1 - item.discountPercent / 100)
+              total:
+                resolveUnitPrice(
+                  appTiersByProduct.get(item.product.id),
+                  quantity,
+                  item.product.salePrice
+                ) *
+                quantity *
+                (1 - item.discountPercent / 100)
             }
           : item
       )
@@ -218,7 +237,14 @@ function AppContent(): React.JSX.Element {
           ? {
               ...item,
               discountPercent,
-              total: item.quantity * item.product.salePrice * (1 - discountPercent / 100)
+              total:
+                resolveUnitPrice(
+                  appTiersByProduct.get(item.product.id),
+                  item.quantity,
+                  item.product.salePrice
+                ) *
+                item.quantity *
+                (1 - discountPercent / 100)
             }
           : item
       )

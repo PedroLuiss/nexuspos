@@ -25,6 +25,7 @@ interface ProductRow {
   type_id: string | null
   type_name: string | null
   type_kind: string | null
+  type_track_stock: number | null
   tax_id: string | null
   tax_name: string | null
   tax_rate: number | null
@@ -49,6 +50,7 @@ const SELECT_PRODUCTS = `
     s.name AS supplier_name,
     t.name AS type_name,
     t.kind AS type_kind,
+    t.track_stock AS type_track_stock,
     tx.name AS tax_name,
     tx.rate AS tax_rate,
     CASE
@@ -100,6 +102,10 @@ function mapRow(row: ProductRow): Product {
     typeId: row.type_id ?? undefined,
     typeName: row.type_name ?? undefined,
     typeKind: (row.type_kind as Product['typeKind']) ?? undefined,
+    trackStock:
+      row.type_track_stock === null || row.type_track_stock === undefined
+        ? true
+        : row.type_track_stock === 1,
     taxId: row.tax_id ?? undefined,
     taxName: row.tax_name ?? undefined,
     taxRate: row.tax_rate ?? undefined,
