@@ -34,6 +34,8 @@ nexus-post/src/
 │   ├── domain/brands/                       # Entidad Brand, BrandService (marcas de producto)
 │   ├── domain/suppliers/                    # Entidad Supplier, SupplierService (proveedores de producto)
 │   ├── domain/product-types/                # Entidad ProductType, ProductTypeService (tipo: simple, combo, service, raw_material)
+│   ├── domain/product-barcodes/             # Entidad ProductBarcode, ProductBarcodeService (códigos múltiples)
+│   ├── domain/product-price-tiers/          # Entidad ProductPriceTier, ProductPriceTierService (escalas de mayoreo + resolver)
 │   ├── domain/categories/                   # Entidad Category, CategoryService
 │   ├── ports/
 │   │   ├── product.repository.ts            # Puerto ProductRepository
@@ -41,6 +43,8 @@ nexus-post/src/
 │   │   ├── brand.repository.ts              # Puerto BrandRepository
 │   │   ├── supplier.repository.ts           # Puerto SupplierRepository
 │   │   ├── product-type.repository.ts       # Puerto ProductTypeRepository
+│   │   ├── product-barcode.repository.ts    # Puerto ProductBarcodeRepository
+│   │   ├── product-price-tier.repository.ts # Puerto ProductPriceTierRepository
 │   │   └── category.repository.ts           # Puerto CategoryRepository
 │   ├── adapters/persistence/sqlite/
 │   │   ├── products.sqlite.ts               # Queries SQLite (CRUD + JOIN taxes, brands, suppliers, product_types)
@@ -48,6 +52,8 @@ nexus-post/src/
 │   │   ├── brands.sqlite.ts                 # CRUD de marcas
 │   │   ├── suppliers.sqlite.ts              # CRUD de proveedores
 │   │   ├── product-types.sqlite.ts          # CRUD de tipos de producto
+│   │   ├── product-barcode.sqlite.ts        # CRUD de códigos de barras múltiples
+│   │   ├── product-price-tier.sqlite.ts     # CRUD de escalas de mayoreo
 │   │   ├── categories.sqlite.ts             # Queries SQLite para categorías
 │   │   └── migrations/                      # Migraciones versionadas
 │   │       ├── 001_initial.ts               # Tabla products inicial
@@ -55,13 +61,17 @@ nexus-post/src/
 │   │       ├── 005_product_images.ts        # ALTER TABLE products ADD COLUMN image_url
 │   │       ├── 006_seed_products.ts         # 50 productos demo + 8 categorías sembradas
 │   │       ├── 015_taxes.ts                 # taxes + products.tax_id + sale_taxes + backfill
-│   │       └── 016_brands_suppliers_product_types.ts  # brands, suppliers, product_types + columnas en products
+│   │       ├── 016_brands_suppliers_product_types.ts  # brands, suppliers, product_types + columnas en products
+│   │       ├── 017_product_barcodes.ts      # product_barcodes + migración del código legacy
+│   │       └── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*'
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
 │       ├── brands.ipc.ts                    # Handlers 'brands:*'
 │       ├── suppliers.ipc.ts                 # Handlers 'suppliers:*'
 │       ├── product-types.ipc.ts             # Handlers 'productTypes:*'
+│       ├── product-barcode.ipc.ts           # Handlers 'productBarcodes:*'
+│       ├── product-price-tier.ipc.ts        # Handlers 'productPriceTiers:*'
 │       └── categories.ipc.ts                # Handlers 'categories:*'
 │
 ├── shared/
@@ -71,15 +81,23 @@ nexus-post/src/
 │   │   ├── brand.contract.ts                # Brand, BrandInput, BrandFilter
 │   │   ├── supplier.contract.ts             # Supplier, SupplierInput, SupplierFilter
 │   │   ├── product-type.contract.ts         # ProductType, ProductTypeInput, ProductTypeFilter
+│   │   ├── product-barcode.contract.ts      # ProductBarcode, ProductBarcodeInput, BarcodeFormat
+│   │   ├── product-price-tier.contract.ts   # ProductPriceTier, ProductPriceTierInput
 │   │   └── inventory.contract.ts            # AdjustStockInput, KardexMovement, KardexReason
-│   └── lib/tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
+│   └── lib/
+│       ├── tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
+│       └── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
 │
 └── renderer/src/
     ├── shared/hooks/
     │   ├── useTaxes.ts                      # Catálogo de alícuotas (inventario, POS, ajustes)
     │   ├── useBrands.ts                     # Catálogo de marcas
     │   ├── useSuppliers.ts                  # Catálogo de proveedores
-    │   └── useProductTypes.ts               # Catálogo de tipos de producto
+    │   ├── useProductTypes.ts               # Catálogo de tipos de producto
+    │   ├── useProductBarcodes.ts            # Códigos de barras de un producto
+    │   ├── useAllBarcodes.ts                # Mapa código->producto para buscador del POS
+    │   ├── useProductPriceTiers.ts          # Escalas de mayoreo + resolvePrice local
+    │   └── useAllPriceTiers.ts              # Todas las escalas agrupadas por producto (POS)
     ├── shared/ui/
     │   └── ProductAvatar.tsx                # Logo con primera letra o miniatura de imagen
     └── features/inventory/
@@ -106,6 +124,8 @@ nexus-post/src/
             ├── ProductBrandField.tsx            # Selector de marca del producto
             ├── ProductSupplierField.tsx         # Selector de proveedor del producto
             ├── ProductTypeField.tsx             # Selector de tipo de producto (simple/combo/servicio/insumo)
+            ├── ProductBarcodesEditor.tsx        # Editor de códigos de barras múltiples
+            ├── ProductPriceTiersEditor.tsx      # Editor de escalas de precios por mayoreo
             ├── ProductImportExportModal.tsx     # Modal contenedor de importación / exportación Excel
             ├── ProductExportTab.tsx             # Pestaña de exportación con BOM UTF-8
             ├── ProductImportTab.tsx             # Pestaña de importación CSV con preview y plantilla
@@ -154,6 +174,12 @@ nexus-post/src/
    - Una marca, proveedor o tipo no se puede eliminar si tiene productos asignados (debe reasignarse primero).
    - Al crear un producto sin indicar marca/proveedor/tipo, se aplican los valores por defecto semillados (Genérica, Proveedor General, Producto Simple).
    - El CSV de exportación/importación incluye las columnas `Marca`, `Proveedor` y `TipoProducto`, aceptando nombres textuales que se resuelven al catálogo al importar.
+8. **Códigos de barras múltiples (migración 017):** cada producto puede tener varios códigos de barras (`product_barcodes`: EAN-13, EAN-8, UPC-A, Code128, Code39, ITF-14, OTRO). Uno puede marcarse como `is_primary`. El código es único entre registros no eliminados. Se gestionan en la pestaña del producto al editarlo. El buscador del POS admite buscar por cualquiera de estos códigos (ver contexto 02).
+9. **Precios por mayoreo / price tiers (migración 018):** escalas `product_price_tiers` por producto (`min_quantity`, `max_quantity` opcional, `price`). Reglas:
+   - Los rangos de un mismo producto no pueden solaparse (validado en `ProductPriceTierService`).
+   - La resolución del precio efectivo vive en `src/shared/lib/product-pricing.ts` (`resolveUnitPrice`): entre los tiers aplicables gana el de mayor `minQuantity`; si ninguno aplica se usa `salePrice`.
+   - `computeSaleTotals` (en `src/shared/lib/tax.ts`) aplica internamente los tiers recibidos en `SaleLineInput.priceTiers`, de modo que **main y renderer calculan exactamente el mismo subtotal/impuesto/total**. El backend vuelve a resolver los tiers desde SQLite antes de persistir (`SalesService` inyecta `ProductPriceTierRepository`).
+   - Se gestionan en la pestaña del producto al editarlo; el POS muestra el precio de mayoreo aplicado y lo resalta frente al precio estándar.
 
 ## 5. Estado de integración operativa
 

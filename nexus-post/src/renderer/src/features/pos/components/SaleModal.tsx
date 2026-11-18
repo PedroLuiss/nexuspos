@@ -3,6 +3,7 @@ import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/typ
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import {
   Banknote,
@@ -45,11 +46,13 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   onConfirmSale
 }) => {
   const { config: businessConfig } = useBusinessConfig()
+  const { tiersByProduct } = useAllPriceTiers()
   const taxBreakdown = computeSaleTotals(
     items.map((item) => {
       const tax = resolveProductTax(item.product, businessConfig)
       return {
         unitPrice: item.product.salePrice,
+        priceTiers: tiersByProduct.get(item.product.id),
         quantity: item.quantity,
         discountPercent: item.discountPercent,
         taxId: tax.taxId,

@@ -3,6 +3,8 @@ import type { Product, ProductInput } from '@shared/contracts'
 import { Package, X, Check } from '../../../shared/icons/Icons'
 import ProductBasicFields from './ProductBasicFields'
 import ProductPricingFields from './ProductPricingFields'
+import ProductBarcodesEditor from './ProductBarcodesEditor'
+import ProductPriceTiersEditor from './ProductPriceTiersEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
 
 interface AddProductModalProps {
@@ -94,6 +96,16 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               marginPercent={marginPercent}
             />
           </div>
+
+          {initialProduct && (
+            <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[40vh] overflow-y-auto">
+              <ProductBarcodesEditor productId={initialProduct.id} />
+              <ProductPriceTiersEditor
+                productId={initialProduct.id}
+                salePrice={values.salePrice}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2.5 px-5 py-2.5 bg-[#F9F9F9] border-t border-[#E5E5E5] rounded-b-[8px]">
             <button

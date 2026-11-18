@@ -38,6 +38,12 @@ import type {
   ProductType,
   ProductTypeInput,
   ProductTypeFilter,
+  ProductBarcode,
+  ProductBarcodeInput,
+  ProductBarcodeFilter,
+  ProductPriceTier,
+  ProductPriceTierInput,
+  ProductPriceTierFilter,
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
@@ -99,6 +105,30 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.productTypes.softDelete, id),
     toggleStatus: (id: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.productTypes.toggleStatus, id)
+  },
+  productBarcodes: {
+    list: (filter?: ProductBarcodeFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.list, filter),
+    create: (input: ProductBarcodeInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.create, input),
+    update: (barcode: ProductBarcode) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.update, barcode),
+    softDelete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.toggleStatus, id)
+  },
+  productPriceTiers: {
+    list: (filter?: ProductPriceTierFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.list, filter),
+    create: (input: ProductPriceTierInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.create, input),
+    update: (tier: ProductPriceTier) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.update, tier),
+    softDelete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.toggleStatus, id)
   },
   inventory: {
     adjustStock: (input: AdjustStockInput) =>

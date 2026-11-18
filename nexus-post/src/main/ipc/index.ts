@@ -9,6 +9,8 @@ import { SqliteTaxRepository } from '../adapters/persistence/sqlite/taxes.sqlite
 import { SqliteBrandRepository } from '../adapters/persistence/sqlite/brands.sqlite'
 import { SqliteSupplierRepository } from '../adapters/persistence/sqlite/suppliers.sqlite'
 import { SqliteProductTypeRepository } from '../adapters/persistence/sqlite/product-types.sqlite'
+import { SqliteProductBarcodeRepository } from '../adapters/persistence/sqlite/product-barcode.sqlite'
+import { SqliteProductPriceTierRepository } from '../adapters/persistence/sqlite/product-price-tier.sqlite'
 import { SqliteStockMovementRepository } from '../adapters/persistence/sqlite/stock-movements.sqlite'
 import { SqliteCategoryRepository } from '../adapters/persistence/sqlite/categories.sqlite'
 import { SqliteUserRepository } from '../adapters/persistence/sqlite/users.sqlite'
@@ -30,6 +32,8 @@ import { TaxService } from '../domain/taxes/tax.service'
 import { BrandService } from '../domain/brands/brand.service'
 import { SupplierService } from '../domain/suppliers/supplier.service'
 import { ProductTypeService } from '../domain/product-types/product-type.service'
+import { ProductBarcodeService } from '../domain/product-barcodes/product-barcode.service'
+import { ProductPriceTierService } from '../domain/product-price-tiers/product-price-tier.service'
 import { InventoryService } from '../domain/inventory/inventory.service'
 import { CategoryService } from '../domain/categories/category.service'
 import { AuthService } from '../domain/auth/auth.service'
@@ -47,6 +51,8 @@ import { registerTaxIpc } from './taxes.ipc'
 import { registerBrandIpc } from './brands.ipc'
 import { registerSupplierIpc } from './suppliers.ipc'
 import { registerProductTypeIpc } from './product-types.ipc'
+import { registerProductBarcodeIpc } from './product-barcode.ipc'
+import { registerProductPriceTierIpc } from './product-price-tier.ipc'
 import { registerInventoryIpc } from './inventory.ipc'
 import { registerCategoryIpc } from './categories.ipc'
 import { registerAuthIpc } from './auth.ipc'
@@ -77,6 +83,8 @@ export function registerIpcHandlers(): void {
   const brandRepository = new SqliteBrandRepository(db)
   const supplierRepository = new SqliteSupplierRepository(db)
   const productTypeRepository = new SqliteProductTypeRepository(db)
+  const productBarcodeRepository = new SqliteProductBarcodeRepository(db)
+  const productPriceTierRepository = new SqliteProductPriceTierRepository(db)
   const stockMovementRepository = new SqliteStockMovementRepository(db)
   const categoryRepository = new SqliteCategoryRepository(db)
   const userRepository = new SqliteUserRepository(db)
@@ -96,6 +104,8 @@ export function registerIpcHandlers(): void {
   const brandService = new BrandService(brandRepository)
   const supplierService = new SupplierService(supplierRepository)
   const productTypeService = new ProductTypeService(productTypeRepository)
+  const productBarcodeService = new ProductBarcodeService(productBarcodeRepository)
+  const productPriceTierService = new ProductPriceTierService(productPriceTierRepository)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
@@ -118,6 +128,7 @@ export function registerIpcHandlers(): void {
   const salesRepository = new SqliteSalesRepository(db)
   const salesService = new SalesService(
     productRepository,
+    productPriceTierRepository,
     stockMovementRepository,
     salesRepository,
     cashRepository,
@@ -161,6 +172,8 @@ export function registerIpcHandlers(): void {
   registerBrandIpc(brandService)
   registerSupplierIpc(supplierService)
   registerProductTypeIpc(productTypeService)
+  registerProductBarcodeIpc(productBarcodeService)
+  registerProductPriceTierIpc(productPriceTierService)
   registerInventoryIpc(inventoryService)
   registerCategoryIpc(categoryService)
   registerAuthIpc(authService)

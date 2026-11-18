@@ -6,7 +6,10 @@ import SuspendedSalesModal from './components/SuspendedSalesModal'
 import TicketPreviewModal from './components/TicketPreviewModal'
 import ProductAvatar from '../../shared/ui/ProductAvatar'
 import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
+import { useAllPriceTiers } from '../../shared/hooks/useAllPriceTiers'
+import { useAllBarcodes } from '../../shared/hooks/useAllBarcodes'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
+import { resolveUnitPrice } from '@shared/lib/product-pricing'
 import {
   Search,
   Trash2,
@@ -61,6 +64,8 @@ export const POSView: React.FC<POSViewProps> = ({
   canApplyDiscount
 }) => {
   const { config: businessConfig } = useBusinessConfig()
+  const { tiersByProduct } = useAllPriceTiers()
+  const { barcodeToProduct } = useAllBarcodes()
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(null)
@@ -104,6 +109,7 @@ export const POSView: React.FC<POSViewProps> = ({
       const tax = resolveProductTax(item.product, businessConfig)
       return {
         unitPrice: item.product.salePrice,
+        priceTiers: tiersByProduct.get(item.product.id),
         quantity: item.quantity,
         discountPercent: item.discountPercent,
         taxId: tax.taxId,
@@ -131,15 +137,25 @@ export const POSView: React.FC<POSViewProps> = ({
     if (!searchInput.trim())
       return products.filter((product) => product.active && !product.deleted).slice(0, 100)
     const query = searchInput.toLowerCase().trim()
+
+    // Si el texto coincide exactamente con un código de barras secundario,
+    // priorizar ese producto (lo que ocurriría al escanear con pistola).
+    const barcodeProductId = barcodeToProduct.get(searchInput.trim())
+    const byBarcode = barcodeProductId
+      ? products.find((p) => p.id === barcodeProductId && p.active && !p.deleted)
+      : undefined
+    if (byBarcode) return [byBarcode]
+
     return products
       .filter(
         (product) =>
           product.active &&
           !product.deleted &&
-          (product.name.toLowerCase().includes(query) || product.code.toLowerCase().includes(query))
+          (product.name.toLowerCase().includes(query) ||
+            product.code.toLowerCase().includes(query))
       )
       .slice(0, 6)
-  }, [searchInput, products])
+  }, [searchInput, products, barcodeToProduct])
 
   // Customer search by Cédula / RFC / Name
   const customerMatches = useMemo(() => {
@@ -622,8 +638,15 @@ export const POSView: React.FC<POSViewProps> = ({
                   </tr>
                 ) : (
                   cart.map((item) => {
-                    const rawLineTotal = item.product.salePrice * item.quantity
+                    const itemTiers = tiersByProduct.get(item.product.id)
+                    const effectiveUnitPrice = resolveUnitPrice(
+                      itemTiers,
+                      item.quantity,
+                      item.product.salePrice
+                    )
+                    const rawLineTotal = effectiveUnitPrice * item.quantity
                     const discountedTotal = rawLineTotal * (1 - item.discountPercent / 100)
+                    const hasTierDiscount = effectiveUnitPrice < item.product.salePrice
                     const isSelected = selectedCartItemId === item.product.id
                     const isOverStock = item.quantity > item.product.stock
 
@@ -678,7 +701,14 @@ export const POSView: React.FC<POSViewProps> = ({
 
                         {/* P. UNITARIO */}
                         <td className="py-2 px-3 text-right font-mono font-medium text-xs text-[#1B1B1B]">
-                          ${item.product.salePrice.toFixed(2)}
+                          <span className={hasTierDiscount ? 'text-[#107C41]' : ''}>
+                            ${effectiveUnitPrice.toFixed(2)}
+                          </span>
+                          {hasTierDiscount && (
+                            <span className="block text-[9px] text-amber-700 font-semibold">
+                              Precio mayoreo · antes ${item.product.salePrice.toFixed(2)}
+                            </span>
+                          )}
                         </td>
 
                         {/* DESCUENTO */}

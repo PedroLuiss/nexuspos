@@ -2,6 +2,7 @@ import React from 'react'
 import { CartItem, PaymentDetails } from '../../../shared/types/domain'
 import { Printer, X, Receipt } from '../../../shared/icons/Icons'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
 import { formatBusinessAddress } from '../../../shared/lib/businessConfig'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import type { UsdVesExchangeRate } from '@shared/contracts'
@@ -38,11 +39,13 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
   exchangeRate
 }) => {
   const { config: business } = useBusinessConfig()
+  const { tiersByProduct } = useAllPriceTiers()
   const totals = computeSaleTotals(
     items.map((item) => {
       const tax = resolveProductTax(item.product, business)
       return {
         unitPrice: item.product.salePrice,
+        priceTiers: tiersByProduct.get(item.product.id),
         quantity: item.quantity,
         discountPercent: item.discountPercent,
         taxId: tax.taxId,

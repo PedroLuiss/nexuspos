@@ -3,6 +3,16 @@ import type { TaxRate, TaxesApi } from './tax.contract'
 import type { Brand, BrandInput, BrandFilter } from './brand.contract'
 import type { Supplier, SupplierInput, SupplierFilter } from './supplier.contract'
 import type { ProductType, ProductTypeInput, ProductTypeFilter } from './product-type.contract'
+import type {
+  ProductBarcode,
+  ProductBarcodeInput,
+  ProductBarcodeFilter
+} from './product-barcode.contract'
+import type {
+  ProductPriceTier,
+  ProductPriceTierInput,
+  ProductPriceTierFilter
+} from './product-price-tier.contract'
 import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
@@ -59,6 +69,20 @@ export const IPC_CHANNELS = {
     update: 'productTypes:update',
     softDelete: 'productTypes:softDelete',
     toggleStatus: 'productTypes:toggleStatus'
+  },
+  productBarcodes: {
+    list: 'productBarcodes:list',
+    create: 'productBarcodes:create',
+    update: 'productBarcodes:update',
+    softDelete: 'productBarcodes:softDelete',
+    toggleStatus: 'productBarcodes:toggleStatus'
+  },
+  productPriceTiers: {
+    list: 'productPriceTiers:list',
+    create: 'productPriceTiers:create',
+    update: 'productPriceTiers:update',
+    softDelete: 'productPriceTiers:softDelete',
+    toggleStatus: 'productPriceTiers:toggleStatus'
   },
   inventory: {
     adjustStock: 'inventory:adjustStock',
@@ -186,6 +210,22 @@ export interface ProductTypesApi {
   toggleStatus(id: string): Promise<ProductType>
 }
 
+export interface ProductBarcodesApi {
+  list(filter?: ProductBarcodeFilter): Promise<ProductBarcode[]>
+  create(input: ProductBarcodeInput): Promise<ProductBarcode>
+  update(barcode: ProductBarcode): Promise<ProductBarcode>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<ProductBarcode>
+}
+
+export interface ProductPriceTiersApi {
+  list(filter?: ProductPriceTierFilter): Promise<ProductPriceTier[]>
+  create(input: ProductPriceTierInput): Promise<ProductPriceTier>
+  update(tier: ProductPriceTier): Promise<ProductPriceTier>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<ProductPriceTier>
+}
+
 export interface InventoryApi {
   adjustStock(input: AdjustStockInput): Promise<AdjustStockResult>
   listMovements(productId?: string): Promise<KardexMovement[]>
@@ -213,6 +253,8 @@ export interface NexusApi {
   brands: BrandsApi
   suppliers: SuppliersApi
   productTypes: ProductTypesApi
+  productBarcodes: ProductBarcodesApi
+  productPriceTiers: ProductPriceTiersApi
   inventory: InventoryApi
   categories: CategoriesApi
   auth: AuthApi

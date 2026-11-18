@@ -2,6 +2,7 @@ import type { CreateSaleInput, SaleResult, SuspendedSale, KardexMovement } from 
 import type { CustomerService } from '../customers/customer.service'
 import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
+import type { ProductPriceTierRepository } from '../../ports/product-price-tier.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
 import type { CashRepository } from '../../ports/cash.repository'
@@ -10,6 +11,7 @@ import type { TransactionRunner } from '../../ports/transaction'
 import { ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
 import { computeSaleTotals, resolveProductTax, type SaleLineInput } from '@shared/lib/tax'
+import { resolveUnitPrice } from '@shared/lib/product-pricing'
 
 const roundMoney = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100
 const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - roundMoney(b)) < 0.011
@@ -17,6 +19,7 @@ const sameMoney = (a: number, b: number): boolean => Math.abs(roundMoney(a) - ro
 export class SalesService {
   constructor(
     private readonly products: ProductRepository,
+    private readonly priceTiers: ProductPriceTierRepository,
     private readonly movements: StockMovementRepository,
     private readonly sales: SalesRepository,
     private readonly cash: CashRepository,
@@ -68,12 +71,17 @@ export class SalesService {
         throw new ValidationError(`Stock insuficiente para "${product.name}".`)
       }
 
-      const lineSubtotal = product.salePrice * quantity
+      // Precio efectivo: aplica escalas de mayoreo si la cantidad lo amerita.
+      const tiers = this.priceTiers.findByProductId(product.id)
+      const unitPrice = resolveUnitPrice(tiers, quantity, product.salePrice)
+
+      const lineSubtotal = unitPrice * quantity
       const lineDiscount = (lineSubtotal * discountPercent) / 100
       const lineTotal = roundMoney(lineSubtotal - lineDiscount)
       const lineTax = resolveProductTax(product, config)
       taxLines.push({
         unitPrice: product.salePrice,
+        priceTiers: tiers,
         quantity,
         discountPercent,
         taxId: lineTax.taxId,
@@ -85,7 +93,7 @@ export class SalesService {
         productName: product.name,
         productCode: product.code,
         quantity,
-        unitPrice: product.salePrice,
+        unitPrice,
         unitCost: product.costPrice,
         discountPercent,
         lineTotal

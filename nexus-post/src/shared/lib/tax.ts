@@ -6,6 +6,8 @@
  * implementación evita diferencias de centavos al validar el cobro.
  */
 import type { SaleTaxLine } from '../contracts/sales.contract'
+import type { ProductPriceTier } from '../contracts/product-price-tier.contract'
+import { resolveUnitPrice } from './product-pricing'
 
 export const roundMoney = (amount: number): number =>
   Math.round((amount + Number.EPSILON) * 100) / 100
@@ -18,12 +20,15 @@ export interface TaxCalculationConfig {
 }
 
 export interface SaleLineInput {
+  /** Precio base del producto (sin aplicar descuentos ni escalas). */
   unitPrice: number
   quantity: number
   discountPercent: number
   taxRate: number
   taxName: string
   taxId?: string
+  /** Escalas de mayoreo del producto; se aplican según la cantidad. */
+  priceTiers?: ProductPriceTier[]
 }
 
 export interface SaleTotals {
@@ -117,9 +122,11 @@ export function computeSaleTotals(
   let discount = 0
 
   for (const line of lines) {
-    const unitPrice = Math.max(0, Number(line.unitPrice) || 0)
+    const basePrice = Math.max(0, Number(line.unitPrice) || 0)
     const quantity = Math.max(0, Number(line.quantity) || 0)
     const discountPercent = Math.min(100, Math.max(0, Number(line.discountPercent) || 0))
+    // Precio efectivo tras aplicar escalas de mayoreo según la cantidad.
+    const unitPrice = resolveUnitPrice(line.priceTiers, quantity, basePrice)
     const gross = unitPrice * quantity
     const lineDiscount = (gross * discountPercent) / 100
     subtotal += gross

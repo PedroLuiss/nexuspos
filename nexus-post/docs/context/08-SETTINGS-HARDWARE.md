@@ -179,7 +179,9 @@ nexus-post/src/
 │   │       ├── 007_user_permissions.ts      # Columna `permissions` y presets iniciales
 │   │       ├── 008_business_settings.ts     # Tabla `business_settings` y seed demostrativo (Venezuela, RIF, VES)
 │   │       ├── 015_taxes.ts                 # Tabla `taxes`, seed de alícuotas y `products.tax_id`
-│   │       └── 016_brands_suppliers_product_types.ts  # Tablas brands, suppliers, product_types + columnas en products
+│   │       ├── 016_brands_suppliers_product_types.ts  # Tablas brands, suppliers, product_types + columnas en products
+│   │       ├── 017_product_barcodes.ts      # Tabla `product_barcodes` (códigos múltiples)
+│   │       └── 018_product_price_tiers.ts   # Tabla `product_price_tiers` (escalas de mayoreo)
 │   ├── adapters/hardware/
 │   │   ├── scale.serial.ts                  # Puerto serial para báscula (SerialPort)
 │   │   └── scale.sqlite.ts                  # Persistencia de configuración
@@ -257,7 +259,8 @@ nexus-post/src/
 - ⚠️ **Validación con hardware físico:** el adaptador serial y el flujo IPC existen, pero la integración debe probarse con los modelos y protocolos reales de báscula soportados antes de certificarla para producción.
 - ⚠️ **Contraseñas:** se comparan en texto plano en `users.password_hash`; migrar a hash con `scrypt`/`argon2` (requiere migración de credenciales).
 - ✅ **Impuesto multi-alícuota por producto:** implementado con el catálogo `taxes` + `products.tax_id` + desglose `sale_taxes` (migración 015). Pendiente: reportes fiscales que agrupen por tasa y libro de ventas exportable.
-- ✅ **Catálogos de producto (marcas, proveedores, tipos):** implementado con migración 016 (`brands`, `suppliers`, `product_types` + columnas en `products`), servicios de dominio, IPC, renderer y formularios de producto. Pendiente: validar que no se elimine un catálogo con productos asignados desde el dominio (ya aplicado).
+- ✅ **Catálogos de producto (marcas, proveedores, tipos):** implementado con migración 016 (`brands`, `suppliers`, `product_types` + columnas en `products`), servicios de dominio, IPC, renderer y formularios de producto.
+- ✅ **Códigos de barras múltiples y precios por mayoreo:** migraciones 017 (`product_barcodes`) y 018 (`product_price_tiers`). Se gestionan en la pestaña de edición de producto; el POS resuelve el precio por cantidad y el backend recalcula con la misma lógica (`shared/lib/product-pricing.ts` + `computeSaleTotals`).
 - ⚠️ **Multi-caja LAN:** los contratos `UsersApi` y `SettingsApi` ya están desacoplados; la fase maestro-satélite solo debe cambiar los adaptadores de repositorio, sin tocar UI ni dominio.
 
 ## 7. Estado de integración

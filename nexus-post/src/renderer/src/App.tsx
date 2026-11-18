@@ -24,6 +24,7 @@ import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
 import { canAccessTab } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
+import { useAllPriceTiers } from './shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
 import { useCustomers } from './features/customers/hooks/useCustomers'
 import { useKardex } from './features/kardex/hooks/useKardex'
@@ -36,6 +37,7 @@ import { isValidProductQuantity } from '@shared/lib/product-quantity'
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
   const { config: businessConfig } = useBusinessConfig()
+  const { tiersByProduct: appTiersByProduct } = useAllPriceTiers()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const { products, error: productsError, reload: reloadProducts } = useProducts()
   const {
@@ -239,6 +241,7 @@ function AppContent(): React.JSX.Element {
         const tax = resolveProductTax(item.product, businessConfig)
         return {
           unitPrice: item.product.salePrice,
+          priceTiers: appTiersByProduct.get(item.product.id),
           quantity: item.quantity,
           discountPercent: item.discountPercent,
           taxId: tax.taxId,

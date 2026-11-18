@@ -22,6 +22,8 @@ import { migration013CashRegister } from './013_cash_register'
 import { migration014CashSaleMovementSource } from './014_cash_sale_movement_source'
 import { migration015Taxes } from './015_taxes'
 import { migration016BrandsSuppliersProductTypes } from './016_brands_suppliers_product_types'
+import { migration017ProductBarcodes } from './017_product_barcodes'
+import { migration018ProductPriceTiers } from './018_product_price_tiers'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -39,7 +41,9 @@ const MIGRATIONS: Migration[] = [
   migration013CashRegister,
   migration014CashSaleMovementSource,
   migration015Taxes,
-  migration016BrandsSuppliersProductTypes
+  migration016BrandsSuppliersProductTypes,
+  migration017ProductBarcodes,
+  migration018ProductPriceTiers
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version
