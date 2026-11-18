@@ -13,6 +13,7 @@ import type {
   ProductPriceTierInput,
   ProductPriceTierFilter
 } from './product-price-tier.contract'
+import type { ComboItem, ComboItemInput, ComboItemFilter } from './combo-item.contract'
 import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
@@ -83,6 +84,13 @@ export const IPC_CHANNELS = {
     update: 'productPriceTiers:update',
     softDelete: 'productPriceTiers:softDelete',
     toggleStatus: 'productPriceTiers:toggleStatus'
+  },
+  comboItems: {
+    list: 'comboItems:list',
+    create: 'comboItems:create',
+    update: 'comboItems:update',
+    softDelete: 'comboItems:softDelete',
+    toggleStatus: 'comboItems:toggleStatus'
   },
   inventory: {
     adjustStock: 'inventory:adjustStock',
@@ -226,6 +234,14 @@ export interface ProductPriceTiersApi {
   toggleStatus(id: string): Promise<ProductPriceTier>
 }
 
+export interface ComboItemsApi {
+  list(filter?: ComboItemFilter): Promise<ComboItem[]>
+  create(input: ComboItemInput): Promise<ComboItem>
+  update(item: ComboItem): Promise<ComboItem>
+  softDelete(id: string): Promise<void>
+  toggleStatus(id: string): Promise<ComboItem>
+}
+
 export interface InventoryApi {
   adjustStock(input: AdjustStockInput): Promise<AdjustStockResult>
   listMovements(productId?: string): Promise<KardexMovement[]>
@@ -255,6 +271,7 @@ export interface NexusApi {
   productTypes: ProductTypesApi
   productBarcodes: ProductBarcodesApi
   productPriceTiers: ProductPriceTiersApi
+  comboItems: ComboItemsApi
   inventory: InventoryApi
   categories: CategoriesApi
   auth: AuthApi

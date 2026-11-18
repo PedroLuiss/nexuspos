@@ -210,6 +210,7 @@ export const ProductTable: React.FC = () => {
           isOpen={isModalOpen}
           initialProduct={editingProduct}
           categories={categoryNames}
+          products={products}
           onClose={() => {
             setIsModalOpen(false)
             setEditingProduct(null)

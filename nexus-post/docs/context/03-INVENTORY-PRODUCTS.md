@@ -36,6 +36,7 @@ nexus-post/src/
 │   ├── domain/product-types/                # Entidad ProductType, ProductTypeService (tipo: simple, combo, service, raw_material)
 │   ├── domain/product-barcodes/             # Entidad ProductBarcode, ProductBarcodeService (códigos múltiples)
 │   ├── domain/product-price-tiers/          # Entidad ProductPriceTier, ProductPriceTierService (escalas de mayoreo + resolver)
+│   ├── domain/combo-items/                  # Entidad ComboItem, ComboItemService (bundles + validaciones de anidamiento)
 │   ├── domain/categories/                   # Entidad Category, CategoryService
 │   ├── ports/
 │   │   ├── product.repository.ts            # Puerto ProductRepository
@@ -45,6 +46,7 @@ nexus-post/src/
 │   │   ├── product-type.repository.ts       # Puerto ProductTypeRepository
 │   │   ├── product-barcode.repository.ts    # Puerto ProductBarcodeRepository
 │   │   ├── product-price-tier.repository.ts # Puerto ProductPriceTierRepository
+│   │   ├── combo-item.repository.ts         # Puerto ComboItemRepository
 │   │   └── category.repository.ts           # Puerto CategoryRepository
 │   ├── adapters/persistence/sqlite/
 │   │   ├── products.sqlite.ts               # Queries SQLite (CRUD + JOIN taxes, brands, suppliers, product_types)
@@ -54,7 +56,8 @@ nexus-post/src/
 │   │   ├── product-types.sqlite.ts          # CRUD de tipos de producto
 │   │   ├── product-barcode.sqlite.ts        # CRUD de códigos de barras múltiples
 │   │   ├── product-price-tier.sqlite.ts     # CRUD de escalas de mayoreo
-│   │   ├── categories.sqlite.ts             # Queries SQLite para categorías
+│   │   ├── combo-items.sqlite.ts            # CRUD de componentes de combo
+│   │   ├── categories.sqlite.ts             # Queries SQLite para categorías (con stock derivado de combos)
 │   │   └── migrations/                      # Migraciones versionadas
 │   │       ├── 001_initial.ts               # Tabla products inicial
 │   │       ├── 003_categories.ts            # Tabla categories
@@ -63,7 +66,8 @@ nexus-post/src/
 │   │       ├── 015_taxes.ts                 # taxes + products.tax_id + sale_taxes + backfill
 │   │       ├── 016_brands_suppliers_product_types.ts  # brands, suppliers, product_types + columnas en products
 │   │       ├── 017_product_barcodes.ts      # product_barcodes + migración del código legacy
-│   │       └── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
+│   │       ├── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
+│   │       └── 019_combo_items.ts           # combo_items + índice único combo+componente
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*'
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
@@ -72,6 +76,7 @@ nexus-post/src/
 │       ├── product-types.ipc.ts             # Handlers 'productTypes:*'
 │       ├── product-barcode.ipc.ts           # Handlers 'productBarcodes:*'
 │       ├── product-price-tier.ipc.ts        # Handlers 'productPriceTiers:*'
+│       ├── combo-item.ipc.ts                # Handlers 'comboItems:*'
 │       └── categories.ipc.ts                # Handlers 'categories:*'
 │
 ├── shared/
@@ -83,7 +88,8 @@ nexus-post/src/
 │   │   ├── product-type.contract.ts         # ProductType, ProductTypeInput, ProductTypeFilter
 │   │   ├── product-barcode.contract.ts      # ProductBarcode, ProductBarcodeInput, BarcodeFormat
 │   │   ├── product-price-tier.contract.ts   # ProductPriceTier, ProductPriceTierInput
-│   │   └── inventory.contract.ts            # AdjustStockInput, KardexMovement, KardexReason
+│   │   ├── combo-item.contract.ts           # ComboItem, ComboItemInput, ComboItemFilter
+│   │   └── inventory.contract.ts            # AdjustStockInput, KardexMovement, KardexReason (incluye 'COMBO')
 │   └── lib/
 │       ├── tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
 │       └── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
@@ -97,7 +103,8 @@ nexus-post/src/
     │   ├── useProductBarcodes.ts            # Códigos de barras de un producto
     │   ├── useAllBarcodes.ts                # Mapa código->producto para buscador del POS
     │   ├── useProductPriceTiers.ts          # Escalas de mayoreo + resolvePrice local
-    │   └── useAllPriceTiers.ts              # Todas las escalas agrupadas por producto (POS)
+    │   ├── useAllPriceTiers.ts              # Todas las escalas agrupadas por producto (POS)
+    │   └── useComboItems.ts                 # Componentes de un producto combo
     ├── shared/ui/
     │   └── ProductAvatar.tsx                # Logo con primera letra o miniatura de imagen
     └── features/inventory/
@@ -126,6 +133,7 @@ nexus-post/src/
             ├── ProductTypeField.tsx             # Selector de tipo de producto (simple/combo/servicio/insumo)
             ├── ProductBarcodesEditor.tsx        # Editor de códigos de barras múltiples
             ├── ProductPriceTiersEditor.tsx      # Editor de escalas de precios por mayoreo
+            ├── ComboItemsEditor.tsx             # Editor de componentes de combo (solo tipo combo)
             ├── ProductImportExportModal.tsx     # Modal contenedor de importación / exportación Excel
             ├── ProductExportTab.tsx             # Pestaña de exportación con BOM UTF-8
             ├── ProductImportTab.tsx             # Pestaña de importación CSV con preview y plantilla
@@ -175,7 +183,13 @@ nexus-post/src/
    - Al crear un producto sin indicar marca/proveedor/tipo, se aplican los valores por defecto semillados (Genérica, Proveedor General, Producto Simple).
    - El CSV de exportación/importación incluye las columnas `Marca`, `Proveedor` y `TipoProducto`, aceptando nombres textuales que se resuelven al catálogo al importar.
 8. **Códigos de barras múltiples (migración 017):** cada producto puede tener varios códigos de barras (`product_barcodes`: EAN-13, EAN-8, UPC-A, Code128, Code39, ITF-14, OTRO). Uno puede marcarse como `is_primary`. El código es único entre registros no eliminados. Se gestionan en la pestaña del producto al editarlo. El buscador del POS admite buscar por cualquiera de estos códigos (ver contexto 02).
-9. **Precios por mayoreo / price tiers (migración 018):** escalas `product_price_tiers` por producto (`min_quantity`, `max_quantity` opcional, `price`). Reglas:
+9. **Combos / bundles reales (migración 019):** un producto de tipo `combo` se compone de otros productos mediante `combo_items` (`combo_id`, `component_id`, `quantity` por unidad de combo). Reglas:
+    - **Stock derivado:** el `stock` que ve el POS para un combo se calcula en `products.sqlite.ts` como `MIN(stock_componento / cantidad_por_combo)`; el precio cobrado es el del producto combo (sus propias escalas de mayoreo aplican si las tiene).
+    - **Desglose a Kardex:** al cobrar, `SalesService` descuenta el stock de **cada componente** (`cantidad_combo × cantidad_componente`) y genera un movimiento `SALIDA` con `reason = 'COMBO'` por componente. El stock del producto combo **no** se descuenta directamente (evita doble conteo).
+    - **Validaciones:** el componente no puede ser el propio combo, no se permiten combos anidados, la combinación combo+componente es única y los componentes deben existir y estar activos (`ComboItemService`).
+    - **Configuración:** se gestionan en la pestaña "Componentes del Combo" del formulario de producto, visible solo cuando el tipo es `Combo / Kit` (`typeKind = 'combo'`). Los componentes elegibles son productos activos no-combo.
+    - Si un combo se vende sin componentes configurados, el cobro se bloquea con un error.
+10. **Precios por mayoreo / price tiers (migración 018):** escalas `product_price_tiers` por producto (`min_quantity`, `max_quantity` opcional, `price`). Reglas:
    - Los rangos de un mismo producto no pueden solaparse (validado en `ProductPriceTierService`).
    - La resolución del precio efectivo vive en `src/shared/lib/product-pricing.ts` (`resolveUnitPrice`): entre los tiers aplicables gana el de mayor `minQuantity`; si ninguno aplica se usa `salePrice`.
    - `computeSaleTotals` (en `src/shared/lib/tax.ts`) aplica internamente los tiers recibidos en `SaleLineInput.priceTiers`, de modo que **main y renderer calculan exactamente el mismo subtotal/impuesto/total**. El backend vuelve a resolver los tiers desde SQLite antes de persistir (`SalesService` inyecta `ProductPriceTierRepository`).

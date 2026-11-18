@@ -181,7 +181,8 @@ nexus-post/src/
 │   │       ├── 015_taxes.ts                 # Tabla `taxes`, seed de alícuotas y `products.tax_id`
 │   │       ├── 016_brands_suppliers_product_types.ts  # Tablas brands, suppliers, product_types + columnas en products
 │   │       ├── 017_product_barcodes.ts      # Tabla `product_barcodes` (códigos múltiples)
-│   │       └── 018_product_price_tiers.ts   # Tabla `product_price_tiers` (escalas de mayoreo)
+│   │       ├── 018_product_price_tiers.ts   # Tabla `product_price_tiers` (escalas de mayoreo)
+│   │       └── 019_combo_items.ts           # Tabla `combo_items` (bundles con desglose a Kardex)
 │   ├── adapters/hardware/
 │   │   ├── scale.serial.ts                  # Puerto serial para báscula (SerialPort)
 │   │   └── scale.sqlite.ts                  # Persistencia de configuración
@@ -261,6 +262,7 @@ nexus-post/src/
 - ✅ **Impuesto multi-alícuota por producto:** implementado con el catálogo `taxes` + `products.tax_id` + desglose `sale_taxes` (migración 015). Pendiente: reportes fiscales que agrupen por tasa y libro de ventas exportable.
 - ✅ **Catálogos de producto (marcas, proveedores, tipos):** implementado con migración 016 (`brands`, `suppliers`, `product_types` + columnas en `products`), servicios de dominio, IPC, renderer y formularios de producto.
 - ✅ **Códigos de barras múltiples y precios por mayoreo:** migraciones 017 (`product_barcodes`) y 018 (`product_price_tiers`). Se gestionan en la pestaña de edición de producto; el POS resuelve el precio por cantidad y el backend recalcula con la misma lógica (`shared/lib/product-pricing.ts` + `computeSaleTotals`).
+- ✅ **Combos / bundles reales:** migración 019 (`combo_items`). Se configuran en la pestaña de edición de producto cuando el tipo es Combo / Kit; al cobrar, `SalesService` desglosa el consumo entre componentes y genera movimientos Kardex `COMBO` (stock del combo derivado de sus componentes).
 - ⚠️ **Multi-caja LAN:** los contratos `UsersApi` y `SettingsApi` ya están desacoplados; la fase maestro-satélite solo debe cambiar los adaptadores de repositorio, sin tocar UI ni dominio.
 
 ## 7. Estado de integración

@@ -10,6 +10,7 @@ interface ProductRow {
   cost_price: number
   sale_price: number
   stock: number
+  effective_stock: number | null
   min_stock: number
   max_stock: number | null
   unit: string
@@ -19,6 +20,7 @@ interface ProductRow {
   supplier_name: string | null
   type_id: string | null
   type_name: string | null
+  type_kind: string | null
   tax_id: string | null
   tax_name: string | null
   tax_rate: number | null
@@ -31,14 +33,30 @@ interface ProductRow {
   updated_at: string
 }
 
-/** Producto + sus relaciones resueltas desde catálogos (migración 015 y 016). */
+/**
+ * Producto + relaciones resueltas (migraciones 015, 016, 019).
+ * Para combos, el stock disponible se deriva de sus componentes:
+ *   MIN( stock_componento / cantidad_por_combo )
+ * de modo que el POS y el backend validen disponibilidad con el mismo número.
+ */
 const SELECT_PRODUCTS = `
   SELECT p.*,
     b.name AS brand_name,
     s.name AS supplier_name,
     t.name AS type_name,
+    t.kind AS type_kind,
     tx.name AS tax_name,
-    tx.rate AS tax_rate
+    tx.rate AS tax_rate,
+    CASE
+      WHEN t.kind = 'combo' THEN
+        COALESCE((
+          SELECT MIN(CAST(cp.stock / ci.quantity AS INTEGER))
+          FROM combo_items ci
+          JOIN products cp ON cp.id = ci.component_id
+          WHERE ci.combo_id = p.id AND ci.deleted = 0 AND ci.active = 1 AND cp.deleted = 0
+        ), 0)
+      ELSE p.stock
+    END AS effective_stock
   FROM products p
   LEFT JOIN brands b ON b.id = p.brand_id
   LEFT JOIN suppliers s ON s.id = p.supplier_id
@@ -57,7 +75,7 @@ function mapRow(row: ProductRow): Product {
     category: row.category,
     costPrice: row.cost_price,
     salePrice: row.sale_price,
-    stock: row.stock,
+    stock: row.effective_stock ?? row.stock,
     minStock: row.min_stock,
     maxStock: row.max_stock ?? undefined,
     unit: row.unit,
@@ -67,6 +85,7 @@ function mapRow(row: ProductRow): Product {
     supplierName: row.supplier_name ?? undefined,
     typeId: row.type_id ?? undefined,
     typeName: row.type_name ?? undefined,
+    typeKind: (row.type_kind as Product['typeKind']) ?? undefined,
     taxId: row.tax_id ?? undefined,
     taxName: row.tax_name ?? undefined,
     taxRate: row.tax_rate ?? undefined,

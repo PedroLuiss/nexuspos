@@ -134,6 +134,7 @@ export const KardexView: React.FC<KardexViewProps> = ({
           >
             <option value="ALL">Todos los Motivos</option>
             <option value="VENTA">Venta en Caja</option>
+            <option value="COMBO">Venta de Combo (componentes)</option>
             <option value="ENTRADA_MASIVA">Entrada Masiva</option>
             <option value="SALIDA_AJUSTE">Salida por Ajuste</option>
             <option value="MERMA">Merma / Daño</option>

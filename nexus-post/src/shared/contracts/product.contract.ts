@@ -26,6 +26,8 @@ export interface Product {
   typeId?: string
   /** Nombre del tipo de producto resuelto por el repositorio (solo lectura). */
   typeName?: string
+  /** Clave del tipo (simple/combo/service/raw_material), resuelta por el repositorio (solo lectura). */
+  typeKind?: import('./product-type.contract').ProductTypeKind
   /** Impuesto asignado del catálogo (`taxes`). 0% / `undefined` = exento. */
   taxId?: string
   /** Nombre de la tasa resuelto por el repositorio (solo lectura). */
@@ -46,7 +48,18 @@ export interface Product {
 }
 
 /** Datos de entrada para crear un producto (el id y timestamps los genera el backend). */
-export type ProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'taxName' | 'taxRate'>
+export type ProductInput = Omit<
+  Product,
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'taxName'
+  | 'taxRate'
+  | 'typeName'
+  | 'typeKind'
+  | 'brandName'
+  | 'supplierName'
+>
 
 export interface ProductFilter {
   search?: string

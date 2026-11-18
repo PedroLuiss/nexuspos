@@ -11,7 +11,7 @@ El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos
 - **Trazabilidad Completa:** Cada incremento o decremento de stock queda grabado permanentemente con fecha/hora exacta, usuario responsable, stock previo, cantidad movida y stock resultante.
 - **Tipos de Movimiento:**
   - `ENTRADA (+)`: Actualmente soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION`.
-  - `SALIDA (-)`: Actualmente soporta `VENTA`, `SALIDA_AJUSTE` y `MERMA`.
+  - `SALIDA (-)`: Actualmente soporta `VENTA`, `COMBO`, `SALIDA_AJUSTE` y `MERMA`. El motivo `COMBO` se genera al cobrar un producto tipo bundle: se descuenta cada componente del combo (no el combo directamente) y se registra una salida por componente con las cantidades consumidas.
 - **Filtrado Avanzado:** Búsqueda reactiva por nombre de producto, SKU o usuario responsable; filtros por tipo (`ENTRADA`/`SALIDA`) y motivo específico.
 - **Exportación Contable:** El botón de exportación está presente como placeholder visual; la generación real de `.xlsx`/`.csv` sigue pendiente.
 
@@ -23,7 +23,7 @@ Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryServi
 
 La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; un listado vacío no se sustituye por registros de demostración.
 
-La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. `CashService.returnSale()` repone existencias e inserta una entrada `DEVOLUCION` en la misma transacción de devolución. Por lo tanto, el Kardex refleja ajustes manuales, cobros y devoluciones vinculados a operaciones persistidas.
+La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. Para productos tipo combo (`product_types.kind = 'combo'`), el cobro genera salidas `COMBO` por cada componente consumido (`cantidad_combo × cantidad_componente`) en lugar de descontar el combo directamente; el stock disponible del combo se deriva de sus componentes en `products.sqlite.ts`. `CashService.returnSale()` repone existencias e inserta una entrada `DEVOLUCION` en la misma transacción de devolución. Por lo tanto, el Kardex refleja ajustes manuales, cobros, combos y devoluciones vinculados a operaciones persistidas.
 
 ## 3. Mapa de Archivos del Módulo
 

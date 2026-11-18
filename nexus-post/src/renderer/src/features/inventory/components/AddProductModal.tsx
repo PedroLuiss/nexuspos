@@ -5,6 +5,7 @@ import ProductBasicFields from './ProductBasicFields'
 import ProductPricingFields from './ProductPricingFields'
 import ProductBarcodesEditor from './ProductBarcodesEditor'
 import ProductPriceTiersEditor from './ProductPriceTiersEditor'
+import ComboItemsEditor from './ComboItemsEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
 
 interface AddProductModalProps {
@@ -13,6 +14,7 @@ interface AddProductModalProps {
   onSubmit: (input: ProductInput) => void
   initialProduct?: Product | null
   categories?: string[]
+  products?: Product[]
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({
@@ -20,7 +22,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   onClose,
   onSubmit,
   initialProduct,
-  categories = []
+  categories = [],
+  products = []
 }) => {
   const {
     values,
@@ -104,6 +107,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 productId={initialProduct.id}
                 salePrice={values.salePrice}
               />
+              {initialProduct.typeKind === 'combo' && (
+                <ComboItemsEditor comboId={initialProduct.id} products={products} />
+              )}
             </div>
           )}
 

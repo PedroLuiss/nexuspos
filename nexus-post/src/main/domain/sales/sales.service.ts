@@ -3,6 +3,7 @@ import type { CustomerService } from '../customers/customer.service'
 import type { AuthService } from '../auth/auth.service'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { ProductPriceTierRepository } from '../../ports/product-price-tier.repository'
+import type { ComboItemRepository } from '../../ports/combo-item.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
 import type { CashRepository } from '../../ports/cash.repository'
@@ -20,6 +21,7 @@ export class SalesService {
   constructor(
     private readonly products: ProductRepository,
     private readonly priceTiers: ProductPriceTierRepository,
+    private readonly combos: ComboItemRepository,
     private readonly movements: StockMovementRepository,
     private readonly sales: SalesRepository,
     private readonly cash: CashRepository,
@@ -162,6 +164,55 @@ export class SalesService {
         ) {
           throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
         }
+
+        // Combo: desglosar el consumo entre sus componentes (Kardex por componente).
+        if (product.typeKind === 'combo') {
+          const components = this.combos
+            .findByComboId(product.id)
+            .filter((component) => component.active && !component.deleted)
+          if (components.length === 0) {
+            throw new ValidationError(
+              `El combo "${product.name}" no tiene componentes configurados.`
+            )
+          }
+
+          for (const component of components) {
+            const consumptionQty = component.quantity * item.quantity
+            const componentProduct = this.products.findById(component.componentId)
+            if (!componentProduct || componentProduct.deleted) {
+              throw new ValidationError(
+                `Un componente del combo "${product.name}" ya no está disponible.`
+              )
+            }
+            if (
+              !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+              consumptionQty > componentProduct.stock
+            ) {
+              throw new ValidationError(
+                `Stock insuficiente de "${componentProduct.name}" para el combo "${product.name}".`
+              )
+            }
+            const componentNewStock = componentProduct.stock - consumptionQty
+            this.products.setStock(componentProduct.id, componentNewStock)
+            const movement: KardexMovement = {
+              id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              timestamp: now,
+              productId: componentProduct.id,
+              productName: componentProduct.name,
+              productCode: componentProduct.code,
+              type: 'SALIDA',
+              reason: 'COMBO',
+              previousStock: componentProduct.stock,
+              quantity: consumptionQty,
+              newStock: componentNewStock,
+              responsibleUser: user.name,
+              notes: `Combo "${product.name}" × ${item.quantity} · Ticket ${result.ticketNumber}`
+            }
+            this.movements.insert(movement)
+          }
+          continue
+        }
+
         const newStock = product.stock - item.quantity
         this.products.setStock(product.id, newStock)
         const movement: KardexMovement = {

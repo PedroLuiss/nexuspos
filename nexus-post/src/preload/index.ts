@@ -44,6 +44,9 @@ import type {
   ProductPriceTier,
   ProductPriceTierInput,
   ProductPriceTierFilter,
+  ComboItem,
+  ComboItemInput,
+  ComboItemFilter,
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
@@ -129,6 +132,18 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.softDelete, id),
     toggleStatus: (id: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.toggleStatus, id)
+  },
+  comboItems: {
+    list: (filter?: ComboItemFilter) =>
+      ipcRenderer.invoke(IPC_CHANNELS.comboItems.list, filter),
+    create: (input: ComboItemInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.comboItems.create, input),
+    update: (item: ComboItem) =>
+      ipcRenderer.invoke(IPC_CHANNELS.comboItems.update, item),
+    softDelete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.comboItems.softDelete, id),
+    toggleStatus: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.comboItems.toggleStatus, id)
   },
   inventory: {
     adjustStock: (input: AdjustStockInput) =>
