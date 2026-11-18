@@ -13,7 +13,9 @@ import type { ProductType, ProductTypeInput, ProductTypeFilter } from './product
 import type {
   ProductBarcode,
   ProductBarcodeInput,
-  ProductBarcodeFilter
+  ProductBarcodeFilter,
+  ProductBarcodePreviewInput,
+  ProductBarcodeLabelInput
 } from './product-barcode.contract'
 import type {
   ProductPriceTier,
@@ -86,7 +88,10 @@ export const IPC_CHANNELS = {
     create: 'productBarcodes:create',
     update: 'productBarcodes:update',
     softDelete: 'productBarcodes:softDelete',
-    toggleStatus: 'productBarcodes:toggleStatus'
+    toggleStatus: 'productBarcodes:toggleStatus',
+    previewLabel: 'productBarcodes:previewLabel',
+    printLabels: 'productBarcodes:printLabels',
+    downloadLabelsPdf: 'productBarcodes:downloadLabelsPdf'
   },
   productPriceTiers: {
     list: 'productPriceTiers:list',
@@ -242,6 +247,9 @@ export interface ProductBarcodesApi {
   update(barcode: ProductBarcode): Promise<ProductBarcode>
   softDelete(id: string): Promise<void>
   toggleStatus(id: string): Promise<ProductBarcode>
+  previewLabel(input: ProductBarcodePreviewInput): Promise<string>
+  printLabels(input: ProductBarcodeLabelInput): Promise<void>
+  downloadLabelsPdf(input: ProductBarcodeLabelInput): Promise<boolean>
 }
 
 export interface ProductPriceTiersApi {

@@ -216,7 +216,7 @@ export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ pr
                 type="text"
                 value={draft.barcode}
                 onChange={(e) => setDraft({ ...draft, barcode: e.target.value })}
-                placeholder="Ej. 7501000000015"
+                placeholder="Ej. 7501000000012"
                 className={inputClass}
               />
             </div>

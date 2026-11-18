@@ -44,8 +44,9 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
 - **Conexión de Báscula por Puerto Serial (RS-232 / COM):**
   - Comunicación con balanzas de peso comercial (Torrey, Rhino, Dibal) mediante lectura de buffer serial.
   - Parámetros: Puerto (`COM1` a `COM4`), velocidad en baudios (9600, 19200 bps), lectura en vivo de peso estabilizado.
-- **Impresoras Térmicas y Periféricos (pendiente):**
-  - La configuración/impresión ESC/POS, ancho de papel, corte automático y pulso de gaveta todavía no están conectados a un adaptador de hardware.
+- **Impresoras Térmicas y Periféricos:**
+  - La impresión de etiquetas de productos usa el adaptador `main/adapters/hardware/barcode-label-printer.ts`: genera códigos SVG reales y abre el diálogo de impresión nativo de Electron/Windows, con impresora seleccionada por el usuario; permite además guardar PDF con tamaño de página configurable. El driver de Windows debe estar instalado. Este flujo está conectado por los canales `productBarcodes:previewLabel`, `productBarcodes:printLabels` y `productBarcodes:downloadLabelsPdf`, pero la impresión física aún no se ha podido probar.
+  - La configuración/impresión ESC/POS, ancho de papel de tickets, corte automático y pulso de gaveta todavía no están conectados a un adaptador de hardware.
 - **Mantenimiento y Respaldo de Base de Datos SQLite (operativo para ADMIN):**
   - Estado de integridad (`PRAGMA integrity_check`), tamaño (base + WAL), páginas reutilizables, versión de esquema, conteos de productos/facturas/clientes y fecha de último respaldo.
   - Copia consistente mediante `better-sqlite3.backup()` en `userData/backups`, validada abriendo el respaldo, revisando integridad/esquema y calculando SHA-256. El historial presenta los últimos 20 archivos.
@@ -269,6 +270,7 @@ nexus-post/src/
 - ✅ **Impuesto multi-alícuota por producto:** implementado con el catálogo `taxes` + `products.tax_id` + desglose `sale_taxes` (migración 015). Pendiente: reportes fiscales que agrupen por tasa y libro de ventas exportable.
 - ✅ **Catálogos de producto (marcas, proveedores, tipos):** implementado con migración 016 (`brands`, `suppliers`, `product_types` + columnas en `products`), servicios de dominio, IPC, renderer y formularios de producto.
 - ✅ **Códigos de barras múltiples y precios por mayoreo:** migraciones 017 (`product_barcodes`) y 018 (`product_price_tiers`). Se gestionan en la pestaña de edición de producto; el POS resuelve el precio por cantidad y el backend recalcula con la misma lógica (`shared/lib/product-pricing.ts` + `computeSaleTotals`).
+- ✅ **Etiquetas de códigos de barras:** vista previa SVG, impresión mediante diálogo nativo de Windows y exportación PDF con dimensiones y cantidad configurables (máximo 500). La salida física requiere controlador compatible y sigue pendiente de prueba en una impresora real; no usa ESC/POS/ZPL.
 - ✅ **Combos / bundles reales:** migración 019 (`combo_items`). Se configuran en la pestaña de edición de producto cuando el tipo es Combo / Kit; al cobrar, `SalesService` desglosa el consumo entre componentes y genera movimientos Kardex `COMBO` (stock del combo derivado de sus componentes).
 - ✅ **Variantes talla/color:** migración 020 (`products.parent_id`, `attributes`, `variant_attrs`). Cada variante es un producto hijo independiente con SKU/precio/stock propios; se prohíben variantes anidadas. Se gestionan desde la pestaña "Variantes" del producto padre.
 - ✅ **Lotes y caducidad:** migración 021 (`product_batches`, `products.track_batches`). Salidas FEFO con movimientos Kardex por lote; lote inicial automático al activar control de lotes; UI con insignias de vencimiento. Se gestionan desde la pestaña "Lotes y Caducidad" del producto.

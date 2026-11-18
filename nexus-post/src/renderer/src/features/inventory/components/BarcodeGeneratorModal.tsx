@@ -1,7 +1,11 @@
-import React, { useState } from 'react'
-import type { Product } from '@shared/contracts'
-import { Barcode, Printer, X } from '../../../shared/icons/Icons'
+import React, { useEffect, useState } from 'react'
+import type { Product, ProductBarcode, ProductBarcodeLabelInput } from '@shared/contracts'
+import { getProductBarcodeValidationError } from '@shared/lib/product-barcode'
+import { Barcode, X } from '../../../shared/icons/Icons'
 import ProductSearchSelect from './ProductSearchSelect'
+import BarcodeLabelControls from './BarcodeLabelControls'
+import BarcodeLabelActions from './BarcodeLabelActions'
+import BarcodeLabelPreview from './BarcodeLabelPreview'
 
 interface BarcodeGeneratorModalProps {
   isOpen: boolean
@@ -21,20 +25,157 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
     : selectedProductOption?.id === selectedProductIdValue
       ? selectedProductIdValue
       : (products[0]?.id ?? '')
-  const [barcodeFormat, setBarcodeFormat] = useState<'EAN-13' | 'Code128'>('EAN-13')
-  const [dpi, setDpi] = useState<number>(300)
   const [widthMm, setWidthMm] = useState<number>(50)
   const [heightMm, setHeightMm] = useState<number>(30)
   const [marginMm, setMarginMm] = useState<number>(3)
   const [copies, setCopies] = useState<number>(10)
   const [includePrice, setIncludePrice] = useState<boolean>(true)
-
-  if (!isOpen) return null
+  const [barcodeLoad, setBarcodeLoad] = useState<{
+    productId: string
+    barcodes: ProductBarcode[]
+    error: string | null
+  } | null>(null)
+  const [selectedBarcodeIdValue, setSelectedBarcodeId] = useState('')
+  const [barcodePreview, setBarcodePreview] = useState<{
+    key: string
+    svg: string
+    error: string | null
+  }>({ key: '', svg: '', error: null })
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
 
   const selectedProduct =
     products.find((p) => p.id === selectedProductId) ??
     (selectedProductOption?.id === selectedProductId ? selectedProductOption : undefined) ??
     products[0]
+  const productBarcodes =
+    barcodeLoad && barcodeLoad.productId === selectedProduct?.id ? barcodeLoad.barcodes : []
+  const isLoadingBarcodes = Boolean(
+    isOpen && selectedProductId && barcodeLoad?.productId !== selectedProductId
+  )
+  const barcodeLoadError =
+    barcodeLoad?.productId === selectedProductId ? barcodeLoad.error : null
+  const activeBarcodes = productBarcodes.filter(
+    (barcode) =>
+      barcode.productId === selectedProduct?.id && barcode.active && !barcode.deleted
+  )
+  const selectedBarcode =
+    activeBarcodes.find((barcode) => barcode.id === selectedBarcodeIdValue) ??
+    activeBarcodes.find((barcode) => barcode.isPrimary) ??
+    activeBarcodes[0]
+  const barcodeValue = selectedBarcode?.barcode ?? selectedProduct?.code ?? ''
+  const barcodeFormat = selectedBarcode?.format ?? 'Code128'
+  const barcodeValidationError = getProductBarcodeValidationError(barcodeValue, barcodeFormat)
+  const barcodePreviewKey = `${barcodeFormat}:${barcodeValue}`
+  const barcodeSvg =
+    barcodeValidationError || barcodePreview.key !== barcodePreviewKey ? '' : barcodePreview.svg
+  const barcodePreviewError =
+    barcodeValidationError ??
+    (barcodePreview.key === barcodePreviewKey ? barcodePreview.error : null)
+
+  useEffect(() => {
+    if (!isOpen || !selectedProductId) return
+
+    let active = true
+    void window.api.productBarcodes
+      .list({ productId: selectedProductId, onlyActive: true })
+      .then((items) => {
+        if (active) setBarcodeLoad({ productId: selectedProductId, barcodes: items, error: null })
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setBarcodeLoad({
+            productId: selectedProductId,
+            barcodes: [],
+            error:
+              err instanceof Error
+                ? err.message
+                : 'No se pudieron cargar los códigos de barras.'
+          })
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [isOpen, selectedProductId])
+
+  useEffect(() => {
+    if (!isOpen || isLoadingBarcodes) return
+    if (barcodeValidationError) return
+
+    let active = true
+    void window.api.productBarcodes
+      .previewLabel({ barcode: barcodeValue, format: barcodeFormat })
+      .then((svg) => {
+        if (active) setBarcodePreview({ key: barcodePreviewKey, svg, error: null })
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setBarcodePreview({
+            key: barcodePreviewKey,
+            svg: '',
+            error:
+              err instanceof Error
+                ? err.message
+                : 'No se pudo generar la vista previa del código.'
+          })
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [
+    barcodeFormat,
+    barcodePreviewKey,
+    barcodeValidationError,
+    barcodeValue,
+    isLoadingBarcodes,
+    isOpen
+  ])
+
+  if (!isOpen) return null
+
+  const labelInput = (): ProductBarcodeLabelInput => ({
+    productId: selectedProduct?.id ?? '',
+    barcodeId: selectedBarcode?.id,
+    copies,
+    widthMm,
+    heightMm,
+    marginMm,
+    includePrice
+  })
+
+  const handlePrint = async (): Promise<void> => {
+    if (!selectedProduct || isLoadingBarcodes) return
+    setActionError(null)
+    setActionMessage(null)
+    setIsPrinting(true)
+    try {
+      await window.api.productBarcodes.printLabels(labelInput())
+      setActionMessage('La etiqueta se envió al diálogo de impresión de Windows.')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'No se pudieron imprimir las etiquetas.')
+    } finally {
+      setIsPrinting(false)
+    }
+  }
+
+  const handleDownloadPdf = async (): Promise<void> => {
+    if (!selectedProduct || isLoadingBarcodes) return
+    setActionError(null)
+    setActionMessage(null)
+    setIsDownloadingPdf(true)
+    try {
+      const saved = await window.api.productBarcodes.downloadLabelsPdf(labelInput())
+      if (saved) setActionMessage('El PDF de etiquetas se guardó correctamente.')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'No se pudo crear el PDF de etiquetas.')
+    } finally {
+      setIsDownloadingPdf(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
@@ -86,166 +227,58 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">Simbología</label>
-                <select
-                  value={barcodeFormat}
-                  onChange={(e) => setBarcodeFormat(e.target.value as 'EAN-13' | 'Code128')}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-sm"
-                >
-                  <option value="EAN-13">EAN-13 (Comercial)</option>
-                  <option value="Code128">Code 128 (Alfanumérico)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">Resolución (DPI)</label>
-                <select
-                  value={dpi}
-                  onChange={(e) => setDpi(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-sm"
-                >
-                  <option value={203}>203 DPI (Estándar)</option>
-                  <option value={300}>300 DPI (Alta resolución)</option>
-                  <option value={600}>600 DPI (Ultra fino)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">Ancho (mm)</label>
-                <input
-                  type="number"
-                  value={widthMm}
-                  onChange={(e) => setWidthMm(Number(e.target.value))}
-                  className="w-full px-2 py-1 bg-white border border-slate-300 rounded-sm font-tabular text-center"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">Alto (mm)</label>
-                <input
-                  type="number"
-                  value={heightMm}
-                  onChange={(e) => setHeightMm(Number(e.target.value))}
-                  className="w-full px-2 py-1 bg-white border border-slate-300 rounded-sm font-tabular text-center"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">Margen (mm)</label>
-                <input
-                  type="number"
-                  value={marginMm}
-                  onChange={(e) => setMarginMm(Number(e.target.value))}
-                  className="w-full px-2 py-1 bg-white border border-slate-300 rounded-sm font-tabular text-center"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div>
-                <label className="block font-medium text-slate-700 mb-1">
-                  Nº Copias a Imprimir
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={copies}
-                  onChange={(e) => setCopies(Number(e.target.value))}
-                  className="w-full px-2 py-1 bg-white border border-slate-300 rounded-sm font-tabular"
-                />
-              </div>
-
-              <div className="flex items-center pt-5">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={includePrice}
-                    onChange={(e) => setIncludePrice(e.target.checked)}
-                    className="rounded text-[#0078D4]"
-                  />
-                  <span>Mostrar precio</span>
-                </label>
-              </div>
-            </div>
+            <BarcodeLabelControls
+              productCode={selectedProduct?.code}
+              barcodes={activeBarcodes}
+              selectedBarcodeId={selectedBarcode?.id}
+              barcodeFormat={barcodeFormat}
+              widthMm={widthMm}
+              heightMm={heightMm}
+              marginMm={marginMm}
+              copies={copies}
+              includePrice={includePrice}
+              isLoading={isLoadingBarcodes}
+              loadError={barcodeLoadError}
+              onBarcodeChange={setSelectedBarcodeId}
+              onWidthChange={setWidthMm}
+              onHeightChange={setHeightMm}
+              onMarginChange={setMarginMm}
+              onCopiesChange={setCopies}
+              onIncludePriceChange={setIncludePrice}
+            />
           </div>
 
-          {/* Right Live Sticker Preview */}
-          <div className="flex flex-col items-center justify-center p-5 bg-slate-100 border border-dashed border-slate-300 rounded">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Vista Previa de Etiqueta ({widthMm}x{heightMm}mm)
-            </span>
-
-            {/* Sticker physical mock */}
-            <div
-              className="bg-white border-2 border-slate-300 shadow-md p-3 flex flex-col items-center justify-between text-center select-none"
-              style={{
-                width: `${Math.min(240, widthMm * 4.5)}px`,
-                minHeight: `${Math.min(150, heightMm * 4.5)}px`
-              }}
-            >
-              <div className="text-[11px] font-bold text-slate-800 line-clamp-2 uppercase">
-                {selectedProduct?.name}
-              </div>
-
-              {/* Simulated SVG Barcode */}
-              <div className="my-2 flex flex-col items-center">
-                <div className="flex items-center h-10 gap-[2px]">
-                  {[1, 2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 2, 1, 3, 2, 4, 1, 2, 3, 1, 2].map((w, i) => (
-                    <div
-                      key={i}
-                      className="bg-black h-full"
-                      style={{ width: `${Math.max(1, w * 1.3)}px` }}
-                    />
-                  ))}
-                </div>
-                <span className="font-mono text-[10px] tracking-widest text-slate-800 mt-1">
-                  {selectedProduct?.code}
-                </span>
-              </div>
-
-              {includePrice && (
-                <div className="text-sm font-extrabold font-tabular text-[#0078D4]">
-                  ${selectedProduct?.salePrice.toFixed(2)}
-                </div>
-              )}
-            </div>
-
-            <span className="text-[10px] text-slate-400 mt-3 font-mono">
-              Driver térmico: ESC/POS / ZPL II @ {dpi} DPI
-            </span>
-          </div>
+          <BarcodeLabelPreview
+            productName={selectedProduct?.name}
+            salePrice={selectedProduct?.salePrice}
+            barcodeValue={barcodeValue}
+            barcodeSvg={barcodeSvg}
+            barcodeFormat={barcodeFormat}
+            widthMm={widthMm}
+            heightMm={heightMm}
+            includePrice={includePrice}
+            isLoading={isLoadingBarcodes}
+            error={barcodePreviewError}
+          />
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200">
-          <span className="w-full sm:w-auto text-xs text-slate-500">
-            Total a imprimir: <strong className="text-slate-800">{copies} etiquetas</strong>
-          </span>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-3.5 py-1.5 text-xs text-slate-600 bg-white border border-slate-300 rounded-sm hover:bg-slate-50"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                alert(`Enviando ${copies} etiquetas a la cola de impresión térmica...`)
-                onClose()
-              }}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#0078D4] hover:bg-[#106EBE] rounded-sm shadow-xs"
-            >
-              <Printer size={15} />
-              <span>Imprimir Lote [ENTER]</span>
-            </button>
-          </div>
-        </div>
+        <BarcodeLabelActions
+          copies={copies}
+          canRun={
+            Boolean(selectedProduct) &&
+            copies >= 1 &&
+            copies <= 500 &&
+            !isLoadingBarcodes &&
+            !barcodeValidationError
+          }
+          isPrinting={isPrinting}
+          isDownloadingPdf={isDownloadingPdf}
+          error={actionError}
+          message={actionMessage}
+          onClose={onClose}
+          onPrint={() => void handlePrint()}
+          onDownloadPdf={() => void handleDownloadPdf()}
+        />
       </div>
     </div>
   )

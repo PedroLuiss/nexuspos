@@ -17,13 +17,13 @@ El módulo de Inventario y Productos gestiona el catálogo comercial y las exist
 - **Soft Delete Obligatorio:** Borrado lógico (`deleted = 1`, `active = 0`) para preservar la integridad referencial y la trazabilidad histórica de Kardex y tickets pasados.
 - **Entradas y Salidas Masivas de Stock (`StockAdjustmentModal.tsx` / `[ALT + E]` / `[ALT + S]`):** Recepción de mercancía por compras o bajas por merma/caducidad con motivo obligatorio e impacto directo e inmutable en el Kardex.
 - **Importación y Exportación a Excel (`ProductImportExportModal.tsx`):**
-  - **Exportar (`ProductExportTab.tsx`):** Descarga instantánea de catálogo a formato `.csv` con cabecera **UTF-8 BOM (`\uFEFF`)** para apertura nativa y sin corrupción de acentos en Microsoft Excel de Windows.
-  - **Importar (`ProductImportTab.tsx`):** Carga masiva por lotes desde archivos Excel/CSV con parser tolerante a comillas, descarga de plantilla oficial modelo, previsualización de tabla previa a guardar y reporte detallado de errores por fila.
-- **Generador de Etiquetas de Código de Barras (`BarcodeGeneratorModal.tsx` / `[ALT + B]`):** Formatos EAN-13 y Code128, resolución DPI configurable (203, 300, 600 DPI), dimensiones en milímetros y número de copias por lote para impresoras Zebra o Xprinter.
+  - **Exportar (`ProductExportTab.tsx`):** Descarga `.xlsx` con hojas formateadas de Productos y Resumen, además de CSV con cabecera **UTF-8 BOM (`\uFEFF`)** para Microsoft Excel de Windows. La exportación usa el catálogo completo, no solo la página visible.
+  - **Importar (`ProductImportTab.tsx`):** Admite `.xlsx` y CSV (no `.xls`), con plantilla Excel formateada y hoja Guía. La previsualización se pagina; códigos repetidos/existentes, referencias no encontradas y números inválidos o negativos se reportan antes de guardar. La importación crea productos nuevos y no sobrescribe existentes.
+- **Generador de Etiquetas de Código de Barras (`BarcodeGeneratorModal.tsx` / `[ALT + B]`):** Genera SVG reales con `bwip-js` para EAN-13, EAN-8, UPC-A, ITF-14, Code128, Code39 y OTRO (Code128 de respaldo). Permite seleccionar códigos guardados o usar el SKU, configurar dimensiones/margen en mm, incluir precio y generar entre 1 y 500 etiquetas. La impresión abre el diálogo nativo de Windows; también puede descargarse un PDF de páginas del tamaño configurado. No se ha probado la salida física ni el controlador sin impresora instalada.
 - **Gestión de Categorías (`CategoryManagerModal.tsx`):** Modal CRUD para altas, bajas y cambios en el catálogo de categorías comerciales vinculadas a los productos.
 - **Selectores de producto con búsqueda:** los formularios de componentes de combo, ajustes de stock y etiquetas filtran productos por código o nombre y muestran también el código y stock/unidad en los resultados.
-- **Tablas paginadas:** la tabla del catálogo se pagina en SQLite; las tablas secundarias de categorías, lotes, códigos, componentes, escalas, variantes, sucursales y vista previa CSV muestran hasta 10 filas por página.
-- **Acciones de importación:** el procesamiento informa avance por bloques y reporta errores de validación por fila; el catálogo completo para importar/exportar se solicita solo al abrir esa función.
+- **Tablas paginadas:** la tabla del catálogo se pagina en SQLite; las tablas secundarias de categorías, lotes, códigos, componentes, escalas, variantes, sucursales y vista previa de importación muestran hasta 10 filas por página.
+- **Acciones de importación/exportación y etiquetas:** el procesamiento informa avance por bloques y reporta errores de validación por fila; el catálogo completo se solicita al abrir importación/exportación o el generador de etiquetas, no al renderizar la tabla.
 - **Catálogo Demo Sembrado (`006_seed_products.ts`):** 50 productos realistas precargados divididos en 8 categorías de abarrotes, refrescos, lácteos, panadería, limpieza y cuidado personal, con códigos EAN-13 válidos e imágenes.
 
 ---
@@ -78,7 +78,8 @@ nexus-post/src/
 │   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
 │   │       ├── 021_product_batches.ts       # product_batches + products.track_batches
 │   │       ├── 022_sale_item_traceability.ts # sale_items.is_combo / combo_id / batches_json
-│   │       └── 023_product_list_indexes.ts   # Índices parciales para listado por nombre/categoría
+│   │       ├── 023_product_list_indexes.ts   # Índices parciales para listado por nombre/categoría
+│   │       └── 024_fix_seed_barcode_format.ts # Corrige el formato del código demo heredado inválido
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*' (listPage paginada)
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
@@ -107,7 +108,8 @@ nexus-post/src/
 │       ├── tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
 │       ├── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
 │       ├── product-variants.ts              # parse/serialize/format de atributos de variantes
-│       └── product-batches.ts               # issueFromBatches (FEFO/FIFO) + caducidad — main + renderer
+│       ├── product-batches.ts               # issueFromBatches (FEFO/FIFO) + caducidad — main + renderer
+│       └── product-barcode.ts               # validación compartida de formatos y dígitos GS1
 │
 └── renderer/src/
     ├── shared/hooks/
@@ -136,7 +138,8 @@ nexus-post/src/
         │   ├── useProductForm.ts            # Validación, brandId/supplierId/typeId/taxId, imageUrl y cálculo de márgenes
         │   └── useCategories.ts             # Carga de categorías activas
         ├── lib/
-        │   └── productCsv.ts                # Serialización/parseo CSV con columnas de impuesto, marca, proveedor y tipo
+        │   ├── productCsv.ts                # Serialización y parseo CSV/XLSX tabular, validación de referencias y duplicados
+        │   └── productSpreadsheet.ts        # Plantilla, exportación XLSX formateada y lectura XLSX
         └── components/
             ├── ProductTable.tsx                 # Contenedor principal de la tabla densa
             ├── ProductToolbar.tsx               # Barra de acciones [ALT+N], [ALT+E], Excel, Demos
@@ -158,10 +161,13 @@ nexus-post/src/
             ├── VariantForm.tsx                  # Formulario de variante (extraído para cumplir 300 líneas)
             ├── BatchEditor.tsx                  # Editor de lotes y caducidad con insignias de vencimiento
             ├── ProductImportExportModal.tsx     # Modal contenedor de importación / exportación Excel
-            ├── ProductExportTab.tsx             # Pestaña de exportación con BOM UTF-8
-            ├── ProductImportTab.tsx             # Pestaña de importación CSV con preview y plantilla
+            ├── ProductExportTab.tsx             # Exportación XLSX y CSV con BOM UTF-8
+            ├── ProductImportTab.tsx             # Importación XLSX/CSV con preview y plantilla
             ├── StockAdjustmentModal.tsx         # Modal de ajuste de stock [ALT+E / ALT+S]
-            ├── BarcodeGeneratorModal.tsx        # Generador de etiquetas e impresión de barras
+            ├── BarcodeGeneratorModal.tsx        # Selección de producto y coordinación de etiquetas
+            ├── BarcodeLabelControls.tsx         # Configuración de formato, tamaño, margen y cantidad
+            ├── BarcodeLabelPreview.tsx          # Vista previa del SVG real de código de barras
+            ├── BarcodeLabelActions.tsx          # Acciones de impresión y descarga PDF
             ├── StockBranchModal.tsx             # Consulta de stock multi-sucursal
             └── CategoryManagerModal.tsx         # Modal CRUD de categorías
 ```
@@ -192,7 +198,7 @@ nexus-post/src/
    $$\text{Precio Venta Final} = \text{Precio Costo} \times \left(1 + \frac{\%\text{ Ganancia}}{100}\right)$$
    _(Ejemplo: Costo $100.00 con 10% de ganancia = $10.00 de ganancia y $110.00 de precio de venta final)._ También permite ajuste manual bidireccional si se requiere redondear centavos.
 3. **División de Componentes:** Todos los modales y formularios deben seguir subdivididos en archivos independientes para garantizar que ninguno supere **300 líneas de código** y los hooks **200 líneas**.
-4. **Formato CSV con BOM:** Al exportar a Excel, el archivo debe comenzar con el byte order mark `\uFEFF` para asegurar compatibilidad total con Excel en Windows. Columnas oficiales: `Codigo, Nombre, Categoria, Marca, Proveedor, TipoProducto, PrecioCosto, PrecioVenta, Stock, StockMinimo, Unidad, Descripcion, ImpuestoNombre, ImpuestoTasa, Atributos, PadreSKU, ImagenURL`. La importación sigue aceptando el encabezado legado `TieneImpuesto` (SI/NO) y lo traduce a la tasa por defecto o a la tasa 0% (Exento). `Atributos` (JSON) y `PadreSKU` son opcionales y permiten importar variantes.
+4. **Formato Excel/CSV:** CSV exportado comienza con el BOM `\uFEFF`; `.xlsx` conserva las mismas columnas y añade hojas formateadas de resumen/guía. Columnas oficiales: `Codigo, Nombre, Categoria, Marca, Proveedor, TipoProducto, PrecioCosto, PrecioVenta, Stock, StockMinimo, Unidad, Descripcion, ImpuestoNombre, ImpuestoTasa, Atributos, PadreSKU, ImagenURL`. Se acepta el encabezado legado `TieneImpuesto` (SI/NO), traducido a tasa predeterminada o 0% (Exento). `Atributos` (JSON) y `PadreSKU` son opcionales para variantes. Solo se importan `.xlsx` y CSV; la importación crea registros nuevos y bloquea códigos duplicados, sin actualizar productos existentes.
 5. **Persistencia de Imágenes:** El campo `image_url` almacena cadenas base64 (`data:image/...`) para archivos subidos localmente o URLs HTTP/HTTPS seguras para productos de catálogo web o demostración.
 6. **Impuesto por producto (nunca un IVA global fijo):** todo producto guarda `tax_id` apuntando al catálogo `taxes`. Reglas:
    - Si el formulario no envía `taxId`, `ProductService` aplica la tasa predeterminada del catálogo. Si no existe ninguna, la operación falla pidiendo crearla en **Ajustes › Impuestos**.
@@ -209,6 +215,8 @@ nexus-post/src/
    - La normalización de productos conserva los IDs seleccionados (`brandId`, `supplierId`, `typeId`) para que alta y edición persistan y devuelvan las asociaciones resueltas.
    - El CSV de exportación/importación incluye las columnas `Marca`, `Proveedor` y `TipoProducto`, aceptando nombres textuales que se resuelven al catálogo al importar.
 8. **Códigos de barras múltiples (migración 017):** cada producto puede tener varios códigos de barras (`product_barcodes`: EAN-13, EAN-8, UPC-A, Code128, Code39, ITF-14, OTRO). Uno puede marcarse como `is_primary`. El código es único entre registros no eliminados. Se gestionan en la pestaña del producto al editarlo. El buscador del POS admite buscar por cualquiera de estos códigos (ver contexto 02).
+   - La vista previa se genera como SVG mediante `bwip-js`; `productBarcodes:previewLabel`, `productBarcodes:printLabels` y `productBarcodes:downloadLabelsPdf` conectan renderer → preload → IPC → adaptador de hardware. El adaptador resuelve el código activo desde SQLite, valida cantidad/dimensiones y usa el diálogo de impresión de Electron o el diálogo nativo para guardar PDF. La impresión depende del controlador de Windows y no es una implementación ESC/POS/ZPL.
+   - Se valida longitud/formato y dígito de control GS1 para EAN-13, EAN-8, UPC-A e ITF-14 antes de generar la vista previa, imprimir o crear el PDF. Los códigos heredados con formato/checksum inválido se rechazan con mensaje legible y deben corregirse en la ficha o cambiarse a una simbología compatible. La descarga PDF puede verificarse sin impresora; la impresión física queda pendiente de prueba con hardware real.
 9. **Combos / bundles reales (migración 019):** un producto de tipo `combo` se compone de otros productos mediante `combo_items` (`combo_id`, `component_id`, `quantity` por unidad de combo). Reglas:
     - **Stock derivado:** el `stock` que ve el POS para un combo se calcula en `products.sqlite.ts` como `MIN(stock_componento / cantidad_por_combo)`; el precio cobrado es el del producto combo (sus propias escalas de mayoreo aplican si las tiene).
     - **Desglose a Kardex:** al cobrar, `SalesService` descuenta el stock de **cada componente** (`cantidad_combo × cantidad_componente`) y genera un movimiento `SALIDA` con `reason = 'COMBO'` por componente. El stock del producto combo **no** se descuenta directamente (evita doble conteo).

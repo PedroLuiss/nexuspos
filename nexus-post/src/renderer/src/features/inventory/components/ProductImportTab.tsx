@@ -6,7 +6,6 @@ import { useBrands } from '../../../shared/hooks/useBrands'
 import { useSuppliers } from '../../../shared/hooks/useSuppliers'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { formatTaxLabel } from '@shared/lib/tax'
-import { PRODUCT_CSV_TEMPLATE, parseProductCatalogCsv } from '../lib/productCsv'
 import { useTablePagination } from '../hooks/useTablePagination'
 import TablePagination from './TablePagination'
 
@@ -31,37 +30,39 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
   const [parsedRows, setParsedRows] = useState<ProductInput[]>([])
   const [parseErrors, setParseErrors] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false)
   const [importProgress, setImportProgress] = useState({ completed: 0, total: 0 })
   const [importedCount, setImportedCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const preview = useTablePagination(parsedRows)
 
-  const handleDownloadTemplate = (): void => {
-    const blob = new Blob(['\uFEFF' + PRODUCT_CSV_TEMPLATE], {
-      type: 'text/csv;charset=utf-8;'
-    })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `plantilla_productos_nexuspos.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  const handleDownloadTemplate = async (): Promise<void> => {
+    setIsDownloadingTemplate(true)
+    try {
+      const { downloadProductTemplateXlsx } = await import('../lib/productSpreadsheet')
+      await downloadProductTemplateXlsx()
+    } catch (err) {
+      setParseErrors([
+        err instanceof Error ? err.message : 'No se pudo generar la plantilla de Excel.'
+      ])
+    } finally {
+      setIsDownloadingTemplate(false)
+    }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files?.[0]
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const input = e.currentTarget
+    const file = input.files?.[0]
+    input.value = ''
     if (!file) return
 
     setImportedCount(null)
     setParseErrors([])
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const text = reader.result as string
-      const { rows, errors } = parseProductCatalogCsv(
-        text,
+    setParsedRows([])
+    try {
+      const { parseProductSpreadsheet } = await import('../lib/productSpreadsheet')
+      const { rows, errors } = await parseProductSpreadsheet(
+        file,
         taxes,
         brands,
         suppliers,
@@ -71,9 +72,13 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
       )
       setParsedRows(rows)
       setParseErrors(errors)
+    } catch (err) {
+      setParseErrors([
+        err instanceof Error
+          ? `No se pudo leer el archivo: ${err.message}`
+          : 'No se pudo leer el archivo seleccionado.'
+      ])
     }
-
-    reader.readAsText(file)
   }
 
   const handleConfirmImport = async (): Promise<void> => {
@@ -126,15 +131,16 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
         <div>
           <p className="font-semibold text-blue-900">¿No tienes el formato requerido?</p>
           <p className="text-blue-700 text-[11px]">
-            Descarga la plantilla oficial con las columnas de impuesto y ejemplos de cada tasa.
+            Descarga una plantilla Excel con formato, guía de llenado y una hoja lista para importar.
           </p>
         </div>
         <button
           type="button"
-          onClick={handleDownloadTemplate}
-          className="px-3 py-1.5 bg-white border border-blue-300 text-blue-800 font-semibold rounded-[4px] hover:bg-blue-100 shrink-0 cursor-pointer"
+          onClick={() => void handleDownloadTemplate()}
+          disabled={isDownloadingTemplate}
+          className="px-3 py-1.5 bg-white border border-blue-300 text-blue-800 font-semibold rounded-[4px] hover:bg-blue-100 shrink-0 cursor-pointer disabled:opacity-50"
         >
-          Descargar Plantilla
+          {isDownloadingTemplate ? 'Preparando…' : 'Descargar plantilla Excel'}
         </button>
       </div>
 
@@ -142,8 +148,8 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv, text/csv, application/vnd.ms-excel"
-          onChange={handleFileSelect}
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          onChange={(event) => void handleFileSelect(event)}
           className="hidden"
         />
         <button
@@ -153,11 +159,11 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
         >
           <Upload size={24} className="text-[#0067C0]" />
           <span className="font-semibold text-slate-700">
-            Haz clic aquí para seleccionar el archivo CSV o Excel
+            Haz clic aquí para seleccionar un archivo Excel (.xlsx) o CSV
           </span>
           <span className="text-[10px] text-slate-400">
-            Columnas requeridas: Codigo, Nombre, Categoria, PrecioCosto, PrecioVenta, Stock ·
-            Impuesto: ImpuestoNombre / ImpuestoTasa · Marca / Proveedor / TipoProducto (opcional)
+            Obligatorios: Codigo, Nombre y PrecioVenta · Impuestos, marcas, proveedores y tipos
+            deben existir en sus catálogos
           </span>
         </button>
       </div>

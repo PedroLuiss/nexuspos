@@ -120,6 +120,18 @@ export const ProductTable: React.FC = () => {
     }
   }
 
+  const handleOpenBarcodeGenerator = async (): Promise<void> => {
+    setIsLoadingFullCatalog(true)
+    try {
+      setFullCatalog(await productsApi.list())
+      setIsBarcodeModalOpen(true)
+    } catch (err) {
+      window.alert(toErrorMessage(err))
+    } finally {
+      setIsLoadingFullCatalog(false)
+    }
+  }
+
   const handleToggleStatus = async (id: string): Promise<void> => {
     try {
       await toggleStatus(id)
@@ -179,7 +191,7 @@ export const ProductTable: React.FC = () => {
           setIsModalOpen(true)
         }}
         onOpenAdjustment={(mode) => setAdjustmentMode(mode)}
-        onOpenBarcode={() => setIsBarcodeModalOpen(true)}
+        onOpenBarcode={() => void handleOpenBarcodeGenerator()}
         onManageCategories={() => setIsCategoryModalOpen(true)}
         onOpenImportExport={(tab) => void handleOpenImportExport(tab)}
         onSeedDemoProducts={async () => {
@@ -257,7 +269,7 @@ export const ProductTable: React.FC = () => {
 
       <BarcodeGeneratorModal
         isOpen={isBarcodeModalOpen}
-        products={products}
+        products={fullCatalog}
         onClose={() => setIsBarcodeModalOpen(false)}
       />
 

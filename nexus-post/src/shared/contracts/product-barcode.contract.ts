@@ -10,7 +10,7 @@ export type BarcodeFormat = 'EAN-13' | 'EAN-8' | 'UPC-A' | 'Code128' | 'Code39' 
 export interface ProductBarcode {
   id: string
   productId: string
-  /** Código de barras (ej. 7501000000015). */
+  /** Código de barras (ej. 7501000000012). */
   barcode: string
   format: BarcodeFormat
   /** Etiqueta descriptiva opcional (ej. "Caja x 12", "Unidad suelta"). */
@@ -34,4 +34,19 @@ export interface ProductBarcodeFilter {
   includeDeleted?: boolean
   onlyActive?: boolean
   search?: string
+}
+
+export interface ProductBarcodePreviewInput {
+  barcode: string
+  format: BarcodeFormat
+}
+
+export interface ProductBarcodeLabelInput {
+  productId: string
+  barcodeId?: string
+  copies: number
+  widthMm: number
+  heightMm: number
+  marginMm: number
+  includePrice: boolean
 }

@@ -73,7 +73,7 @@ export const migration017ProductBarcodes: Migration = {
       `).run({
         id: `bc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         productId: firstProduct.id,
-        barcode: '7501000000015',
+        barcode: '7501000000012',
         format: 'EAN-13',
         label: 'Código principal',
         isPrimary: 1,

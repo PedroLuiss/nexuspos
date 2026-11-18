@@ -124,12 +124,12 @@ Para trabajar de manera eficiente sin saturar la ventana de contexto de la IA, c
 | :----: | :------------------------------------------------------- | :--------------------------------------------------------------------------- | :----------------------------: |
 | **01** | [`01-AUTH-SESSION.md`](./01-AUTH-SESSION.md)             | Login empresarial, PIN rápido, OTP recovery, reset password, RBAC            |        `[F10]` / `[F1]`        |
 | **02** | [`02-POS-SALES.md`](./02-POS-SALES.md)                   | Terminal de ventas, carrito reactivo, cobro normal/rápido/mixto, ticket 80mm |  `[F1]` / `[F12]` / `[ALT+Q]`  |
-| **03** | [`03-INVENTORY-PRODUCTS.md`](./03-INVENTORY-PRODUCTS.md) | Catálogo tabular denso, CRUD, soft delete, ajustes masivos, código de barras | `[F2]` / `[ALT+N]` / `[ALT+B]` |
+| **03** | [`03-INVENTORY-PRODUCTS.md`](./03-INVENTORY-PRODUCTS.md) | Catálogo, CRUD, ajustes, Excel/CSV y etiquetas de código de barras con PDF | `[F2]` / `[ALT+N]` / `[ALT+B]` |
 | **04** | [`04-KARDEX-AUDIT.md`](./04-KARDEX-AUDIT.md)             | Trazabilidad inmutable de existencias, motivos de ajuste, auditoría contable |             `[F3]`             |
 | **05** | [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md)                 | Arqueo Z, fondo inicial, balance físico vs esperado, gastos y abonos         |       `[F4]` / `[ALT+G]`       |
 | **06** | [`06-CUSTOMERS-CREDIT.md`](./06-CUSTOMERS-CREDIT.md)     | Cuentas por cobrar, estados de deuda, abonos automáticos a gaveta            |       `[F5]` / `[ALT+C]`       |
 | **07** | [`07-REPORTS-ANALYTICS.md`](./07-REPORTS-ANALYTICS.md)   | Métricas gerenciales, KPIs de rentabilidad, ranking top ventas, gráficos SVG |             `[F6]`             |
-| **08** | [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md)   | Conexión serial RS-232 básculas, impresoras ESC/POS, backup SQLite, permisos |       `[F7]` / `[ALT+U]`       |
+| **08** | [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md)   | Básculas RS-232, hardware ESC/POS, impresión de etiquetas, backup SQLite y permisos |       `[F7]` / `[ALT+U]`       |
 
 ### Estado operativo conocido de los módulos
 

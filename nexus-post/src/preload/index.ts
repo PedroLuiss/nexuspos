@@ -42,6 +42,8 @@ import type {
   ProductBarcode,
   ProductBarcodeInput,
   ProductBarcodeFilter,
+  ProductBarcodePreviewInput,
+  ProductBarcodeLabelInput,
   ProductPriceTier,
   ProductPriceTierInput,
   ProductPriceTierFilter,
@@ -127,7 +129,13 @@ const api: NexusApi = {
     softDelete: (id: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.softDelete, id),
     toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.toggleStatus, id)
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.toggleStatus, id),
+    previewLabel: (input: ProductBarcodePreviewInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.previewLabel, input),
+    printLabels: (input: ProductBarcodeLabelInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.printLabels, input),
+    downloadLabelsPdf: (input: ProductBarcodeLabelInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.downloadLabelsPdf, input)
   },
   productPriceTiers: {
     list: (filter?: ProductPriceTierFilter) =>

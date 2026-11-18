@@ -21,14 +21,40 @@ export const PRODUCT_CSV_HEADERS = [
   'ImagenURL'
 ]
 
-export const PRODUCT_CSV_TEMPLATE = [
-  PRODUCT_CSV_HEADERS.join(','),
-  '750100000001,Ejemplo Producto General,Abarrotes y Despensa,Genérica,Proveedor General,Producto Simple,15.50,22.00,50,10,Pieza (pza),Producto gravado al 16%,IVA General,16,,,',
-  '750100000002,Ejemplo Producto Reducido,Bebidas y Refrescos,Coca-Cola,Distribuidora Los Andes,Producto Simple,10.00,16.50,100,20,Pieza (pza),Producto gravado al 8%,IVA Reducido,8,,,',
-  '750100000003,Ejemplo Producto Exento,Panaderia,Genérica,Proveedor General,Producto Simple,2.00,3.00,80,15,Pieza (pza),Producto exento,Exento,0,,,'
-].join('\r\n')
-
 const quote = (value: string): string => `"${value.replace(/"/g, '""')}"`
+
+/** Construye las filas del catálogo en el orden de las columnas oficiales. */
+export function buildProductCatalogRows(
+  products: Product[],
+  brands: Brand[] = [],
+  suppliers: Supplier[] = [],
+  types: ProductType[] = []
+): (string | number)[][] {
+  const brandById = new Map(brands.map((b) => [b.id, b.name]))
+  const supplierById = new Map(suppliers.map((s) => [s.id, s.name]))
+  const typeById = new Map(types.map((t) => [t.id, t.name]))
+  const parentSkuById = new Map(products.map((p) => [p.id, p.code]))
+
+  return products.map((product) => [
+    product.code,
+    product.name,
+    product.category,
+    product.brandName ?? brandById.get(product.brandId ?? '') ?? '',
+    product.supplierName ?? supplierById.get(product.supplierId ?? '') ?? '',
+    product.typeName ?? typeById.get(product.typeId ?? '') ?? '',
+    product.costPrice,
+    product.salePrice,
+    product.stock,
+    product.minStock,
+    product.unit,
+    product.description ?? '',
+    product.taxName ?? (product.taxRate === 0 ? 'Exento' : ''),
+    product.taxRate ?? '',
+    product.attributes ?? '',
+    product.parentId ? (parentSkuById.get(product.parentId) ?? '') : '',
+    product.imageUrl ?? ''
+  ])
+}
 
 /** Serializa el catálogo completo con marca, proveedor, tipo e impuesto. */
 export function buildProductCatalogCsv(
@@ -37,32 +63,14 @@ export function buildProductCatalogCsv(
   suppliers: Supplier[] = [],
   types: ProductType[] = []
 ): string {
-  const brandById = new Map(brands.map((b) => [b.id, b.name]))
-  const supplierById = new Map(suppliers.map((s) => [s.id, s.name]))
-  const typeById = new Map(types.map((t) => [t.id, t.name]))
-  const parentSkuById = new Map(products.map((p) => [p.id, p.code]))
+  const rows = buildProductCatalogRows(products, brands, suppliers, types)
+  const csvValue = (value: string | number): string =>
+    typeof value === 'number' ? String(value) : quote(value)
 
-  const rows = products.map((product) => [
-    quote(product.code),
-    quote(product.name),
-    quote(product.category),
-    quote(product.brandName ?? brandById.get(product.brandId ?? '') ?? ''),
-    quote(product.supplierName ?? supplierById.get(product.supplierId ?? '') ?? ''),
-    quote(product.typeName ?? typeById.get(product.typeId ?? '') ?? ''),
-    product.costPrice.toFixed(2),
-    product.salePrice.toFixed(2),
-    String(product.stock),
-    String(product.minStock),
-    quote(product.unit),
-    quote(product.description ?? ''),
-    quote(product.taxName ?? (product.taxRate === 0 ? 'Exento' : '')),
-    product.taxRate === undefined ? '' : String(product.taxRate),
-    quote(product.attributes ?? ''),
-    quote(product.parentId ? (parentSkuById.get(product.parentId) ?? '') : ''),
-    quote(product.imageUrl ?? '')
-  ])
-
-  return [PRODUCT_CSV_HEADERS.join(','), ...rows.map((row) => row.join(','))].join('\r\n')
+  return [
+    PRODUCT_CSV_HEADERS.join(','),
+    ...rows.map((row) => row.map(csvValue).join(','))
+  ].join('\r\n')
 }
 
 export interface ProductCsvParseResult {
@@ -91,10 +99,60 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   imageUrl: ['imagenurl', 'imagen', 'url']
 }
 
-const splitCsvLine = (line: string): string[] =>
-  line
-    .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-    .map((cell) => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'))
+function detectCsvDelimiter(text: string): ',' | ';' {
+  const header = text.replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0] ?? ''
+  let commas = 0
+  let semicolons = 0
+  let quoted = false
+  for (let index = 0; index < header.length; index += 1) {
+    const character = header[index]
+    if (character === '"' && header[index + 1] === '"' && quoted) {
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (!quoted && character === ',') {
+      commas += 1
+    } else if (!quoted && character === ';') {
+      semicolons += 1
+    }
+  }
+  return semicolons > commas ? ';' : ','
+}
+
+function parseCsvRows(text: string): { rows: string[][]; error?: string } {
+  const delimiter = detectCsvDelimiter(text)
+  const source = text.replace(/^\uFEFF/, '')
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]
+    if (character === '"' && quoted && source[index + 1] === '"') {
+      cell += '"'
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (!quoted && character === delimiter) {
+      row.push(cell.trim())
+      cell = ''
+    } else if (!quoted && (character === '\n' || character === '\r')) {
+      if (character === '\r' && source[index + 1] === '\n') index += 1
+      row.push(cell.trim())
+      if (row.some((value) => value.length > 0)) rows.push(row)
+      row = []
+      cell = ''
+    } else {
+      cell += character
+    }
+  }
+
+  if (quoted) return { rows: [], error: 'El archivo contiene comillas sin cerrar.' }
+  row.push(cell.trim())
+  if (row.some((value) => value.length > 0)) rows.push(row)
+  return { rows }
+}
 
 const headerKey = (value: string): string =>
   value
@@ -114,9 +172,18 @@ function resolveColumns(headers: string[]): Record<string, number> {
   return columns
 }
 
-function parseNumber(value: string | undefined): number {
-  const parsed = Number((value ?? '').replace('%', '').replace(',', '.').trim())
-  return Number.isFinite(parsed) ? parsed : 0
+function parseNumber(value: string | undefined): number | undefined {
+  const trimmed = value?.replace('%', '').replace(/\s/g, '').trim()
+  if (!trimmed) return undefined
+
+  const commaIndex = trimmed.lastIndexOf(',')
+  const dotIndex = trimmed.lastIndexOf('.')
+  const normalized =
+    commaIndex > dotIndex
+      ? trimmed.replace(/\./g, '').replace(',', '.')
+      : trimmed.replace(/,/g, '')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 /**
@@ -135,15 +202,38 @@ export function parseProductCatalogCsv(
   defaultTax: TaxRate | null,
   existingProducts: Product[] = []
 ): ProductCsvParseResult {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
+  const parsed = parseCsvRows(text)
+  if (parsed.error) return { rows: [], errors: [parsed.error] }
+  return parseProductCatalogRows(
+    parsed.rows,
+    taxes,
+    brands,
+    suppliers,
+    types,
+    defaultTax,
+    existingProducts
+  )
+}
+
+/** Interpreta filas tabulares ya leídas desde CSV o una hoja XLSX. */
+export function parseProductCatalogRows(
+  tableRows: string[][],
+  taxes: TaxRate[],
+  brands: Brand[],
+  suppliers: Supplier[],
+  types: ProductType[],
+  defaultTax: TaxRate | null,
+  existingProducts: Product[] = []
+): ProductCsvParseResult {
   const errors: string[] = []
   const rows: ProductInput[] = []
+  const lines = tableRows.filter((row) => row.some((value) => value.trim().length > 0))
 
   if (lines.length < 2) {
     return { rows, errors: ['El archivo no contiene filas de datos suficientes.'] }
   }
 
-  const columns = resolveColumns(splitCsvLine(lines[0]))
+  const columns = resolveColumns(lines[0])
   for (const required of ['code', 'name', 'salePrice']) {
     if (columns[required] === undefined) {
       return {
@@ -158,6 +248,8 @@ export function parseProductCatalogCsv(
   const activeSuppliers = suppliers.filter((s) => s.active)
   const activeTypes = types.filter((t) => t.active)
   const exemptTax = activeTaxes.find((tax) => tax.rate === 0) ?? null
+  const existingCodes = new Set(existingProducts.map((product) => product.code.trim().toLowerCase()))
+  const importedCodes = new Set<string>()
 
   const resolveRef = (
     rawValue: string,
@@ -179,7 +271,7 @@ export function parseProductCatalogCsv(
 
     if (rawRate) {
       const rate = parseNumber(rawRate)
-      if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      if (rate === undefined || rate < 0 || rate > 100) {
         return { error: `tasa "${rawRate}" inválida` }
       }
       const byName = rawName
@@ -210,20 +302,42 @@ export function parseProductCatalogCsv(
   }
 
   for (let i = 1; i < lines.length; i++) {
-    const row = splitCsvLine(lines[i])
+    const row = lines[i]
     const cell = (key: string): string =>
       columns[key] === undefined ? '' : (row[columns[key]] ?? '').trim()
 
     const code = cell('code')
     const name = cell('name')
+    const normalizedCode = code.toLowerCase()
     const salePrice = parseNumber(cell('salePrice'))
 
     if (!code || !name) {
       errors.push(`Línea ${i + 1}: Código y Nombre son obligatorios.`)
       continue
     }
-    if (salePrice <= 0) {
+    if (existingCodes.has(normalizedCode) || importedCodes.has(normalizedCode)) {
+      errors.push(`Línea ${i + 1}: el código "${code}" ya existe en el catálogo o en el archivo.`)
+      continue
+    }
+    if (salePrice === undefined || salePrice <= 0) {
       errors.push(`Línea ${i + 1}: el precio de venta debe ser mayor a 0.`)
+      continue
+    }
+
+    const costPrice = parseNumber(cell('costPrice'))
+    const stock = parseNumber(cell('stock'))
+    const minStock = parseNumber(cell('minStock'))
+    const invalidNumber = [
+      ['PrecioCosto', cell('costPrice'), costPrice],
+      ['Stock', cell('stock'), stock],
+      ['StockMinimo', cell('minStock'), minStock]
+    ].find(([, raw, parsedValue]) => raw !== '' && parsedValue === undefined)
+    if (invalidNumber) {
+      errors.push(`Línea ${i + 1}: el valor de ${invalidNumber[0]} no es numérico.`)
+      continue
+    }
+    if ((costPrice ?? 0) < 0 || (stock ?? 0) < 0 || (minStock ?? 5) < 0) {
+      errors.push(`Línea ${i + 1}: costo, stock y stock mínimo no pueden ser negativos.`)
       continue
     }
 
@@ -267,10 +381,10 @@ export function parseProductCatalogCsv(
       code,
       name,
       category: cell('category') || 'General',
-      costPrice: parseNumber(cell('costPrice')),
+      costPrice: costPrice ?? 0,
       salePrice,
-      stock: parseNumber(cell('stock')),
-      minStock: columns.minStock !== undefined ? parseNumber(cell('minStock')) : 5,
+      stock: stock ?? 0,
+      minStock: minStock ?? 5,
       unit: cell('unit') || 'Pieza (pza)',
       description: cell('description'),
       brandId: brand.id,
@@ -282,6 +396,7 @@ export function parseProductCatalogCsv(
       imageUrl: cell('imageUrl'),
       active: true
     })
+    importedCodes.add(normalizedCode)
   }
 
   return { rows, errors }

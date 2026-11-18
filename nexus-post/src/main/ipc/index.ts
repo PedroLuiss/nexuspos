@@ -26,6 +26,7 @@ import { SqliteDatabaseMaintenanceRepository } from '../adapters/persistence/sql
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
+import { BarcodeLabelPrinter } from '../adapters/hardware/barcode-label-printer'
 import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
 import { LaravelDatabaseBackupAdapter } from '../adapters/remote/laravel-database-backup.adapter'
@@ -183,13 +184,14 @@ export function registerIpcHandlers(): void {
   // Conectar el adaptador serial al servicio de dominio
   const serialAdapter = new SerialScaleAdapter()
   scaleService.setHardwarePort(serialAdapter)
+  const barcodeLabelPrinter = new BarcodeLabelPrinter()
 
   registerProductIpc(productService)
   registerTaxIpc(taxService)
   registerBrandIpc(brandService)
   registerSupplierIpc(supplierService)
   registerProductTypeIpc(productTypeService)
-  registerProductBarcodeIpc(productBarcodeService)
+  registerProductBarcodeIpc(productBarcodeService, productService, barcodeLabelPrinter)
   registerProductPriceTierIpc(productPriceTierService)
   registerComboItemIpc(comboItemService)
   registerProductBatchIpc(productBatchService)

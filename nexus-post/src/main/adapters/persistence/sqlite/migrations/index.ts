@@ -29,6 +29,7 @@ import { migration020ProductVariants } from './020_product_variants'
 import { migration021ProductBatches } from './021_product_batches'
 import { migration022SaleItemTraceability } from './022_sale_item_traceability'
 import { migration023ProductListIndexes } from './023_product_list_indexes'
+import { migration024FixSeedBarcodeFormat } from './024_fix_seed_barcode_format'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -53,7 +54,8 @@ const MIGRATIONS: Migration[] = [
   migration020ProductVariants,
   migration021ProductBatches,
   migration022SaleItemTraceability,
-  migration023ProductListIndexes
+  migration023ProductListIndexes,
+  migration024FixSeedBarcodeFormat
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version
