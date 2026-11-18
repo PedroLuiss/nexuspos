@@ -3,6 +3,7 @@ import type { Product, ProductInput, KardexReason } from '@shared/contracts'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
 import { useProductFilters } from '../hooks/useProductFilters'
+import { useProductDelete } from '../hooks/useProductDelete'
 import { useTaxes } from '../../../shared/hooks/useTaxes'
 import { useBrands } from '../../../shared/hooks/useBrands'
 import { useSuppliers } from '../../../shared/hooks/useSuppliers'
@@ -16,6 +17,7 @@ import ProductImportExportModal from './ProductImportExportModal'
 import ProductToolbar from './ProductToolbar'
 import ProductFilters from './ProductFilters'
 import ProductRows from './ProductRows'
+import { ProductDeleteConfirmModal } from './ProductDeleteConfirmModal'
 import ProductStatusBar from './ProductStatusBar'
 import TablePagination from './TablePagination'
 import type { ProductImportBatchResult } from './ProductImportTab'
@@ -58,14 +60,16 @@ export const ProductTable: React.FC = () => {
   const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('export')
   const [fullCatalog, setFullCatalog] = useState<Product[]>([])
   const [isLoadingFullCatalog, setIsLoadingFullCatalog] = useState(false)
-  const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
+  const { productToDelete, deletingProductId, requestDelete, cancelDelete, confirmDelete } =
+    useProductDelete({ deleteProduct })
 
   const anyModalOpen =
     isModalOpen ||
     isBarcodeModalOpen ||
     isCategoryModalOpen ||
     isImportExportOpen ||
-    adjustmentMode !== null
+    adjustmentMode !== null ||
+    productToDelete !== null
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -101,18 +105,6 @@ export const ProductTable: React.FC = () => {
     const id = productId ?? editingProduct?.id
     if (id) return updateProduct({ ...input, id })
     return createProduct(input)
-  }
-
-  const handleDelete = async (product: Product): Promise<void> => {
-    if (!window.confirm(`¿Dar de baja el producto "${product.name}"?`)) return
-    setDeletingProductId(product.id)
-    try {
-      await deleteProduct(product.id)
-    } catch (err) {
-      window.alert(toErrorMessage(err))
-    } finally {
-      setDeletingProductId(null)
-    }
   }
 
   const handleOpenImportExport = async (tab: 'import' | 'export'): Promise<void> => {
@@ -227,7 +219,7 @@ export const ProductTable: React.FC = () => {
           onSelect={setSelectedProductId}
           onToggleStatus={handleToggleStatus}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={requestDelete}
         />
         <ProductStatusBar stats={stats} />
         <TablePagination
@@ -254,6 +246,12 @@ export const ProductTable: React.FC = () => {
           onSubmit={handleSave}
         />
       )}
+
+      <ProductDeleteConfirmModal
+        productName={productToDelete?.name ?? null}
+        onCancel={cancelDelete}
+        onConfirm={() => void confirmDelete()}
+      />
 
       <CategoryManagerModal
         isOpen={isCategoryModalOpen}
