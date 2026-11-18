@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { Product, KardexReason } from '@shared/contracts'
 import { Plus, Minus, X, Check } from '../../../shared/icons/Icons'
 import { getProductQuantityStep } from '@shared/lib/product-quantity'
+import ProductSearchSelect from './ProductSearchSelect'
 
 interface StockAdjustmentModalProps {
   isOpen: boolean
@@ -23,7 +24,10 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   onClose,
   onConfirmAdjustment
 }) => {
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '')
+  const [selectedProductIdValue, setSelectedProductId] = useState<string>('')
+  const selectedProductId = products.some((product) => product.id === selectedProductIdValue)
+    ? selectedProductIdValue
+    : (products[0]?.id ?? '')
   const [quantity, setQuantity] = useState<number>(10)
   const [reason, setReason] = useState<KardexReason>(mode === 'IN' ? 'ENTRADA_MASIVA' : 'MERMA')
   const [notes, setNotes] = useState('')
@@ -83,17 +87,13 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             {/* Product Select */}
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Producto a Ajustar</label>
-              <select
+              <ProductSearchSelect
+                products={products}
                 value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
+                onChange={setSelectedProductId}
+                label="Producto a ajustar"
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
-              >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} (Stock actual: {p.stock} {p.unit})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Quantity and Reason */}

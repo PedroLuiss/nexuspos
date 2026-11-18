@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { ComboItem, ComboItemInput, Product } from '@shared/contracts'
 import { useComboItems } from '../../../shared/hooks/useComboItems'
 import { Check, Edit3, Layers, Plus, Trash2, X, AlertCircle } from '../../../shared/icons/Icons'
+import ProductSearchSelect from './ProductSearchSelect'
 
 interface ComboItemsEditorProps {
   /** ID del producto combo (solo se edita si ya existe). */
@@ -175,18 +176,14 @@ export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, pro
               <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
                 Producto componente
               </label>
-              <select
+              <ProductSearchSelect
+                products={eligible}
                 value={draft.componentId}
-                onChange={(e) => setDraft({ ...draft, componentId: e.target.value })}
+                onChange={(componentId) => setDraft({ ...draft, componentId })}
+                label="Producto componente"
                 className={inputClass}
-              >
-                <option value="">Seleccione un producto…</option>
-                {eligible.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} (stock {p.stock})
-                  </option>
-                ))}
-              </select>
+                placeholder="Buscar por código o nombre..."
+              />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">

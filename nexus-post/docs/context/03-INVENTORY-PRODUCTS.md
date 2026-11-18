@@ -20,6 +20,7 @@ El módulo de Inventario y Productos gestiona el catálogo comercial y las exist
   - **Importar (`ProductImportTab.tsx`):** Carga masiva por lotes desde archivos Excel/CSV con parser tolerante a comillas, descarga de plantilla oficial modelo, previsualización de tabla previa a guardar y reporte detallado de errores por fila.
 - **Generador de Etiquetas de Código de Barras (`BarcodeGeneratorModal.tsx` / `[ALT + B]`):** Formatos EAN-13 y Code128, resolución DPI configurable (203, 300, 600 DPI), dimensiones en milímetros y número de copias por lote para impresoras Zebra o Xprinter.
 - **Gestión de Categorías (`CategoryManagerModal.tsx`):** Modal CRUD para altas, bajas y cambios en el catálogo de categorías comerciales vinculadas a los productos.
+- **Selectores de producto con búsqueda:** los formularios de componentes de combo, ajustes de stock y etiquetas filtran productos por código o nombre y muestran también el código y stock/unidad en los resultados.
 - **Catálogo Demo Sembrado (`006_seed_products.ts`):** 50 productos realistas precargados divididos en 8 categorías de abarrotes, refrescos, lácteos, panadería, limpieza y cuidado personal, con códigos EAN-13 válidos e imágenes.
 
 ---

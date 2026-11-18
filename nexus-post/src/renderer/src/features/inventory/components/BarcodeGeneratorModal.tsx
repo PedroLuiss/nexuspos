@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import type { Product } from '@shared/contracts'
 import { Barcode, Printer, X } from '../../../shared/icons/Icons'
+import ProductSearchSelect from './ProductSearchSelect'
 
 interface BarcodeGeneratorModalProps {
   isOpen: boolean
@@ -13,7 +14,10 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
   onClose,
   products
 }) => {
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '')
+  const [selectedProductIdValue, setSelectedProductId] = useState<string>('')
+  const selectedProductId = products.some((product) => product.id === selectedProductIdValue)
+    ? selectedProductIdValue
+    : (products[0]?.id ?? '')
   const [barcodeFormat, setBarcodeFormat] = useState<'EAN-13' | 'Code128'>('EAN-13')
   const [dpi, setDpi] = useState<number>(300)
   const [widthMm, setWidthMm] = useState<number>(50)
@@ -64,17 +68,13 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
               <label className="block font-semibold text-slate-700 mb-1">
                 Seleccionar Producto
               </label>
-              <select
+              <ProductSearchSelect
+                products={products}
                 value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
+                onChange={setSelectedProductId}
+                label="Seleccionar producto"
                 className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
-              >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
