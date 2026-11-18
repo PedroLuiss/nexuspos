@@ -4,6 +4,7 @@ import type {
   ProductFilter,
   ProductPageQuery,
   ProductPageResult,
+  ProductCatalogStatsDelta,
   TaxRate,
   Brand,
   Supplier,
@@ -125,8 +126,10 @@ export class ProductService {
     })
   }
 
-  softDelete(id: string): void {
-    if (!this.products.softDeleteCascade(id)) throw new NotFoundError('Producto no encontrado')
+  softDelete(id: string): ProductCatalogStatsDelta {
+    const statsDelta = this.products.softDeleteCascade(id)
+    if (!statsDelta) throw new NotFoundError('Producto no encontrado')
+    return statsDelta
   }
 
   toggleStatus(id: string): Product {

@@ -3,7 +3,8 @@ import type {
   ProductInput,
   ProductFilter,
   ProductPageQuery,
-  ProductPageResult
+  ProductPageResult,
+  ProductCatalogStatsDelta
 } from '@shared/contracts'
 
 /**
@@ -19,7 +20,7 @@ export interface ProductRepository {
   create(input: ProductInput & { id: string; createdAt: string; updatedAt: string }): Product
   update(product: Product): Product
   softDelete(id: string): void
-  softDeleteCascade(id: string): boolean
+  softDeleteCascade(id: string): ProductCatalogStatsDelta | null
   toggleStatus(id: string): Product
   setStock(id: string, stock: number): Product
 }

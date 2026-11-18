@@ -27,9 +27,7 @@ export function registerProductIpc(products: ProductService): void {
     products.update(product)
   )
 
-  ipcMain.handle(IPC_CHANNELS.products.softDelete, (_event, id: string) => {
-    products.softDelete(id)
-  })
+  ipcMain.handle(IPC_CHANNELS.products.softDelete, (_event, id: string) => products.softDelete(id))
 
   ipcMain.handle(IPC_CHANNELS.products.toggleStatus, (_event, id: string) =>
     products.toggleStatus(id)

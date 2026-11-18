@@ -105,6 +105,14 @@ export interface ProductCatalogStats {
   outOfStock: number
 }
 
+export interface ProductCatalogStatsDelta {
+  total: number
+  totalStock: number
+  totalValue: number
+  lowStock: number
+  outOfStock: number
+}
+
 export interface ProductPageResult {
   items: Product[]
   page: number

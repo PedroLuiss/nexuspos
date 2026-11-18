@@ -129,8 +129,16 @@ export function useProducts(query?: ProductPageQuery, enabled = true): UseProduc
 
   const deleteProduct = useCallback(
     async (id: string) => {
-      await productsApi.softDelete(id)
-      statsLoaded.current = false
+      const statsDelta = await productsApi.softDelete(id)
+      if (statsLoaded.current) {
+        setStats((current) => ({
+          total: Math.max(0, current.total + statsDelta.total),
+          totalStock: current.totalStock + statsDelta.totalStock,
+          totalValue: current.totalValue + statsDelta.totalValue,
+          lowStock: Math.max(0, current.lowStock + statsDelta.lowStock),
+          outOfStock: Math.max(0, current.outOfStock + statsDelta.outOfStock)
+        }))
+      }
       await reload()
     },
     [reload]

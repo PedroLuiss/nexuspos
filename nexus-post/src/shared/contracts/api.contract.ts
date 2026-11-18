@@ -3,7 +3,8 @@ import type {
   ProductInput,
   ProductFilter,
   ProductPageQuery,
-  ProductPageResult
+  ProductPageResult,
+  ProductCatalogStatsDelta
 } from './product.contract'
 import type { TaxesApi } from './tax.contract'
 import type { Brand, BrandInput, BrandFilter } from './brand.contract'
@@ -204,7 +205,7 @@ export interface ProductsApi {
   listVariants(parentId: string): Promise<Product[]>
   create(input: ProductInput): Promise<Product>
   update(product: Product): Promise<Product>
-  softDelete(id: string): Promise<void>
+  softDelete(id: string): Promise<ProductCatalogStatsDelta>
   toggleStatus(id: string): Promise<Product>
 }
 

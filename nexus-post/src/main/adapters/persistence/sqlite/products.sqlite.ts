@@ -5,7 +5,8 @@ import type {
   ProductFilter,
   ProductPageQuery,
   ProductPageResult,
-  ProductCatalogStats
+  ProductCatalogStats,
+  ProductCatalogStatsDelta
 } from '@shared/contracts'
 import type { ProductRepository } from '../../../ports/product.repository'
 
@@ -97,6 +98,39 @@ const EFFECTIVE_STOCK = `CASE
   ), 0)
   ELSE p.stock
 END`
+
+const DELETE_IMPACT_STATS = `
+  SELECT COUNT(*) AS total,
+    COALESCE(SUM(effective_stock), 0) AS totalStock,
+    COALESCE(SUM(effective_stock * cost_price), 0) AS totalValue,
+    COALESCE(SUM(CASE WHEN effective_stock > 0 AND effective_stock <= min_stock THEN 1 ELSE 0 END), 0) AS lowStock,
+    COALESCE(SUM(CASE WHEN effective_stock = 0 THEN 1 ELSE 0 END), 0) AS outOfStock
+  FROM (
+    SELECT p.deleted, p.cost_price, p.min_stock,
+      CASE
+        WHEN t.kind = 'combo' THEN COALESCE((
+          SELECT MIN(CAST(cp.stock / ci.quantity AS INTEGER))
+          FROM combo_items ci
+          JOIN products cp ON cp.id = ci.component_id
+          WHERE ci.combo_id = p.id AND ci.deleted = 0 AND ci.active = 1 AND cp.deleted = 0
+        ), 0)
+        WHEN p.track_batches = 1 THEN COALESCE((
+          SELECT SUM(pb.quantity)
+          FROM product_batches pb
+          WHERE pb.product_id = p.id AND pb.deleted = 0 AND pb.active = 1
+        ), 0)
+        ELSE p.stock
+      END AS effective_stock
+    FROM products p
+    JOIN temp.product_delete_impact impact ON impact.id = p.id
+    LEFT JOIN product_types t ON t.id = p.type_id
+  )
+  WHERE deleted = 0
+`
+
+function readDeleteImpactStats(db: Database.Database): ProductCatalogStats {
+  return db.prepare(DELETE_IMPACT_STATS).get() as ProductCatalogStats
+}
 
 function buildPageWhere(query: ProductPageQuery): {
   where: string
@@ -433,11 +467,34 @@ export class SqliteProductRepository implements ProductRepository {
       .run(new Date().toISOString(), id)
   }
 
-  softDeleteCascade(id: string): boolean {
+  softDeleteCascade(id: string): ProductCatalogStatsDelta | null {
     const now = new Date().toISOString()
     return this.db.transaction((productId: string) => {
       const exists = this.db.prepare('SELECT 1 FROM products WHERE id = ?').get(productId)
-      if (!exists) return false
+      if (!exists) return null
+
+      this.db.exec(`
+        CREATE TEMP TABLE IF NOT EXISTS product_delete_impact (
+          id TEXT PRIMARY KEY
+        ) WITHOUT ROWID;
+        DELETE FROM temp.product_delete_impact;
+      `)
+      this.db
+        .prepare(
+          `INSERT OR IGNORE INTO temp.product_delete_impact (id)
+           SELECT id FROM products WHERE id = @productId OR parent_id = @productId`
+        )
+        .run({ productId })
+      this.db
+        .prepare(
+          `INSERT OR IGNORE INTO temp.product_delete_impact (id)
+           SELECT combo_id FROM combo_items
+           WHERE component_id IN (
+             SELECT id FROM products WHERE id = @productId OR parent_id = @productId
+           )`
+        )
+        .run({ productId })
+      const before = readDeleteImpactStats(this.db)
 
       this.db
         .prepare(
@@ -457,7 +514,15 @@ export class SqliteProductRepository implements ProductRepository {
               OR component_id IN (SELECT id FROM products WHERE id = ? OR parent_id = ?)`
         )
         .run(now, productId, productId, productId, productId)
-      return true
+      const after = readDeleteImpactStats(this.db)
+      this.db.exec('DROP TABLE temp.product_delete_impact')
+      return {
+        total: after.total - before.total,
+        totalStock: after.totalStock - before.totalStock,
+        totalValue: after.totalValue - before.totalValue,
+        lowStock: after.lowStock - before.lowStock,
+        outOfStock: after.outOfStock - before.outOfStock
+      }
     })(id)
   }
 

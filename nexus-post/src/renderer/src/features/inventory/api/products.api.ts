@@ -4,6 +4,7 @@ import type {
   ProductFilter,
   ProductPageQuery,
   ProductPageResult,
+  ProductCatalogStatsDelta,
   AdjustStockInput,
   AdjustStockResult,
   KardexMovement
@@ -24,7 +25,7 @@ export const productsApi = {
   getById: (id: string): Promise<Product | null> => bridge().products.getById(id),
   create: (input: ProductInput): Promise<Product> => bridge().products.create(input),
   update: (product: Product): Promise<Product> => bridge().products.update(product),
-  softDelete: (id: string): Promise<void> => bridge().products.softDelete(id),
+  softDelete: (id: string): Promise<ProductCatalogStatsDelta> => bridge().products.softDelete(id),
   toggleStatus: (id: string): Promise<Product> => bridge().products.toggleStatus(id)
 }
 
