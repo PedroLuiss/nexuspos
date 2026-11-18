@@ -233,13 +233,15 @@ export const ProductTable: React.FC = () => {
         onConfirmAdjustment={handleStockAdjustment}
       />
 
-      <ProductImportExportModal
-        isOpen={isImportExportOpen}
-        initialTab={importExportTab}
-        onClose={() => setIsImportExportOpen(false)}
-        products={filters.filtered}
-        onImportBatch={handleImportBatch}
-      />
+      {isImportExportOpen && (
+        <ProductImportExportModal
+          isOpen={isImportExportOpen}
+          initialTab={importExportTab}
+          onClose={() => setIsImportExportOpen(false)}
+          products={filters.filtered}
+          onImportBatch={handleImportBatch}
+        />
+      )}
     </div>
   )
 }

@@ -25,8 +25,8 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
   }
 
   return (
-    <div className="border border-[#E5E5E5] rounded-[4px] overflow-hidden">
-      <table className="w-full text-xs">
+    <div className="border border-[#E5E5E5] rounded-[4px] overflow-x-auto">
+      <table className="w-full min-w-[540px] text-xs">
         <thead>
           <tr className="bg-[#F9F9F9] border-b border-[#E5E5E5] text-[#5C5C5C]">
             <th className="text-left px-3 py-2 font-semibold">Nombre</th>

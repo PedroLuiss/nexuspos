@@ -40,8 +40,8 @@ export const StockBranchTransferForm: React.FC<StockBranchTransferFormProps> = (
       onSubmit={handleSubmit}
       className="bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden"
     >
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#F9F9F9] border-b border-[#E5E5E5]">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[#F9F9F9] border-b border-[#E5E5E5]">
+        <div className="flex min-w-0 items-center gap-2">
           <ArrowRightLeft size={15} className="text-[#0067C0]" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-[#1B1B1B]">
             Generar Orden de Traslado Inter-Tienda desde:{' '}
@@ -130,8 +130,8 @@ export const StockBranchTransferForm: React.FC<StockBranchTransferFormProps> = (
         </div>
       </div>
 
-      <div className="px-5 py-3 bg-[#F9F9F9] border-t border-[#E5E5E5] flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs text-[#5C5C5C]">
+      <div className="px-3 sm:px-5 py-3 bg-[#F9F9F9] border-t border-[#E5E5E5] flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#5C5C5C]">
           <span className="flex items-center gap-1">
             <span className="kbd-badge">ESC</span> Cerrar
           </span>
@@ -143,7 +143,7 @@ export const StockBranchTransferForm: React.FC<StockBranchTransferFormProps> = (
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}

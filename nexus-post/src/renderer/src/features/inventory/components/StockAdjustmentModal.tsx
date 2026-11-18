@@ -52,13 +52,13 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
-      <div className="w-full max-w-lg bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
+      <div className="w-full max-w-lg max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
-          <div className="flex items-center gap-2.5">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className={`w-8 h-8 rounded-[4px] flex items-center justify-center border ${
+              className={`shrink-0 w-8 h-8 rounded-[4px] flex items-center justify-center border ${
                 isInputMode
                   ? 'bg-emerald-50 text-[#107C41] border-emerald-200'
                   : 'bg-red-50 text-[#C42B1C] border-red-200'
@@ -66,7 +66,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             >
               {isInputMode ? <Plus size={18} /> : <Minus size={18} />}
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-bold text-slate-800">
                 {isInputMode
                   ? 'Entradas Masivas de Inventario'
@@ -77,13 +77,13 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+          <button onClick={onClose} className="shrink-0 text-slate-400 hover:text-slate-700">
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
             {/* Product Select */}
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Producto a Ajustar</label>
@@ -97,7 +97,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             </div>
 
             {/* Quantity and Reason */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
                   Cantidad ({selectedProduct?.unit || 'Unidades'})
@@ -155,12 +155,12 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             </div>
 
             {/* Live calculation preview */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded">
               <div>
                 <span className="text-slate-400 block text-[11px]">Stock Anterior:</span>
                 <span className="font-bold text-slate-700 font-tabular">{currentStock}</span>
               </div>
-              <div className="text-slate-300 text-lg">➔</div>
+              <div className="hidden sm:block text-slate-300 text-lg">➔</div>
               <div>
                 <span className="text-slate-400 block text-[11px]">
                   {isInputMode ? 'Ajuste (+):' : 'Ajuste (-):'}
@@ -173,7 +173,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                   {isInputMode ? `+${quantity}` : `-${quantity}`}
                 </span>
               </div>
-              <div className="text-slate-300 text-lg">➔</div>
+              <div className="hidden sm:block text-slate-300 text-lg">➔</div>
               <div>
                 <span className="text-slate-400 block text-[11px]">Nuevo Stock Resultante:</span>
                 <span className="font-extrabold text-slate-900 font-tabular text-sm">
@@ -184,7 +184,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200 flex justify-end gap-2">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200 flex flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={onClose}

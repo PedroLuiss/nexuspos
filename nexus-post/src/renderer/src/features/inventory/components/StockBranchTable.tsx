@@ -14,8 +14,8 @@ export const StockBranchTable: React.FC<StockBranchTableProps> = ({
   onSelect
 }) => {
   return (
-    <div className="bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
-      <table className="w-full text-left text-xs border-collapse">
+    <div className="bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-x-auto">
+      <table className="w-full min-w-[900px] text-left text-xs border-collapse">
         <thead className="bg-[#F9F9F9] border-b border-[#E5E5E5] text-[#1B1B1B] font-semibold">
           <tr>
             <th className="py-2 px-3 text-left">Sucursal / Nodo</th>

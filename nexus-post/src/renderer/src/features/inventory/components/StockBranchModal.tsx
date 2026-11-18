@@ -104,15 +104,15 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop select-none">
-      <div className="w-full max-w-4xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] shrink-0">
-          <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop select-none">
+      <div className="w-full max-w-4xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5]">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-9 h-9 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0] border border-[#0067C0]/20 flex items-center justify-center shadow-xs">
               <Building2 size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                   Consulta de Stock en Sucursales &amp; Traslados
                 </h2>
@@ -120,7 +120,7 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
                   ALT+O
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-[#5C5C5C] mt-0.5 font-medium">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5C5C5C] mt-0.5 font-medium">
                 <span className="flex items-center gap-1 text-[#107C41] font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#107C41] animate-pulse"></span>
                   Conexión Multi-Tienda Online (Mesh Sync)
@@ -152,7 +152,7 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-[#F3F3F3] border-b border-[#E5E5E5] space-y-3 shrink-0">
+        <div className="shrink-0 p-3 sm:p-4 bg-[#F3F3F3] border-b border-[#E5E5E5] space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
             <div className="md:col-span-2 relative">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5C5C5C] mb-1">
@@ -228,7 +228,7 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        <div className="min-h-0 flex-1 p-3 sm:p-4 overflow-y-auto space-y-4">
           <StockBranchTable
             branches={filteredBranches}
             selectedBranchId={selectedBranchId}

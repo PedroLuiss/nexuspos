@@ -105,7 +105,7 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
   }
 
   return (
-    <div className="p-6 space-y-4 text-xs max-h-[60vh] overflow-y-auto">
+    <div className="p-4 sm:p-6 space-y-4 text-xs">
       <div className="flex items-center justify-between gap-3 p-3 bg-blue-50 border border-blue-200 rounded-[6px]">
         <div>
           <p className="font-semibold text-blue-900">¿No tienes el formato requerido?</p>
@@ -197,7 +197,7 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
 
       {parsedRows.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-bold text-slate-800">
               Previsualización ({parsedRows.length} productos detectados):
             </span>
@@ -205,14 +205,14 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
               type="button"
               disabled={isProcessing}
               onClick={handleConfirmImport}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0067C0] hover:bg-[#0078D4] text-white font-bold rounded-[4px] shadow-xs cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-4 py-1.5 bg-[#0067C0] hover:bg-[#0078D4] text-white font-bold rounded-[4px] shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Check size={14} />
               <span>{isProcessing ? 'Guardando en BD...' : 'Confirmar e Importar'}</span>
             </button>
           </div>
-          <div className="border border-slate-200 rounded-[4px] overflow-hidden max-h-36 overflow-y-auto">
-            <table className="w-full text-left text-[11px]">
+          <div className="border border-slate-200 rounded-[4px] max-h-36 overflow-auto">
+            <table className="w-full min-w-[760px] text-left text-[11px]">
               <thead className="bg-slate-100 text-slate-700 sticky top-0 font-semibold">
                 <tr>
                   <th className="py-1 px-2">Código</th>
@@ -234,7 +234,9 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
                     <td className="py-1 px-2 font-sans font-medium">{r.name}</td>
                     <td className="py-1 px-2 font-sans">{r.category}</td>
                     <td className="py-1 px-2 text-center font-sans">{brandLabel(r.brandId)}</td>
-                    <td className="py-1 px-2 text-center font-sans">{supplierLabel(r.supplierId)}</td>
+                    <td className="py-1 px-2 text-center font-sans">
+                      {supplierLabel(r.supplierId)}
+                    </td>
                     <td className="py-1 px-2 text-center font-sans">{typeLabel(r.typeId)}</td>
                     <td className="py-1 px-2 text-right">${r.costPrice.toFixed(2)}</td>
                     <td className="py-1 px-2 text-right font-bold text-[#107C41]">

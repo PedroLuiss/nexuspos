@@ -31,15 +31,15 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
   const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
-      <div className="w-full max-w-2xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
+      <div className="w-full max-w-2xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0] flex items-center justify-center">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="shrink-0 w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0] flex items-center justify-center">
               <Barcode size={18} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                 Generador de Etiquetas y Códigos de Barras
               </h2>
@@ -49,7 +49,7 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             <span className="kbd-badge">ESC</span>
             <button
               onClick={onClose}
@@ -61,7 +61,7 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
         </div>
 
         {/* Content: 2 Columns (Config Left, Preview Right) */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Settings Left */}
           <div className="space-y-3.5 text-xs">
             <div>
@@ -213,8 +213,8 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200">
-          <span className="text-xs text-slate-500">
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3.5 bg-[#f8f9fa] border-t border-slate-200">
+          <span className="w-full sm:w-auto text-xs text-slate-500">
             Total a imprimir: <strong className="text-slate-800">{copies} etiquetas</strong>
           </span>
 

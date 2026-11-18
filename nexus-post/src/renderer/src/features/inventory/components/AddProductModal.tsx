@@ -78,19 +78,19 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
       <div
-        className="w-full max-w-3xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col"
+        className="w-full max-w-5xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col"
         role="dialog"
         aria-modal="true"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0]">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[4px] bg-[#0067C0]/10 text-[#0067C0]">
               <Package size={18} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                 {product ? 'Editar Producto' : 'Agregar Nuevo Producto'}
               </h2>
@@ -99,7 +99,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             <span className="kbd-badge">ESC</span>
             <button
               disabled={isSaving}
@@ -112,52 +112,54 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
-            <ProductBasicFields
-              values={values}
-              update={update}
-              categories={categories}
-              units={PRODUCT_UNITS}
-              onGenerateCode={generateCode}
-            />
-            <ProductPricingFields
-              values={values}
-              update={update}
-              setCostPrice={setCostPrice}
-              setProfitMarginPercent={setProfitMarginPercent}
-              setSalePrice={setSalePrice}
-              marginDollar={marginDollar}
-              marginPercent={marginPercent}
-            />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ProductBasicFields
+                values={values}
+                update={update}
+                categories={categories}
+                units={PRODUCT_UNITS}
+                onGenerateCode={generateCode}
+              />
+              <ProductPricingFields
+                values={values}
+                update={update}
+                setCostPrice={setCostPrice}
+                setProfitMarginPercent={setProfitMarginPercent}
+                setSalePrice={setSalePrice}
+                marginDollar={marginDollar}
+                marginPercent={marginPercent}
+              />
+            </div>
+
+            {product && (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ProductBarcodesEditor productId={product.id} />
+                <ProductPriceTiersEditor productId={product.id} salePrice={values.salePrice} />
+                {isCombo && <ComboItemsEditor comboId={product.id} products={products} />}
+                {!isCombo && !product.parentId && (
+                  <VariantEditor
+                    parent={product}
+                    variantAttrs={values.variantAttrs}
+                    onVariantAttrsChange={(json) => update('variantAttrs', json)}
+                  />
+                )}
+                {!product.parentId && (
+                  <BatchEditor
+                    productId={product.id}
+                    productName={product.name}
+                    trackBatches={values.trackBatches}
+                    onEnableTracking={() => update('trackBatches', true)}
+                  />
+                )}
+              </div>
+            )}
           </div>
 
-          {product && (
-            <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[40vh] overflow-y-auto">
-              <ProductBarcodesEditor productId={product.id} />
-              <ProductPriceTiersEditor productId={product.id} salePrice={values.salePrice} />
-              {isCombo && <ComboItemsEditor comboId={product.id} products={products} />}
-              {!isCombo && !product.parentId && (
-                <VariantEditor
-                  parent={product}
-                  variantAttrs={values.variantAttrs}
-                  onVariantAttrsChange={(json) => update('variantAttrs', json)}
-                />
-              )}
-              {!product.parentId && (
-                <BatchEditor
-                  productId={product.id}
-                  productName={product.name}
-                  trackBatches={values.trackBatches}
-                  onEnableTracking={() => update('trackBatches', true)}
-                />
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2.5 px-5 py-2.5 bg-[#F9F9F9] border-t border-[#E5E5E5] rounded-b-[8px]">
+          <div className="shrink-0 flex flex-wrap items-center justify-end gap-2.5 px-3 sm:px-5 py-2.5 bg-[#F9F9F9] border-t border-[#E5E5E5]">
             {saveError && (
-              <p role="alert" className="mr-auto text-xs font-semibold text-[#C42B1C]">
+              <p role="alert" className="w-full text-xs font-semibold text-[#C42B1C]">
                 {saveError}
               </p>
             )}
