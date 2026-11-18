@@ -1,18 +1,51 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { KardexMovement } from '@shared/contracts'
+import type { KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
+import { getKardexPeriodRange } from '@shared/lib/kardex-period'
 import { kardexApi, kardexErrorMessage } from '../api/kardex.api'
 
+const EMPTY_PAGE: KardexMovementPage = {
+  items: [],
+  page: 1,
+  pageSize: 50,
+  total: 0,
+  totalPages: 1,
+  summary: {
+    total: 0,
+    distinctProducts: 0,
+    entryMovements: 0,
+    exitMovements: 0,
+    entriesByUnit: [],
+    exitsByUnit: []
+  }
+}
+
+function createInitialQuery(): KardexMovementQuery {
+  return {
+    period: 'MONTH',
+    ...getKardexPeriodRange('MONTH'),
+    search: '',
+    type: 'ALL',
+    reason: 'ALL',
+    page: 1,
+    pageSize: 50
+  }
+}
+
 export function useKardex(enabled = true): {
-  movements: KardexMovement[]
+  data: KardexMovementPage
+  query: KardexMovementQuery
+  setQuery: React.Dispatch<React.SetStateAction<KardexMovementQuery>>
   isLoading: boolean
   error: string | null
   reload: () => Promise<boolean>
 } {
-  const [movements, setMovements] = useState<KardexMovement[]>([])
+  const [data, setData] = useState<KardexMovementPage>(EMPTY_PAGE)
+  const [query, setQuery] = useState<KardexMovementQuery>(createInitialQuery)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
+  const requestId = useRef(0)
   const isLoading = enabled && (!hasLoaded || isRefreshing)
 
   useEffect(() => {
@@ -23,46 +56,38 @@ export function useKardex(enabled = true): {
   }, [])
 
   const reload = useCallback(async (): Promise<boolean> => {
+    const currentRequestId = ++requestId.current
     setIsRefreshing(true)
     setError(null)
     try {
-      const data = await kardexApi.listMovements()
-      if (mounted.current) setMovements(data)
+      const requestQuery = {
+        ...query,
+        ...getKardexPeriodRange(query.period)
+      }
+      const result = await kardexApi.listMovements(requestQuery)
+      if (mounted.current && currentRequestId === requestId.current) setData(result)
       return true
     } catch (err: unknown) {
-      if (mounted.current) setError(kardexErrorMessage(err))
+      if (mounted.current && currentRequestId === requestId.current) {
+        setError(kardexErrorMessage(err))
+      }
       return false
     } finally {
-      if (mounted.current) {
+      if (mounted.current && currentRequestId === requestId.current) {
         setHasLoaded(true)
         setIsRefreshing(false)
       }
     }
-  }, [])
+  }, [query])
 
   useEffect(() => {
     if (!enabled) return
-    let cancelled = false
-
-    const load = async (): Promise<void> => {
-      try {
-        const data = await kardexApi.listMovements()
-        if (!cancelled && mounted.current) {
-          setMovements(data)
-          setError(null)
-        }
-      } catch (err: unknown) {
-        if (!cancelled && mounted.current) setError(kardexErrorMessage(err))
-      } finally {
-        if (!cancelled && mounted.current) setHasLoaded(true)
-      }
-    }
-
-    void load()
+    const timer = window.setTimeout(() => void reload(), 0)
     return () => {
-      cancelled = true
+      window.clearTimeout(timer)
+      requestId.current += 1
     }
-  }, [enabled])
+  }, [enabled, reload])
 
-  return { movements, isLoading, error, reload }
+  return { data, query, setQuery, isLoading, error, reload }
 }

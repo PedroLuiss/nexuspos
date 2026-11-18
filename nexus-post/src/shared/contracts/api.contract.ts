@@ -24,7 +24,12 @@ import type {
 } from './product-price-tier.contract'
 import type { ComboItem, ComboItemInput, ComboItemFilter } from './combo-item.contract'
 import type { ProductBatch, ProductBatchInput, ProductBatchFilter } from './product-batch.contract'
-import type { AdjustStockInput, AdjustStockResult, KardexMovement } from './inventory.contract'
+import type {
+  AdjustStockInput,
+  AdjustStockResult,
+  KardexMovementQuery,
+  KardexMovementPage
+} from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
 import type { UsersApi } from './user.contract'
@@ -277,7 +282,7 @@ export interface ProductBatchesApi {
 
 export interface InventoryApi {
   adjustStock(input: AdjustStockInput): Promise<AdjustStockResult>
-  listMovements(productId?: string): Promise<KardexMovement[]>
+  listMovements(query: KardexMovementQuery): Promise<KardexMovementPage>
 }
 
 export interface CategoriesApi {

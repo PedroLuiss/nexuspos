@@ -210,6 +210,7 @@ export class CashService {
       for (const component of components) {
         const componentProduct = this.products.findById(component.componentId)
         if (!componentProduct) continue
+        const saleUnitCost = this.movements.findSaleUnitCost(ticketNumber, componentProduct.id)
         this.restockProduct(
           componentProduct,
           component.quantity * item.quantity,
@@ -217,7 +218,10 @@ export class CashService {
           item.batches,
           returnedAt,
           responsibleUser,
-          `Devolución de combo "${item.productName}" (ticket ${ticketNumber})`
+          `Devolución de combo "${item.productName}" (ticket ${ticketNumber})`,
+          ticketNumber,
+          saleUnitCost ?? componentProduct.costPrice,
+          saleUnitCost === null ? 'PRODUCT_COST' : 'SALE_SNAPSHOT'
         )
       }
       return
@@ -234,7 +238,10 @@ export class CashService {
       item.batches,
       returnedAt,
       responsibleUser,
-      `Devolución completa de ticket ${ticketNumber}`
+      `Devolución completa de ticket ${ticketNumber}`,
+      ticketNumber,
+      item.unitCost,
+      'SALE_SNAPSHOT'
     )
   }
 
@@ -246,7 +253,10 @@ export class CashService {
     recordedBatches: SaleItemBatch[] | undefined,
     returnedAt: string,
     responsibleUser: string,
-    notes: string
+    notes: string,
+    reference: string,
+    unitCost: number,
+    valuationBasis: 'SALE_SNAPSHOT' | 'PRODUCT_COST'
   ): void {
     let runningStock = product.stock
 
@@ -282,7 +292,11 @@ export class CashService {
             runningStock,
             runningStock + entry.quantity,
             returnedAt,
-            responsibleUser
+            responsibleUser,
+            reference,
+            unitCost,
+            valuationBasis,
+            entry.batchNumber
           )
           runningStock += entry.quantity
         }
@@ -290,10 +304,11 @@ export class CashService {
         // Venta histórica sin trazabilidad de lotes: se crea un lote de devolución
         // para que el stock efectivo (SUM de lotes) realmente aumente.
         const now = returnedAt
+        const returnBatchNumber = `DEVOLUCION-${now.slice(0, 10)}`
         this.batches.create({
           id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           productId: product.id,
-          batchNumber: `DEVOLUCION-${now.slice(0, 10)}`,
+          batchNumber: returnBatchNumber,
           quantity,
           active: true,
           enteredAt: now,
@@ -308,7 +323,11 @@ export class CashService {
           runningStock,
           runningStock + quantity,
           returnedAt,
-          responsibleUser
+          responsibleUser,
+          reference,
+          unitCost,
+          valuationBasis,
+          returnBatchNumber
         )
         runningStock += quantity
       }
@@ -321,7 +340,11 @@ export class CashService {
         runningStock,
         runningStock + quantity,
         returnedAt,
-        responsibleUser
+        responsibleUser,
+        reference,
+        unitCost,
+        valuationBasis,
+        undefined
       )
       runningStock += quantity
     }
@@ -337,7 +360,11 @@ export class CashService {
     previousStock: number,
     newStock: number,
     timestamp: string,
-    responsibleUser: string
+    responsibleUser: string,
+    reference: string,
+    unitCost: number,
+    valuationBasis: 'SALE_SNAPSHOT' | 'PRODUCT_COST',
+    batchNumber?: string
   ): void {
     const movement: KardexMovement = {
       id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -351,7 +378,13 @@ export class CashService {
       quantity,
       newStock,
       responsibleUser,
-      notes
+      notes,
+      source: 'CASH',
+      unit: product.unit,
+      reference,
+      batchNumber,
+      unitCost,
+      valuationBasis
     }
     this.movements.insert(movement)
   }

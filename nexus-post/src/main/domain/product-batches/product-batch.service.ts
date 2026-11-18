@@ -135,7 +135,10 @@ export class ProductBatchService {
   buildIssueMovements(
     productId: string,
     issues: BatchIssueResult['issues'],
-    base: Omit<KardexMovement, 'id' | 'quantity' | 'previousStock' | 'newStock' | 'notes'>
+    base: Omit<
+      KardexMovement,
+      'id' | 'quantity' | 'previousStock' | 'newStock' | 'notes' | 'batchNumber'
+    >
   ): KardexMovement[] {
     return issues.map((issue) => ({
       ...base,
@@ -143,6 +146,7 @@ export class ProductBatchService {
       quantity: issue.quantity,
       previousStock: 0,
       newStock: 0,
+      batchNumber: issue.batchNumber,
       notes: `Lote ${issue.batchNumber}`
     }))
   }

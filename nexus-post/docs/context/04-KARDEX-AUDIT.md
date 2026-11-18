@@ -8,25 +8,30 @@
 ## 1. Responsabilidad del Módulo
 
 El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos y contables de stock:
+
 - **Trazabilidad Completa:** Cada incremento o decremento de stock queda grabado permanentemente con fecha/hora exacta, usuario responsable, stock previo, cantidad movida y stock resultante.
 - **Tipos de Movimiento:**
   - `ENTRADA (+)`: soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION` (devolución de cliente).
   - `SALIDA (-)`: soporta `VENTA`, `COMBO`, `SALIDA_AJUSTE`, `MERMA` y `DEVOLUCION` (devolución a proveedor). El tipo de movimiento se envía explícitamente; no se infiere del motivo `DEVOLUCION`, que aplica a ambos sentidos. El motivo `COMBO` se genera al cobrar un producto tipo bundle: se descuenta cada componente del combo (no el combo directamente) y se registra una salida por componente con las cantidades consumidas.
   - **Lotes (FEFO):** cuando un producto controla lotes (`track_batches`), las ventas (`VENTA`/`COMBO`) se desglosan en un movimiento por lote consumido, con el nº de lote en las notas. Los ajustes manuales registran un movimiento agregado, aunque actualizan los lotes consumidos. En ambos flujos se descuenta primero el lote que vence antes (First Expired, First Out); los lotes sin vencimiento salen al final.
-- **Filtrado Avanzado:** Búsqueda reactiva por nombre de producto, SKU o usuario responsable; filtros por tipo (`ENTRADA`/`SALIDA`) y motivo específico.
+- **Consulta eficiente:** semana calendario (lunes-domingo), mes actual, año actual o historial completo; búsqueda y filtros de tipo/motivo ejecutados en SQLite con paginación.
+- **Detalle empresarial:** unidad, origen, referencia de ticket, lote, responsable y valoración en USD. Los costos históricos que no existían antes de la migración se muestran como no disponibles.
 - **Exportación Contable:** El botón de exportación está presente como placeholder visual; la generación real de `.xlsx`/`.csv` sigue pendiente.
 
 ---
 
 ## 2. Persistencia e integración actual
 
-Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryService.adjustStock()` recibe el tipo explícito (`ENTRADA`/`SALIDA`), valida que el motivo corresponda y rechaza salidas mayores al stock disponible; el responsable se obtiene de la sesión autenticada en el proceso principal. Luego actualiza stock/lotes e inserta el movimiento en una misma transacción. La tabla Kardex muestra ese responsable y permite buscarlo. `InventoryService.listMovements()` consulta el historial. Ambos flujos están disponibles mediante los canales IPC `inventory:adjustStock` e `inventory:listMovements`, expuestos en `window.api.inventory`.
+Los movimientos se guardan en `stock_movements`. La migración 025 agrega snapshots de origen, unidad, referencia, lote, costo unitario y base de valoración; las filas previas conservan `source = LEGACY` y los datos que no podían conocerse quedan nulos. Los movimientos siguen siendo append-only.
 
-La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; un listado vacío no se sustituye por registros de demostración.
+`inventory:listMovements` recibe rango, búsqueda, tipo, motivo y paginación (25/50/100; 50 por defecto). SQLite filtra, ordena y pagina; también calcula totales de entradas/salidas agrupados por unidad y productos distintos sobre todo el filtro, no solo sobre la página visible. Esto evita mezclar cantidades de kg, litros o piezas en un balance dimensionalmente inválido. El módulo inicia en el mes calendario actual; semana significa lunes a domingo y el límite superior de cada período es exclusivo. El historial completo se consulta solo al seleccionarlo expresamente.
 
 La operación de ventas también registra movimientos reales: `SalesService` descuenta existencias e inserta la salida `VENTA` en la transacción del cobro. Para productos tipo combo (`product_types.kind = 'combo'`), el cobro genera salidas `COMBO` por cada componente consumido (`cantidad_combo × cantidad_componente`) en lugar de descontar el combo directamente; el stock disponible del combo se deriva de sus componentes en `products.sqlite.ts`. Los productos servicio (`trackStock = false`) no generan movimientos Kardex porque no manejan existencias.
 
+Los movimientos nuevos guardan su unidad, origen (`INVENTORY`, `POS` o `CASH`) y referencia de ticket cuando aplica. Ajustes y lotes usan el costo de ficha del producto, marcado como referencial; ventas usan el costo capturado al cobrar. Las devoluciones simples reutilizan el costo de la línea original y las devoluciones de componentes de combo buscan el costo del movimiento de salida del ticket. Si la venta es anterior a estos snapshots, el combo usa el costo de ficha actual marcado como referencial. El valor total visible se calcula como cantidad × costo unitario; los costos de producto se manejan en USD.
+
 **Devoluciones correctas (auditoría de integración):** antes `CashService.returnSale()` reponía stock sobre el producto del `sale_item`, lo cual era incorrecto para combos (se reponía el combo, nunca descontado) y para lotes (no se reponía el lote exacto). Ahora cada línea de venta persiste `is_combo`, `combo_id` y `batches_json` (migración 022), y la devolución:
+
 - para combos → repone cada **componente** (`cantidad_componente × cantidad_vendida`) con movimiento `COMBO` de entrada;
 - para lotes → repone el **lote exacto** descontado (o crea un lote `DEVOLUCION-YYYY-MM-DD` si la venta es histórica sin trazabilidad), con un movimiento `DEVOLUCION` por lote;
 - para productos simples → comportamiento original.
@@ -41,8 +46,8 @@ nexus-post/src/
 │   ├── domain/inventory/                    # KardexMovement entity, reglas de auditoría
 │   ├── ports/inventory.repository.ts        # Puerto de persistencia de movimientos
 │   ├── adapters/persistence/sqlite/
-│   │   ├── stock-movements.sqlite.ts         # Persistencia y consulta de movimientos
-│   │   └── migrations/002_stock_movements.ts # Tabla 'stock_movements'
+│   │   ├── stock-movements.sqlite.ts         # Persistencia, filtros, agregados y paginación
+│   │   └── migrations/025_kardex_metadata.ts # Snapshots de trazabilidad y valoración
 │   └── ipc/inventory.ipc.ts                 # Handler 'inventory:list-movements'
 │
 ├── shared/contracts/
@@ -50,15 +55,16 @@ nexus-post/src/
 │
 └── renderer/src/features/kardex/
     ├── api/kardex.api.ts                    # Lectura a través del puente IPC
-    ├── hooks/useKardex.ts                   # Carga, actualización y errores
-    └── KardexView.tsx                       # Vista con tabla densa y KPI summary
+    ├── hooks/useKardex.ts                   # Período inicial, query y carga paginada
+    ├── components/                           # Filtros, resumen y tabla/paginación
+    └── KardexView.tsx                       # Composición de la vista
 ```
 
 ## 4. Atajos de Teclado del Módulo
 
-| Atajo | Acción |
-| :---: | :--- |
-| `[F3]` | Cambiar a pestaña **Kardex (Auditoría Inmutable)** |
+| Atajo  | Acción                                                  |
+| :----: | :------------------------------------------------------ |
+| `[F3]` | Cambiar a pestaña **Kardex (Auditoría Inmutable)**      |
 | `[F4]` | (En Stitch alternativo) Acceso a trazabilidad inmutable |
 
 ---
@@ -67,12 +73,13 @@ nexus-post/src/
 
 1. **Inmutabilidad Absoluta (Append-Only):** La tabla de movimientos de Kardex **NUNCA** permite operaciones de `UPDATE` ni `DELETE`. Todo registro es un hecho histórico inalterable. Si hubo un error en un movimiento, se compensa con un nuevo registro de sentido inverso y motivo de ajuste.
 2. **Registro Obligatorio en Cada Transacción:** Ningún módulo puede alterar el campo `stock` de `products` sin registrar el evento correspondiente en `stock_movements`.
-3. **Mantenimiento del Límite de Líneas:** Si `KardexView.tsx` supera las **300 líneas** al añadir exportación Excel o filtros de fechas, se debe dividir en `KardexTable.tsx` y `KardexToolbar.tsx`.
+3. **Mantenimiento del Límite de Líneas:** Los controles de filtro, resumen y tabla/paginación permanecen en componentes separados para respetar el máximo de 300 líneas por componente.
 
 ## 6. Límites y dependencias
 
 - La fuente persistida es `stock_movements`; los nombres y códigos de producto se guardan como snapshot del movimiento para mantener trazabilidad.
+- Los movimientos antiguos no se enriquecen con datos actuales de producto para fingir snapshots históricos; unidad/lote/referencia/costo desconocidos se muestran como no registrados.
 - Un error de movimiento se corrige con otro movimiento compensatorio; no se reescribe el historial.
 - La devolución completa crea entradas por cada artículo del ticket y se restringe a facturas del turno abierto que las generó. No hay devolución parcial.
 - Esta integración no implica que exista exportación `.xlsx`: cualquier exportación debe verificarse por separado antes de documentarla como operativa.
-- El botón actual muestra un mensaje de exportación, pero no genera ni descarga un archivo.
+- El botón de exportación informa que la función aún no está disponible; no genera ni descarga un archivo.

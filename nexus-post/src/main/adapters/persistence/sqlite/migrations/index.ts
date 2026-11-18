@@ -30,6 +30,7 @@ import { migration021ProductBatches } from './021_product_batches'
 import { migration022SaleItemTraceability } from './022_sale_item_traceability'
 import { migration023ProductListIndexes } from './023_product_list_indexes'
 import { migration024FixSeedBarcodeFormat } from './024_fix_seed_barcode_format'
+import { migration025KardexMetadata } from './025_kardex_metadata'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -55,7 +56,8 @@ const MIGRATIONS: Migration[] = [
   migration021ProductBatches,
   migration022SaleItemTraceability,
   migration023ProductListIndexes,
-  migration024FixSeedBarcodeFormat
+  migration024FixSeedBarcodeFormat,
+  migration025KardexMetadata
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

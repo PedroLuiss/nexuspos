@@ -7,7 +7,8 @@ import type {
   ProductCatalogStatsDelta,
   AdjustStockInput,
   AdjustStockResult,
-  KardexMovement
+  KardexMovementQuery,
+  KardexMovementPage
 } from '@shared/contracts'
 
 /** Acceso tipado al puente IPC expuesto por el preload (`window.api`). */
@@ -32,8 +33,8 @@ export const productsApi = {
 export const inventoryApi = {
   adjustStock: (input: AdjustStockInput): Promise<AdjustStockResult> =>
     bridge().inventory.adjustStock(input),
-  listMovements: (productId?: string): Promise<KardexMovement[]> =>
-    bridge().inventory.listMovements(productId)
+  listMovements: (query: KardexMovementQuery): Promise<KardexMovementPage> =>
+    bridge().inventory.listMovements(query)
 }
 
 /** Normaliza el mensaje de error devuelto por `ipcRenderer.invoke`. */

@@ -53,6 +53,7 @@ import type {
   ProductBatch,
   ProductBatchInput,
   ProductBatchFilter,
+  KardexMovementQuery,
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
@@ -82,42 +83,30 @@ const api: NexusApi = {
     setDefault: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.taxes.setDefault, id)
   },
   brands: {
-    list: (filter?: BrandFilter) =>
-      ipcRenderer.invoke(IPC_CHANNELS.brands.list, filter),
+    list: (filter?: BrandFilter) => ipcRenderer.invoke(IPC_CHANNELS.brands.list, filter),
     getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.brands.getById, id),
     create: (input: BrandInput) => ipcRenderer.invoke(IPC_CHANNELS.brands.create, input),
     update: (brand: Brand) => ipcRenderer.invoke(IPC_CHANNELS.brands.update, brand),
     softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.brands.softDelete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.brands.toggleStatus, id)
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.brands.toggleStatus, id)
   },
   suppliers: {
-    list: (filter?: SupplierFilter) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.list, filter),
-    getById: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.getById, id),
-    create: (input: SupplierInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.create, input),
-    update: (supplier: Supplier) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.update, supplier),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.softDelete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.suppliers.toggleStatus, id)
+    list: (filter?: SupplierFilter) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.list, filter),
+    getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.getById, id),
+    create: (input: SupplierInput) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.create, input),
+    update: (supplier: Supplier) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.update, supplier),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.softDelete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.suppliers.toggleStatus, id)
   },
   productTypes: {
     list: (filter?: ProductTypeFilter) =>
       ipcRenderer.invoke(IPC_CHANNELS.productTypes.list, filter),
-    getById: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productTypes.getById, id),
+    getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productTypes.getById, id),
     create: (input: ProductTypeInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.productTypes.create, input),
-    update: (type: ProductType) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productTypes.update, type),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productTypes.softDelete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productTypes.toggleStatus, id)
+    update: (type: ProductType) => ipcRenderer.invoke(IPC_CHANNELS.productTypes.update, type),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productTypes.softDelete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productTypes.toggleStatus, id)
   },
   productBarcodes: {
     list: (filter?: ProductBarcodeFilter) =>
@@ -126,10 +115,8 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.create, input),
     update: (barcode: ProductBarcode) =>
       ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.update, barcode),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.softDelete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.toggleStatus, id),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.softDelete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.toggleStatus, id),
     previewLabel: (input: ProductBarcodePreviewInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.productBarcodes.previewLabel, input),
     printLabels: (input: ProductBarcodeLabelInput) =>
@@ -144,38 +131,30 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.create, input),
     update: (tier: ProductPriceTier) =>
       ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.update, tier),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.softDelete, id),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.softDelete, id),
     toggleStatus: (id: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.productPriceTiers.toggleStatus, id)
   },
   comboItems: {
-    list: (filter?: ComboItemFilter) =>
-      ipcRenderer.invoke(IPC_CHANNELS.comboItems.list, filter),
-    create: (input: ComboItemInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.comboItems.create, input),
-    update: (item: ComboItem) =>
-      ipcRenderer.invoke(IPC_CHANNELS.comboItems.update, item),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.comboItems.softDelete, id),
-    toggleStatus: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.comboItems.toggleStatus, id)
+    list: (filter?: ComboItemFilter) => ipcRenderer.invoke(IPC_CHANNELS.comboItems.list, filter),
+    create: (input: ComboItemInput) => ipcRenderer.invoke(IPC_CHANNELS.comboItems.create, input),
+    update: (item: ComboItem) => ipcRenderer.invoke(IPC_CHANNELS.comboItems.update, item),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.comboItems.softDelete, id),
+    toggleStatus: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.comboItems.toggleStatus, id)
   },
   productBatches: {
     list: (filter?: ProductBatchFilter) =>
       ipcRenderer.invoke(IPC_CHANNELS.productBatches.list, filter),
     receive: (input: ProductBatchInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.productBatches.receive, input),
-    update: (batch: ProductBatch) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productBatches.update, batch),
-    softDelete: (id: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.productBatches.softDelete, id)
+    update: (batch: ProductBatch) => ipcRenderer.invoke(IPC_CHANNELS.productBatches.update, batch),
+    softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.productBatches.softDelete, id)
   },
   inventory: {
     adjustStock: (input: AdjustStockInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.inventory.adjustStock, input),
-    listMovements: (productId?: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, productId)
+    listMovements: (query: KardexMovementQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, query)
   },
   sales: {
     complete: (input: CreateSaleInput) => ipcRenderer.invoke(IPC_CHANNELS.sales.complete, input),

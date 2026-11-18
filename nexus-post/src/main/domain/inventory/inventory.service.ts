@@ -1,4 +1,11 @@
-import type { AdjustStockInput, AdjustStockResult, KardexMovement } from '@shared/contracts'
+import type {
+  AdjustStockInput,
+  AdjustStockResult,
+  KardexMovement,
+  KardexMovementPage,
+  KardexMovementQuery,
+  KardexReason
+} from '@shared/contracts'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { ProductBatchRepository } from '../../ports/product-batch.repository'
@@ -72,9 +79,15 @@ export class InventoryService {
     }
     const newStock = inbound ? previousStock + input.quantity : previousStock - input.quantity
 
+    let batchNumber: string | undefined
+    const timestamp = new Date().toISOString()
+    if (product.trackBatches && inbound) {
+      batchNumber = `AJUSTE-${timestamp.slice(0, 10)}`
+    }
+
     const movement: KardexMovement = {
       id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      timestamp: new Date().toISOString(),
+      timestamp,
       productId: product.id,
       productName: product.name,
       productCode: product.code,
@@ -84,10 +97,16 @@ export class InventoryService {
       quantity: input.quantity,
       newStock,
       responsibleUser: user.name,
-      notes: input.notes
+      notes: input.notes,
+      source: 'INVENTORY',
+      unit: product.unit,
+      batchNumber,
+      unitCost: product.costPrice,
+      valuationBasis: 'PRODUCT_COST'
     }
 
     return this.tx.run(() => {
+      let movementToPersist = movement
       // Productos con lotes: reflejar el ajuste en los lotes (FEFO para salidas).
       if (product.trackBatches && !inbound) {
         const batchRows = this.batches.findByProductId(product.id, true)
@@ -107,13 +126,18 @@ export class InventoryService {
             })
           }
         }
+        movementToPersist = {
+          ...movement,
+          batchNumber: result.issues.map((issue) => issue.batchNumber).join(', ') || undefined
+        }
       } else if (product.trackBatches && inbound) {
         // Entrada manual: crear un lote genérico con la fecha de hoy.
-        const now = new Date().toISOString()
+        const now = timestamp
+        const inboundBatchNumber = `AJUSTE-${now.slice(0, 10)}`
         this.batches.create({
           id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           productId: product.id,
-          batchNumber: `AJUSTE-${now.slice(0, 10)}`,
+          batchNumber: inboundBatchNumber,
           quantity: input.quantity,
           active: true,
           enteredAt: now,
@@ -123,12 +147,58 @@ export class InventoryService {
       }
 
       const updated = this.products.setStock(product.id, newStock)
-      this.movements.insert(movement)
-      return { product: updated, movement }
+      this.movements.insert(movementToPersist)
+      return { product: updated, movement: movementToPersist }
     })
   }
 
-  listMovements(productId?: string): KardexMovement[] {
-    return this.movements.findAll(productId)
+  listMovements(query: KardexMovementQuery): KardexMovementPage {
+    if (!query || typeof query !== 'object') {
+      throw new ValidationError('Los filtros del Kardex no son válidos.')
+    }
+
+    const periods = ['WEEK', 'MONTH', 'YEAR', 'ALL']
+    const types = ['ALL', 'ENTRADA', 'SALIDA']
+    const reasons: Array<KardexReason | 'ALL'> = [
+      'ALL',
+      'VENTA',
+      'COMBO',
+      'ENTRADA_MASIVA',
+      'SALIDA_AJUSTE',
+      'MERMA',
+      'DEVOLUCION',
+      'INVENTARIO_INICIAL'
+    ]
+    if (
+      !periods.includes(query.period) ||
+      !types.includes(query.type) ||
+      !reasons.includes(query.reason)
+    ) {
+      throw new ValidationError('Uno o más filtros del Kardex no son válidos.')
+    }
+    if (!Number.isSafeInteger(query.page) || query.page < 1 || query.page > 1_000_000) {
+      throw new ValidationError('La página solicitada no es válida.')
+    }
+    if (![25, 50, 100].includes(query.pageSize)) {
+      throw new ValidationError('El tamaño de página debe ser 25, 50 o 100 movimientos.')
+    }
+    if (typeof query.search !== 'string' || query.search.length > 120) {
+      throw new ValidationError('La búsqueda debe tener como máximo 120 caracteres.')
+    }
+
+    if (query.period !== 'ALL') {
+      const from = typeof query.from === 'string' ? new Date(query.from).getTime() : Number.NaN
+      const to = typeof query.to === 'string' ? new Date(query.to).getTime() : Number.NaN
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) {
+        throw new ValidationError('El rango de fechas del Kardex no es válido.')
+      }
+    }
+
+    return this.movements.findPage({
+      ...query,
+      search: query.search.trim(),
+      from: query.period === 'ALL' ? undefined : query.from,
+      to: query.period === 'ALL' ? undefined : query.to
+    })
   }
 }

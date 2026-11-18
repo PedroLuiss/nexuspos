@@ -15,6 +15,10 @@ export type KardexReason =
   | 'DEVOLUCION'
   | 'INVENTARIO_INICIAL'
 
+export type KardexMovementSource = 'INVENTORY' | 'POS' | 'CASH' | 'LEGACY'
+export type KardexValuationBasis = 'SALE_SNAPSHOT' | 'PRODUCT_COST'
+export type KardexPeriod = 'WEEK' | 'MONTH' | 'YEAR' | 'ALL'
+
 export interface KardexMovement {
   id: string
   timestamp: string
@@ -29,6 +33,46 @@ export interface KardexMovement {
   finalStock?: number
   responsibleUser: string
   notes?: string
+  source: KardexMovementSource
+  unit?: string
+  reference?: string
+  batchNumber?: string
+  unitCost?: number
+  valuationBasis?: KardexValuationBasis
+}
+
+export interface KardexMovementQuery {
+  period: KardexPeriod
+  from?: string
+  to?: string
+  search: string
+  type: KardexMovementType | 'ALL'
+  reason: KardexReason | 'ALL'
+  page: number
+  pageSize: number
+}
+
+export interface KardexQuantityByUnit {
+  unit: string
+  quantity: number
+}
+
+export interface KardexMovementSummary {
+  total: number
+  distinctProducts: number
+  entryMovements: number
+  exitMovements: number
+  entriesByUnit: KardexQuantityByUnit[]
+  exitsByUnit: KardexQuantityByUnit[]
+}
+
+export interface KardexMovementPage {
+  items: KardexMovement[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  summary: KardexMovementSummary
 }
 
 /** Datos de entrada para registrar un ajuste manual de stock. */

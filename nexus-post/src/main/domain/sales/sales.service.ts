@@ -222,6 +222,8 @@ export class SalesService {
               'COMBO',
               user.name,
               `Combo "${product.name}" × ${item.quantity} · Ticket ${result.ticketNumber}`,
+              result.ticketNumber,
+              componentProduct.costPrice,
               now
             )
             // Los lotes de los componentes se asocian a la línea del combo con el
@@ -239,6 +241,8 @@ export class SalesService {
             'VENTA',
             user.name,
             result.ticketNumber,
+            result.ticketNumber,
+            item.unitCost,
             now
           )
         }
@@ -321,6 +325,8 @@ export class SalesService {
     reason: 'VENTA' | 'COMBO',
     responsibleUser: string,
     notes: string,
+    reference: string,
+    unitCost: number,
     now: string
   ): SaleItemBatch[] {
     if (product.trackBatches) {
@@ -355,7 +361,13 @@ export class SalesService {
           quantity: issue.quantity,
           newStock,
           responsibleUser,
-          notes: `${notes} · Lote ${issue.batchNumber}`
+          notes: `${notes} · Lote ${issue.batchNumber}`,
+          source: 'POS',
+          unit: product.unit,
+          reference,
+          batchNumber: issue.batchNumber,
+          unitCost,
+          valuationBasis: 'SALE_SNAPSHOT'
         })
         consumed.push({
           batchId: issue.batchId,
@@ -383,7 +395,12 @@ export class SalesService {
       quantity,
       newStock,
       responsibleUser,
-      notes
+      notes,
+      source: 'POS',
+      unit: product.unit,
+      reference,
+      unitCost,
+      valuationBasis: 'SALE_SNAPSHOT'
     })
     return []
   }

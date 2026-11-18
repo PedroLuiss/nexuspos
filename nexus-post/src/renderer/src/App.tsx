@@ -47,7 +47,9 @@ function AppContent(): React.JSX.Element {
     refresh: refreshExchangeRate
   } = useUsdVesRate(Boolean(currentUser))
   const {
-    movements: kardexMovements,
+    data: kardexData,
+    query: kardexQuery,
+    setQuery: setKardexQuery,
     isLoading: isKardexLoading,
     error: kardexError,
     reload: reloadKardex
@@ -538,7 +540,9 @@ function AppContent(): React.JSX.Element {
       {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
       {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && (
         <KardexView
-          movements={kardexMovements}
+          data={kardexData}
+          query={kardexQuery}
+          onQueryChange={setKardexQuery}
           isLoading={isKardexLoading}
           error={kardexError}
           onRefresh={() => void reloadKardex()}
