@@ -37,6 +37,9 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - **Interruptor global:** `taxEnabled` (aplicar impuesto en ventas) y `pricesIncludeTax` (los precios de venta ya incluyen impuesto). `taxName`/`taxRate` se mantienen como respaldo histórico y se sincronizan con la tasa predeterminada al guardar.
   - La matemática fiscal es única y compartida (`src/shared/lib/tax.ts`): el POS muestra el desglose por tasa y el backend recalcula la venta antes de persistirla; el desglose se guarda en `sale_taxes`.
   - Modo "impuesto incluido": el impuesto se desagrega del precio sin sumarse al total; en caso contrario se suma al subtotal.
+- **Catálogos de producto (marcas, proveedores y tipos):**
+  - Los tipos muestran el conteo real de productos referenciados. No se permite su baja lógica mientras haya referencias, incluidas las de productos inactivos o dados de baja; primero se debe reasignar el tipo de esos productos.
+  - La regla se valida en `ProductTypeService` y el repositorio SQLite; la UI deshabilita la acción con productos asociados y muestra el error si la baja se intenta por IPC.
 - **Conexión de Báscula por Puerto Serial (RS-232 / COM):**
   - Comunicación con balanzas de peso comercial (Torrey, Rhino, Dibal) mediante lectura de buffer serial.
   - Parámetros: Puerto (`COM1` a `COM4`), velocidad en baudios (9600, 19200 bps), lectura en vivo de peso estabilizado.

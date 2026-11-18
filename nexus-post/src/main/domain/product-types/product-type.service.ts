@@ -50,7 +50,18 @@ export class ProductTypeService {
   }
 
   softDelete(id: string): void {
-    if (!this.types.findById(id)) throw new NotFoundError('Tipo de producto no encontrado')
+    const existing = this.types.findById(id)
+    if (!existing || existing.deleted) {
+      throw new NotFoundError('Tipo de producto no encontrado')
+    }
+
+    const productCount = this.types.countProducts(id)
+    if (productCount > 0) {
+      throw new ValidationError(
+        `No se puede eliminar "${existing.name}": está asociado a ${productCount} producto${productCount === 1 ? '' : 's'}. Reasigne esos productos primero.`
+      )
+    }
+
     this.types.softDelete(id)
   }
 

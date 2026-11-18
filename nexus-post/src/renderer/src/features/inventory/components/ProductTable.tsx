@@ -85,16 +85,10 @@ export const ProductTable: React.FC = () => {
     setIsModalOpen(true)
   }
 
-  const handleSave = async (input: ProductInput): Promise<void> => {
-    try {
-      if (editingProduct) {
-        await updateProduct({ ...input, id: editingProduct.id })
-      } else {
-        await createProduct(input)
-      }
-    } catch (err) {
-      window.alert(toErrorMessage(err))
-    }
+  const handleSave = async (input: ProductInput, productId?: string): Promise<Product> => {
+    const id = productId ?? editingProduct?.id
+    if (id) return updateProduct({ ...input, id })
+    return createProduct(input)
   }
 
   const handleDelete = async (product: Product): Promise<void> => {

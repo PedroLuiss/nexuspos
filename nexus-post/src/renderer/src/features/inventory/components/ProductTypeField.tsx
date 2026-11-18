@@ -26,9 +26,13 @@ export const ProductTypeField: React.FC<ProductTypeFieldProps> = ({
   const { types, isLoading, error } = useProductTypes()
 
   const available = types.filter((t) => t.active || t.id === typeId)
+  const defaultType = available.find((type) => type.kind === 'simple') ?? available[0]
   const selected =
-    available.find((t) => t.id === typeId) ?? available[0]
-  const badge = KIND_BADGE[selected?.kind ?? 'simple']
+    available.find((type) => type.id === typeId) ?? defaultType
+
+  React.useEffect(() => {
+    if (!isLoading && !typeId && selected) onChange(selected.id)
+  }, [isLoading, onChange, selected?.id, typeId])
 
   return (
     <div>
@@ -46,14 +50,14 @@ export const ProductTypeField: React.FC<ProductTypeFieldProps> = ({
         )}
         {available.map((type) => (
           <option key={type.id} value={type.id}>
-            {type.name} ({badge.label})
+            {type.name} ({KIND_BADGE[type.kind]?.label ?? type.kind})
           </option>
         ))}
       </select>
 
       {selected && (
         <p className="mt-1 text-[10px] text-slate-400">
-          {selected.trackStock ? 'Con control de stock' : 'Sin control de stock (servicio)'}
+          {selected.trackStock ? 'Con control de stock' : 'Sin control de stock'}
         </p>
       )}
 

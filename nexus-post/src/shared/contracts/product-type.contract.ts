@@ -15,12 +15,14 @@ export interface ProductType {
   trackStock: boolean
   active: boolean
   deleted?: boolean
+  /** Cantidad de productos que referencian este tipo (solo lectura). */
+  productCount?: number
   createdAt?: string
   updatedAt?: string
 }
 
 /** Datos de entrada para crear un tipo de producto (el id y timestamps los genera el backend). */
-export type ProductTypeInput = Omit<ProductType, 'id' | 'createdAt' | 'updatedAt'>
+export type ProductTypeInput = Omit<ProductType, 'id' | 'productCount' | 'createdAt' | 'updatedAt'>
 
 export interface ProductTypeFilter {
   search?: string

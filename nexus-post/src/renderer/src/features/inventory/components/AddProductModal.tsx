@@ -9,11 +9,13 @@ import ComboItemsEditor from './ComboItemsEditor'
 import VariantEditor from './VariantEditor'
 import BatchEditor from './BatchEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
+import { useProductTypes } from '../../../shared/hooks/useProductTypes'
+import { toErrorMessage } from '../api/products.api'
 
 interface AddProductModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (input: ProductInput) => void
+  onSubmit: (input: ProductInput, productId?: string) => Promise<Product>
   initialProduct?: Product | null
   categories?: string[]
   products?: Product[]
@@ -38,14 +40,41 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     marginPercent,
     toInput
   } = useProductForm(initialProduct, categories)
+  const { types } = useProductTypes()
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [saveError, setSaveError] = React.useState<string | null>(null)
+  const [savedProduct, setSavedProduct] = React.useState<Product | null>(null)
+  const product = savedProduct ?? initialProduct ?? null
+  const persistedTypeKind =
+    types.find((type) => type.id === product?.typeId)?.kind ?? product?.typeKind
+  const isCombo = persistedTypeKind === 'combo'
 
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!values.name.trim() || !values.code.trim() || values.salePrice <= 0) return
-    onSubmit(toInput())
-    onClose()
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      const submittedTypeId = values.typeId
+      const saved = await onSubmit(toInput(), product?.id)
+      setSavedProduct(saved)
+      if (submittedTypeId && saved.typeId !== submittedTypeId) {
+        setSaveError(
+          'No se pudo confirmar el tipo seleccionado. Verifique el tipo y vuelva a guardar.'
+        )
+        return
+      }
+
+      const savedTypeKind = types.find((type) => type.id === saved.typeId)?.kind ?? saved.typeKind
+      if (savedTypeKind === 'combo' && !isCombo) return
+      onClose()
+    } catch (error) {
+      setSaveError(toErrorMessage(error))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -63,7 +92,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
-                {initialProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}
+                {product ? 'Editar Producto' : 'Agregar Nuevo Producto'}
               </h2>
               <p className="text-[11px] text-[#717783]">
                 Ingresa los datos para registrar el artículo en el catálogo de inventario
@@ -73,9 +102,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="kbd-badge">ESC</span>
             <button
+              disabled={isSaving}
               onClick={onClose}
               title="Cerrar (Esc)"
-              className="p-1 text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] rounded transition-colors cursor-pointer"
+              className="p-1 text-[#717783] hover:text-[#C42B1C] hover:bg-[#F3F3F3] rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -102,27 +132,22 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             />
           </div>
 
-          {initialProduct && (
+          {product && (
             <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[40vh] overflow-y-auto">
-              <ProductBarcodesEditor productId={initialProduct.id} />
-              <ProductPriceTiersEditor
-                productId={initialProduct.id}
-                salePrice={values.salePrice}
-              />
-              {initialProduct.typeKind === 'combo' && (
-                <ComboItemsEditor comboId={initialProduct.id} products={products} />
-              )}
-              {initialProduct.typeKind !== 'combo' && !initialProduct.parentId && (
+              <ProductBarcodesEditor productId={product.id} />
+              <ProductPriceTiersEditor productId={product.id} salePrice={values.salePrice} />
+              {isCombo && <ComboItemsEditor comboId={product.id} products={products} />}
+              {!isCombo && !product.parentId && (
                 <VariantEditor
-                  parent={initialProduct}
+                  parent={product}
                   variantAttrs={values.variantAttrs}
                   onVariantAttrsChange={(json) => update('variantAttrs', json)}
                 />
               )}
-              {!initialProduct.parentId && (
+              {!product.parentId && (
                 <BatchEditor
-                  productId={initialProduct.id}
-                  productName={initialProduct.name}
+                  productId={product.id}
+                  productName={product.name}
                   trackBatches={values.trackBatches}
                   onEnableTracking={() => update('trackBatches', true)}
                 />
@@ -131,19 +156,28 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           )}
 
           <div className="flex items-center justify-end gap-2.5 px-5 py-2.5 bg-[#F9F9F9] border-t border-[#E5E5E5] rounded-b-[8px]">
+            {saveError && (
+              <p role="alert" className="mr-auto text-xs font-semibold text-[#C42B1C]">
+                {saveError}
+              </p>
+            )}
             <button
               type="button"
+              disabled={isSaving}
               onClick={onClose}
-              className="px-4 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white border border-[#D1D1D1] rounded-[4px] hover:bg-[#F9F9F9] cursor-pointer"
+              className="px-4 py-1.5 text-xs font-semibold text-[#1B1B1B] bg-white border border-[#D1D1D1] rounded-[4px] hover:bg-[#F9F9F9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Cancelar [ESC]
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-5 py-1.5 text-xs font-bold text-white bg-[#0067C0] hover:bg-[#0078D4] active:bg-[#004f96] rounded-[4px] shadow-xs transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-5 py-1.5 text-xs font-bold text-white bg-[#0067C0] hover:bg-[#0078D4] active:bg-[#004f96] rounded-[4px] shadow-xs transition-colors disabled:opacity-50 disabled:cursor-wait cursor-pointer"
             >
               <Check size={14} />
-              <span>{initialProduct ? 'Guardar Cambios' : 'Registrar Producto'}</span>
+              <span>
+                {isSaving ? 'Guardando…' : product ? 'Guardar Cambios' : 'Registrar Producto'}
+              </span>
               <span className="kbd-badge bg-white/20 text-white border-white/30 text-[10px]">
                 ENTER
               </span>

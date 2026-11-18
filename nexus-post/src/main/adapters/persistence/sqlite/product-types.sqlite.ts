@@ -11,7 +11,14 @@ interface ProductTypeRow {
   deleted: number
   created_at: string
   updated_at: string
+  product_count?: number
 }
+
+const SELECT_PRODUCT_TYPES = `
+  SELECT t.*,
+    (SELECT COUNT(*) FROM products p WHERE p.type_id = t.id) AS product_count
+  FROM product_types t
+`
 
 function mapRow(row: ProductTypeRow): ProductType {
   return {
@@ -21,6 +28,7 @@ function mapRow(row: ProductTypeRow): ProductType {
     trackStock: Boolean(row.track_stock),
     active: Boolean(row.active),
     deleted: Boolean(row.deleted),
+    productCount: row.product_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -34,31 +42,30 @@ export class SqliteProductTypeRepository implements ProductTypeRepository {
     const clauses: string[] = []
     const params: Record<string, unknown> = {}
 
-    if (!filter?.includeDeleted) clauses.push('deleted = 0')
-    if (filter?.onlyActive) clauses.push('active = 1')
+    if (!filter?.includeDeleted) clauses.push('t.deleted = 0')
+    if (filter?.onlyActive) clauses.push('t.active = 1')
     if (filter?.search) {
-      clauses.push('(name LIKE @search OR kind LIKE @search)')
+      clauses.push('(t.name LIKE @search OR t.kind LIKE @search)')
       params.search = `%${filter.search}%`
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
     const rows = this.db
-      .prepare(`SELECT * FROM product_types ${where} ORDER BY name COLLATE NOCASE ASC`)
+      .prepare(`${SELECT_PRODUCT_TYPES} ${where} ORDER BY t.name COLLATE NOCASE ASC`)
       .all(params) as ProductTypeRow[]
 
     return rows.map(mapRow)
   }
 
   findById(id: string): ProductType | null {
-    const row = this.db
-      .prepare('SELECT * FROM product_types WHERE id = ?')
-      .get(id) as ProductTypeRow | undefined
+    const row = this.db.prepare(`${SELECT_PRODUCT_TYPES} WHERE t.id = ?`).get(id) as
+      ProductTypeRow | undefined
     return row ? mapRow(row) : null
   }
 
   findByName(name: string): ProductType | null {
     const row = this.db
-      .prepare('SELECT * FROM product_types WHERE name = ? COLLATE NOCASE')
+      .prepare(`${SELECT_PRODUCT_TYPES} WHERE t.name = ? COLLATE NOCASE`)
       .get(name.trim()) as ProductTypeRow | undefined
     return row ? mapRow(row) : null
   }
@@ -115,9 +122,7 @@ export class SqliteProductTypeRepository implements ProductTypeRepository {
 
   softDelete(id: string): void {
     this.db
-      .prepare(
-        'UPDATE product_types SET deleted = 1, active = 0, updated_at = ? WHERE id = ?'
-      )
+      .prepare('UPDATE product_types SET deleted = 1, active = 0, updated_at = ? WHERE id = ?')
       .run(new Date().toISOString(), id)
   }
 
@@ -128,5 +133,12 @@ export class SqliteProductTypeRepository implements ProductTypeRepository {
       )
       .run(new Date().toISOString(), id)
     return this.findById(id) as ProductType
+  }
+
+  countProducts(typeId: string): number {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM products WHERE type_id = ?')
+      .get(typeId) as { total: number }
+    return row.total
   }
 }
