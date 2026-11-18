@@ -8,6 +8,7 @@ export interface ProductRepository {
   findAll(filter?: ProductFilter): Product[]
   findById(id: string): Product | null
   findByCode(code: string): Product | null
+  findByParentId(parentId: string): Product[]
   create(input: ProductInput & { id: string; createdAt: string; updatedAt: string }): Product
   update(product: Product): Product
   softDelete(id: string): void

@@ -33,6 +33,10 @@ export class ProductService {
     return this.products.findById(id)
   }
 
+  listVariants(parentId: string): Product[] {
+    return this.products.findByParentId(parentId)
+  }
+
   create(input: ProductInput): Product {
     const errors = validateProductInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
@@ -41,6 +45,7 @@ export class ProductService {
     const brand = this.resolveBrand(input.brandId)
     const supplier = this.resolveSupplier(input.supplierId)
     const type = this.resolveProductType(input.typeId)
+    this.resolveParent(input.parentId)
     const normalized = normalizeProductInput({
       ...input,
       brandId: brand?.id,
@@ -73,6 +78,7 @@ export class ProductService {
     const brand = this.resolveBrand(product.brandId)
     const supplier = this.resolveSupplier(product.supplierId)
     const type = this.resolveProductType(product.typeId)
+    this.resolveParent(product.parentId, product.id)
     const normalized = normalizeProductInput({
       ...product,
       brandId: brand?.id,
@@ -169,5 +175,23 @@ export class ProductService {
       throw new ValidationError(`El tipo de producto "${type.name}" está inactivo.`)
     }
     return type
+  }
+
+  /**
+   * Valida el producto padre de una variante: debe existir, no estar eliminado
+   * y no puede ser a su vez una variante (se prohíben variantes anidadas).
+   */
+  private resolveParent(parentId?: string, currentId?: string): void {
+    if (!parentId?.trim()) return
+    if (currentId && parentId.trim() === currentId) {
+      throw new ValidationError('Un producto no puede ser su propio padre')
+    }
+    const parent = this.products.findById(parentId.trim())
+    if (!parent || parent.deleted) {
+      throw new ValidationError('El producto padre de la variante no existe')
+    }
+    if (parent.parentId) {
+      throw new ValidationError('No se permiten variantes dentro de otras variantes')
+    }
   }
 }

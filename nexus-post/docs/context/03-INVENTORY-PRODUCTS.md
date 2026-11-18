@@ -67,7 +67,8 @@ nexus-post/src/
 │   │       ├── 016_brands_suppliers_product_types.ts  # brands, suppliers, product_types + columnas en products
 │   │       ├── 017_product_barcodes.ts      # product_barcodes + migración del código legacy
 │   │       ├── 018_product_price_tiers.ts   # product_price_tiers + tier de ejemplo
-│   │       └── 019_combo_items.ts           # combo_items + índice único combo+componente
+│   │       ├── 019_combo_items.ts           # combo_items + índice único combo+componente
+│   │       └── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
 │   └── ipc/
 │       ├── products.ipc.ts                  # Handlers 'products:*'
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
@@ -92,7 +93,8 @@ nexus-post/src/
 │   │   └── inventory.contract.ts            # AdjustStockInput, KardexMovement, KardexReason (incluye 'COMBO')
 │   └── lib/
 │       ├── tax.ts                           # Motor de cálculo multi-tasa (main + renderer)
-│       └── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
+│       ├── product-pricing.ts               # resolveUnitPrice (escalas de mayoreo) — main + renderer
+│       └── product-variants.ts              # parse/serialize/format de atributos de variantes
 │
 └── renderer/src/
     ├── shared/hooks/
@@ -104,7 +106,8 @@ nexus-post/src/
     │   ├── useAllBarcodes.ts                # Mapa código->producto para buscador del POS
     │   ├── useProductPriceTiers.ts          # Escalas de mayoreo + resolvePrice local
     │   ├── useAllPriceTiers.ts              # Todas las escalas agrupadas por producto (POS)
-    │   └── useComboItems.ts                 # Componentes de un producto combo
+    │   ├── useComboItems.ts                 # Componentes de un producto combo
+    │   └── useProductVariants.ts            # Variantes (productos hijo) de un padre
     ├── shared/ui/
     │   └── ProductAvatar.tsx                # Logo con primera letra o miniatura de imagen
     └── features/inventory/
@@ -134,6 +137,7 @@ nexus-post/src/
             ├── ProductBarcodesEditor.tsx        # Editor de códigos de barras múltiples
             ├── ProductPriceTiersEditor.tsx      # Editor de escalas de precios por mayoreo
             ├── ComboItemsEditor.tsx             # Editor de componentes de combo (solo tipo combo)
+            ├── VariantEditor.tsx                # Editor de variantes (talla/color) del producto padre
             ├── ProductImportExportModal.tsx     # Modal contenedor de importación / exportación Excel
             ├── ProductExportTab.tsx             # Pestaña de exportación con BOM UTF-8
             ├── ProductImportTab.tsx             # Pestaña de importación CSV con preview y plantilla
@@ -168,7 +172,7 @@ nexus-post/src/
    $$\text{Precio Venta Final} = \text{Precio Costo} \times \left(1 + \frac{\%\text{ Ganancia}}{100}\right)$$
    _(Ejemplo: Costo $100.00 con 10% de ganancia = $10.00 de ganancia y $110.00 de precio de venta final)._ También permite ajuste manual bidireccional si se requiere redondear centavos.
 3. **División de Componentes:** Todos los modales y formularios deben seguir subdivididos en archivos independientes para garantizar que ninguno supere **300 líneas de código** y los hooks **200 líneas**.
-4. **Formato CSV con BOM:** Al exportar a Excel, el archivo debe comenzar con el byte order mark `\uFEFF` para asegurar compatibilidad total con Excel en Windows. Columnas oficiales: `Codigo, Nombre, Categoria, PrecioCosto, PrecioVenta, Stock, StockMinimo, Unidad, Descripcion, ImpuestoNombre, ImpuestoTasa, ImagenURL`. La importación sigue aceptando el encabezado legado `TieneImpuesto` (SI/NO) y lo traduce a la tasa por defecto o a la tasa 0% (Exento).
+4. **Formato CSV con BOM:** Al exportar a Excel, el archivo debe comenzar con el byte order mark `\uFEFF` para asegurar compatibilidad total con Excel en Windows. Columnas oficiales: `Codigo, Nombre, Categoria, Marca, Proveedor, TipoProducto, PrecioCosto, PrecioVenta, Stock, StockMinimo, Unidad, Descripcion, ImpuestoNombre, ImpuestoTasa, Atributos, PadreSKU, ImagenURL`. La importación sigue aceptando el encabezado legado `TieneImpuesto` (SI/NO) y lo traduce a la tasa por defecto o a la tasa 0% (Exento). `Atributos` (JSON) y `PadreSKU` son opcionales y permiten importar variantes.
 5. **Persistencia de Imágenes:** El campo `image_url` almacena cadenas base64 (`data:image/...`) para archivos subidos localmente o URLs HTTP/HTTPS seguras para productos de catálogo web o demostración.
 6. **Impuesto por producto (nunca un IVA global fijo):** todo producto guarda `tax_id` apuntando al catálogo `taxes`. Reglas:
    - Si el formulario no envía `taxId`, `ProductService` aplica la tasa predeterminada del catálogo. Si no existe ninguna, la operación falla pidiendo crearla en **Ajustes › Impuestos**.
@@ -189,7 +193,13 @@ nexus-post/src/
     - **Validaciones:** el componente no puede ser el propio combo, no se permiten combos anidados, la combinación combo+componente es única y los componentes deben existir y estar activos (`ComboItemService`).
     - **Configuración:** se gestionan en la pestaña "Componentes del Combo" del formulario de producto, visible solo cuando el tipo es `Combo / Kit` (`typeKind = 'combo'`). Los componentes elegibles son productos activos no-combo.
     - Si un combo se vende sin componentes configurados, el cobro se bloquea con un error.
-10. **Precios por mayoreo / price tiers (migración 018):** escalas `product_price_tiers` por producto (`min_quantity`, `max_quantity` opcional, `price`). Reglas:
+10. **Variantes de producto (migración 020):** un producto padre puede tener variantes hijas (productos independientes con `parent_id`). Los atributos que definen las variantes se guardan en el padre (`variant_attrs`, JSON de nombres, ej. `["Talla","Color"]`) y los valores concretos en cada hija (`attributes`, JSON de pares nombre/valor). Reglas:
+    - Cada variante es un producto real con su propio SKU, precio, costo, stock, impuesto y barcode; se vende por separado en el POS (no se agrega el padre).
+    - `ProductService.resolveParent` valida que el padre exista, no esté eliminado y no sea a su vez una variante (prohíbe variantes anidadas).
+    - El editor "Variantes" aparece en la pestaña de edición de productos no-combo que no sean variantes; permite definir los nombres de atributos y crear/editar/eliminar variantes heredando categoría, unidad, impuesto, marca y proveedor del padre.
+    - Las utilidades puras `parseProductAttributes`, `serializeProductAttributes` y `formatProductAttributes` viven en `src/shared/lib/product-variants.ts`.
+    - CSV: columnas `Atributos` (JSON) y `PadreSKU` (se resuelve al id del padre al importar). Las filas con `PadreSKU` se importan después de sus padres.
+11. **Precios por mayoreo / price tiers (migración 018):** escalas `product_price_tiers` por producto (`min_quantity`, `max_quantity` opcional, `price`). Reglas:
    - Los rangos de un mismo producto no pueden solaparse (validado en `ProductPriceTierService`).
    - La resolución del precio efectivo vive en `src/shared/lib/product-pricing.ts` (`resolveUnitPrice`): entre los tiers aplicables gana el de mayor `minQuantity`; si ninguno aplica se usa `salePrice`.
    - `computeSaleTotals` (en `src/shared/lib/tax.ts`) aplica internamente los tiers recibidos en `SaleLineInput.priceTiers`, de modo que **main y renderer calculan exactamente el mismo subtotal/impuesto/total**. El backend vuelve a resolver los tiers desde SQLite antes de persistir (`SalesService` inyecta `ProductPriceTierRepository`).

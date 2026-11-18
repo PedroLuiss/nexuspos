@@ -26,6 +26,7 @@ export interface ProductFormValues {
   supplierId: string
   typeId: string
   taxId: string
+  variantAttrs: string
   active: boolean
 }
 
@@ -66,6 +67,7 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
       supplierId: initialData?.supplierId ?? '',
       typeId: initialData?.typeId ?? '',
       taxId: initialData?.taxId ?? '',
+      variantAttrs: initialData?.variantAttrs ?? '',
       active: initialData?.active ?? true
     }
   }
@@ -86,6 +88,7 @@ function initialValues(initialData?: Product | null, categories: string[] = []):
     supplierId: initialData?.supplierId ?? '',
     typeId: initialData?.typeId ?? '',
     taxId: initialData?.taxId ?? '',
+    variantAttrs: initialData?.variantAttrs ?? '',
     active: initialData?.active ?? true
   }
 }
@@ -170,6 +173,7 @@ export function useProductForm(
       supplierId: values.supplierId || undefined,
       typeId: values.typeId || undefined,
       taxId: values.taxId || undefined,
+      variantAttrs: values.variantAttrs || undefined,
       active: values.active
     }
   }, [values])

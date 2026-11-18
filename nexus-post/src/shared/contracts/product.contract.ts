@@ -14,6 +14,12 @@ export interface Product {
   minStock: number
   maxStock?: number
   unit: string
+  /** Si es una variante, id del producto padre al que pertenece. */
+  parentId?: string
+  /** Atributos de la variante serializados (JSON). Solo en variantes hijas. */
+  attributes?: string
+  /** Nombres de atributos que definen las variantes del padre (JSON). Solo en el padre. */
+  variantAttrs?: string
   /** Marca del producto (catálogo `brands`). Opcional. */
   brandId?: string
   /** Nombre de la marca resuelto por el repositorio (solo lectura). */

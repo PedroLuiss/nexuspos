@@ -11,6 +11,10 @@ export function registerProductIpc(products: ProductService): void {
 
   ipcMain.handle(IPC_CHANNELS.products.getById, (_event, id: string) => products.getById(id))
 
+  ipcMain.handle(IPC_CHANNELS.products.listVariants, (_event, parentId: string) =>
+    products.listVariants(parentId)
+  )
+
   ipcMain.handle(IPC_CHANNELS.products.create, (_event, input: ProductInput) =>
     products.create(input)
   )

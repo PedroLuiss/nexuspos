@@ -6,6 +6,7 @@ import ProductPricingFields from './ProductPricingFields'
 import ProductBarcodesEditor from './ProductBarcodesEditor'
 import ProductPriceTiersEditor from './ProductPriceTiersEditor'
 import ComboItemsEditor from './ComboItemsEditor'
+import VariantEditor from './VariantEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
 
 interface AddProductModalProps {
@@ -109,6 +110,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               />
               {initialProduct.typeKind === 'combo' && (
                 <ComboItemsEditor comboId={initialProduct.id} products={products} />
+              )}
+              {initialProduct.typeKind !== 'combo' && !initialProduct.parentId && (
+                <VariantEditor
+                  parent={initialProduct}
+                  variantAttrs={values.variantAttrs}
+                  onVariantAttrsChange={(json) => update('variantAttrs', json)}
+                />
               )}
             </div>
           )}

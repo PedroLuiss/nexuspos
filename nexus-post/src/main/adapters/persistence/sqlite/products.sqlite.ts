@@ -14,6 +14,9 @@ interface ProductRow {
   min_stock: number
   max_stock: number | null
   unit: string
+  parent_id: string | null
+  attributes: string | null
+  variant_attrs: string | null
   brand_id: string | null
   brand_name: string | null
   supplier_id: string | null
@@ -79,6 +82,9 @@ function mapRow(row: ProductRow): Product {
     minStock: row.min_stock,
     maxStock: row.max_stock ?? undefined,
     unit: row.unit,
+    parentId: row.parent_id ?? undefined,
+    attributes: row.attributes ?? undefined,
+    variantAttrs: row.variant_attrs ?? undefined,
     brandId: row.brand_id ?? undefined,
     brandName: row.brand_name ?? undefined,
     supplierId: row.supplier_id ?? undefined,
@@ -150,15 +156,24 @@ export class SqliteProductRepository implements ProductRepository {
     return row ? mapRow(row) : null
   }
 
+  findByParentId(parentId: string): Product[] {
+    const rows = this.db
+      .prepare(
+        `${SELECT_PRODUCTS} WHERE p.parent_id = ? AND p.deleted = 0 ORDER BY p.name COLLATE NOCASE ASC`
+      )
+      .all(parentId) as ProductRow[]
+    return rows.map(mapRow)
+  }
+
   create(input: ProductInput & { id: string; createdAt: string; updatedAt: string }): Product {
     this.db
       .prepare(
         `INSERT INTO products (
           id, code, name, category, cost_price, sale_price, stock, min_stock, max_stock,
-          unit, brand_id, supplier_id, type_id, tax_id, has_tax, active, deleted, description, image_url, created_at, updated_at
+          unit, parent_id, attributes, variant_attrs, brand_id, supplier_id, type_id, tax_id, has_tax, active, deleted, description, image_url, created_at, updated_at
         ) VALUES (
           @id, @code, @name, @category, @costPrice, @salePrice, @stock, @minStock, @maxStock,
-          @unit, @brandId, @supplierId, @typeId, @taxId, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
+          @unit, @parentId, @attributes, @variantAttrs, @brandId, @supplierId, @typeId, @taxId, @hasTax, @active, @deleted, @description, @imageUrl, @createdAt, @updatedAt
         )`
       )
       .run({
@@ -172,6 +187,9 @@ export class SqliteProductRepository implements ProductRepository {
         minStock: input.minStock,
         maxStock: input.maxStock ?? null,
         unit: input.unit,
+        parentId: input.parentId ?? null,
+        attributes: input.attributes ?? '',
+        variantAttrs: input.variantAttrs ?? '',
         brandId: input.brandId ?? null,
         supplierId: input.supplierId ?? null,
         typeId: input.typeId ?? null,
@@ -201,6 +219,9 @@ export class SqliteProductRepository implements ProductRepository {
           min_stock = @minStock,
           max_stock = @maxStock,
           unit = @unit,
+          parent_id = @parentId,
+          attributes = @attributes,
+          variant_attrs = @variantAttrs,
           brand_id = @brandId,
           supplier_id = @supplierId,
           type_id = @typeId,
@@ -224,6 +245,9 @@ export class SqliteProductRepository implements ProductRepository {
         minStock: product.minStock,
         maxStock: product.maxStock ?? null,
         unit: product.unit,
+        parentId: product.parentId ?? null,
+        attributes: product.attributes ?? '',
+        variantAttrs: product.variantAttrs ?? '',
         brandId: product.brandId ?? null,
         supplierId: product.supplierId ?? null,
         typeId: product.typeId ?? null,

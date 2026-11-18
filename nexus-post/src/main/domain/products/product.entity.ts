@@ -23,6 +23,9 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
     hasTax: Boolean(input.hasTax),
     active: input.active ?? true,
     deleted: input.deleted ?? false,
+    parentId: input.parentId?.trim() || undefined,
+    attributes: (input.attributes ?? '').trim(),
+    variantAttrs: (input.variantAttrs ?? '').trim(),
     description: (input.description ?? '').trim(),
     imageUrl: input.imageUrl?.trim() || undefined
   }

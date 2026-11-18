@@ -83,7 +83,7 @@ export const ProductImportExportModal: React.FC<ProductImportExportModalProps> =
         {activeTab === 'export' ? (
           <ProductExportTab products={products} />
         ) : (
-          <ProductImportTab onImportBatch={onImportBatch} />
+          <ProductImportTab onImportBatch={onImportBatch} products={products} />
         )}
 
         {/* Footer */}

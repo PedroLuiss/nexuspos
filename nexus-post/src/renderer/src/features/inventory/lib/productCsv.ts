@@ -16,14 +16,16 @@ export const PRODUCT_CSV_HEADERS = [
   'Descripcion',
   'ImpuestoNombre',
   'ImpuestoTasa',
+  'Atributos',
+  'PadreSKU',
   'ImagenURL'
 ]
 
 export const PRODUCT_CSV_TEMPLATE = [
   PRODUCT_CSV_HEADERS.join(','),
-  '750100000001,Ejemplo Producto General,Abarrotes y Despensa,Genérica,Proveedor General,Producto Simple,15.50,22.00,50,10,Pieza (pza),Producto gravado al 16%,IVA General,16,',
-  '750100000002,Ejemplo Producto Reducido,Bebidas y Refrescos,Coca-Cola,Distribuidora Los Andes,Producto Simple,10.00,16.50,100,20,Pieza (pza),Producto gravado al 8%,IVA Reducido,8,',
-  '750100000003,Ejemplo Producto Exento,Panaderia,Genérica,Proveedor General,Producto Simple,2.00,3.00,80,15,Pieza (pza),Producto exento,Exento,0,'
+  '750100000001,Ejemplo Producto General,Abarrotes y Despensa,Genérica,Proveedor General,Producto Simple,15.50,22.00,50,10,Pieza (pza),Producto gravado al 16%,IVA General,16,,,',
+  '750100000002,Ejemplo Producto Reducido,Bebidas y Refrescos,Coca-Cola,Distribuidora Los Andes,Producto Simple,10.00,16.50,100,20,Pieza (pza),Producto gravado al 8%,IVA Reducido,8,,,',
+  '750100000003,Ejemplo Producto Exento,Panaderia,Genérica,Proveedor General,Producto Simple,2.00,3.00,80,15,Pieza (pza),Producto exento,Exento,0,,,'
 ].join('\r\n')
 
 const quote = (value: string): string => `"${value.replace(/"/g, '""')}"`
@@ -38,6 +40,7 @@ export function buildProductCatalogCsv(
   const brandById = new Map(brands.map((b) => [b.id, b.name]))
   const supplierById = new Map(suppliers.map((s) => [s.id, s.name]))
   const typeById = new Map(types.map((t) => [t.id, t.name]))
+  const parentSkuById = new Map(products.map((p) => [p.id, p.code]))
 
   const rows = products.map((product) => [
     quote(product.code),
@@ -54,6 +57,8 @@ export function buildProductCatalogCsv(
     quote(product.description ?? ''),
     quote(product.taxName ?? (product.taxRate === 0 ? 'Exento' : '')),
     product.taxRate === undefined ? '' : String(product.taxRate),
+    quote(product.attributes ?? ''),
+    quote(product.parentId ? (parentSkuById.get(product.parentId) ?? '') : ''),
     quote(product.imageUrl ?? '')
   ])
 
@@ -81,6 +86,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   taxName: ['impuestonombre', 'nombreimpuesto', 'impuesto'],
   taxRate: ['impuestotasa', 'tasaimpuesto', 'impuestoporcentaje', 'porcentajeimpuesto'],
   hasTax: ['tieneimpuesto'],
+  attributes: ['atributos'],
+  parentSku: ['padresku', 'padre', 'skupadre'],
   imageUrl: ['imagenurl', 'imagen', 'url']
 }
 
@@ -125,7 +132,8 @@ export function parseProductCatalogCsv(
   brands: Brand[],
   suppliers: Supplier[],
   types: ProductType[],
-  defaultTax: TaxRate | null
+  defaultTax: TaxRate | null,
+  existingProducts: Product[] = []
 ): ProductCsvParseResult {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
   const errors: string[] = []
@@ -243,6 +251,18 @@ export function parseProductCatalogCsv(
       continue
     }
 
+    const attributes = cell('attributes').trim()
+    const parentSku = cell('parentSku').trim()
+    let parentId: string | undefined
+    if (parentSku) {
+      const parent = existingProducts.find((p) => p.code.trim().toLowerCase() === parentSku.toLowerCase())
+      if (!parent) {
+        errors.push(`Línea ${i + 1}: no existe un producto padre con SKU "${parentSku}".`)
+        continue
+      }
+      parentId = parent.id
+    }
+
     rows.push({
       code,
       name,
@@ -257,6 +277,8 @@ export function parseProductCatalogCsv(
       supplierId: supplier.id,
       typeId: type.id,
       taxId: tax.taxId,
+      attributes: attributes || undefined,
+      parentId,
       imageUrl: cell('imageUrl'),
       active: true
     })

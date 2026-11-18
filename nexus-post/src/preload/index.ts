@@ -58,6 +58,8 @@ const api: NexusApi = {
   products: {
     list: (filter?: ProductFilter) => ipcRenderer.invoke(IPC_CHANNELS.products.list, filter),
     getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.products.getById, id),
+    listVariants: (parentId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.products.listVariants, parentId),
     create: (input: ProductInput) => ipcRenderer.invoke(IPC_CHANNELS.products.create, input),
     update: (product: Product) => ipcRenderer.invoke(IPC_CHANNELS.products.update, product),
     softDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.products.softDelete, id),

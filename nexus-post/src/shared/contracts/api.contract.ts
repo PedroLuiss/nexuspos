@@ -35,6 +35,7 @@ export const IPC_CHANNELS = {
   products: {
     list: 'products:list',
     getById: 'products:getById',
+    listVariants: 'products:listVariants',
     create: 'products:create',
     update: 'products:update',
     softDelete: 'products:softDelete',
@@ -185,6 +186,7 @@ export const IPC_CHANNELS = {
 export interface ProductsApi {
   list(filter?: ProductFilter): Promise<Product[]>
   getById(id: string): Promise<Product | null>
+  listVariants(parentId: string): Promise<Product[]>
   create(input: ProductInput): Promise<Product>
   update(product: Product): Promise<Product>
   softDelete(id: string): Promise<void>

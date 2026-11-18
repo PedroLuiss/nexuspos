@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import type { ProductInput } from '@shared/contracts'
+import type { Product, ProductInput } from '@shared/contracts'
 import { Upload, Check, AlertCircle } from '../../../shared/icons/Icons'
 import { useTaxes } from '../../../shared/hooks/useTaxes'
 import { useBrands } from '../../../shared/hooks/useBrands'
@@ -10,9 +10,10 @@ import { PRODUCT_CSV_TEMPLATE, parseProductCatalogCsv } from '../lib/productCsv'
 
 interface ProductImportTabProps {
   onImportBatch: (inputs: ProductInput[]) => Promise<number>
+  products: Product[]
 }
 
-export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatch }) => {
+export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatch, products }) => {
   const { taxes, defaultTax, error: taxesError } = useTaxes()
   const { brands, error: brandsError } = useBrands()
   const { suppliers, error: suppliersError } = useSuppliers()
@@ -53,7 +54,8 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
         brands,
         suppliers,
         types,
-        defaultTax
+        defaultTax,
+        products
       )
       setParsedRows(rows)
       setParseErrors(errors)
