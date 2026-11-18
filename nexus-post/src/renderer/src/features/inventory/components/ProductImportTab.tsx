@@ -7,10 +7,20 @@ import { useSuppliers } from '../../../shared/hooks/useSuppliers'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { formatTaxLabel } from '@shared/lib/tax'
 import { PRODUCT_CSV_TEMPLATE, parseProductCatalogCsv } from '../lib/productCsv'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface ProductImportTabProps {
-  onImportBatch: (inputs: ProductInput[]) => Promise<number>
+  onImportBatch: (
+    inputs: ProductInput[],
+    onProgress?: (completed: number, total: number) => void
+  ) => Promise<ProductImportBatchResult>
   products: Product[]
+}
+
+export interface ProductImportBatchResult {
+  created: number
+  errors: string[]
 }
 
 export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatch, products }) => {
@@ -21,8 +31,10 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
   const [parsedRows, setParsedRows] = useState<ProductInput[]>([])
   const [parseErrors, setParseErrors] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [importProgress, setImportProgress] = useState({ completed: 0, total: 0 })
   const [importedCount, setImportedCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const preview = useTablePagination(parsedRows)
 
   const handleDownloadTemplate = (): void => {
     const blob = new Blob(['\uFEFF' + PRODUCT_CSV_TEMPLATE], {
@@ -67,9 +79,13 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
   const handleConfirmImport = async (): Promise<void> => {
     if (parsedRows.length === 0) return
     setIsProcessing(true)
+    setImportProgress({ completed: 0, total: parsedRows.length })
     try {
-      const count = await onImportBatch(parsedRows)
-      setImportedCount(count)
+      const result = await onImportBatch(parsedRows, (completed, total) =>
+        setImportProgress({ completed, total })
+      )
+      setImportedCount(result.created)
+      setParseErrors((errors) => [...errors, ...result.errors])
       setParsedRows([])
     } catch (err: unknown) {
       const msg =
@@ -208,46 +224,62 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
               className="flex items-center justify-center gap-1.5 px-4 py-1.5 bg-[#0067C0] hover:bg-[#0078D4] text-white font-bold rounded-[4px] shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Check size={14} />
-              <span>{isProcessing ? 'Guardando en BD...' : 'Confirmar e Importar'}</span>
+              <span>
+                {isProcessing
+                  ? `Guardando ${importProgress.completed}/${importProgress.total}...`
+                  : 'Confirmar e Importar'}
+              </span>
             </button>
           </div>
-          <div className="border border-slate-200 rounded-[4px] max-h-36 overflow-auto">
-            <table className="w-full min-w-[760px] text-left text-[11px]">
-              <thead className="bg-slate-100 text-slate-700 sticky top-0 font-semibold">
-                <tr>
-                  <th className="py-1 px-2">Código</th>
-                  <th className="py-1 px-2">Nombre</th>
-                  <th className="py-1 px-2">Categoría</th>
-                  <th className="py-1 px-2 text-center">Marca</th>
-                  <th className="py-1 px-2 text-center">Proveedor</th>
-                  <th className="py-1 px-2 text-center">Tipo</th>
-                  <th className="py-1 px-2 text-right">Costo</th>
-                  <th className="py-1 px-2 text-right">Venta</th>
-                  <th className="py-1 px-2 text-center">Stock</th>
-                  <th className="py-1 px-2 text-center">Impuesto</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
-                {parsedRows.slice(0, 10).map((r, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="py-1 px-2">{r.code}</td>
-                    <td className="py-1 px-2 font-sans font-medium">{r.name}</td>
-                    <td className="py-1 px-2 font-sans">{r.category}</td>
-                    <td className="py-1 px-2 text-center font-sans">{brandLabel(r.brandId)}</td>
-                    <td className="py-1 px-2 text-center font-sans">
-                      {supplierLabel(r.supplierId)}
-                    </td>
-                    <td className="py-1 px-2 text-center font-sans">{typeLabel(r.typeId)}</td>
-                    <td className="py-1 px-2 text-right">${r.costPrice.toFixed(2)}</td>
-                    <td className="py-1 px-2 text-right font-bold text-[#107C41]">
-                      ${r.salePrice.toFixed(2)}
-                    </td>
-                    <td className="py-1 px-2 text-center">{r.stock}</td>
-                    <td className="py-1 px-2 text-center font-sans">{taxLabel(r.taxId)}</td>
+          <div className="border border-slate-200 rounded-[4px] overflow-hidden">
+            <div className="max-h-36 overflow-auto">
+              <table className="w-full min-w-[760px] text-left text-[11px]">
+                <thead className="bg-slate-100 text-slate-700 sticky top-0 font-semibold">
+                  <tr>
+                    <th className="py-1 px-2">Código</th>
+                    <th className="py-1 px-2">Nombre</th>
+                    <th className="py-1 px-2">Categoría</th>
+                    <th className="py-1 px-2 text-center">Marca</th>
+                    <th className="py-1 px-2 text-center">Proveedor</th>
+                    <th className="py-1 px-2 text-center">Tipo</th>
+                    <th className="py-1 px-2 text-right">Costo</th>
+                    <th className="py-1 px-2 text-right">Venta</th>
+                    <th className="py-1 px-2 text-center">Stock</th>
+                    <th className="py-1 px-2 text-center">Impuesto</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  {preview.items.map((r, idx) => (
+                    <tr
+                      key={(preview.page - 1) * preview.pageSize + idx}
+                      className="hover:bg-slate-50"
+                    >
+                      <td className="py-1 px-2">{r.code}</td>
+                      <td className="py-1 px-2 font-sans font-medium">{r.name}</td>
+                      <td className="py-1 px-2 font-sans">{r.category}</td>
+                      <td className="py-1 px-2 text-center font-sans">{brandLabel(r.brandId)}</td>
+                      <td className="py-1 px-2 text-center font-sans">
+                        {supplierLabel(r.supplierId)}
+                      </td>
+                      <td className="py-1 px-2 text-center font-sans">{typeLabel(r.typeId)}</td>
+                      <td className="py-1 px-2 text-right">${r.costPrice.toFixed(2)}</td>
+                      <td className="py-1 px-2 text-right font-bold text-[#107C41]">
+                        ${r.salePrice.toFixed(2)}
+                      </td>
+                      <td className="py-1 px-2 text-center">{r.stock}</td>
+                      <td className="py-1 px-2 text-center font-sans">{taxLabel(r.taxId)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              page={preview.page}
+              pageSize={preview.pageSize}
+              totalItems={preview.totalItems}
+              totalPages={preview.totalPages}
+              onPageChange={preview.setPage}
+            />
           </div>
         </div>
       )}

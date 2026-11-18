@@ -3,6 +3,8 @@ import type { ComboItem, ComboItemInput, Product } from '@shared/contracts'
 import { useComboItems } from '../../../shared/hooks/useComboItems'
 import { Check, Edit3, Layers, Plus, Trash2, X, AlertCircle } from '../../../shared/icons/Icons'
 import ProductSearchSelect from './ProductSearchSelect'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface ComboItemsEditorProps {
   /** ID del producto combo (solo se edita si ya existe). */
@@ -24,6 +26,7 @@ interface Draft {
 /** Editor de componentes de un producto combo/bundle. */
 export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, products }) => {
   const { items, error, createItem, updateItem, deleteItem } = useComboItems(comboId)
+  const pagination = useTablePagination(items)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -127,45 +130,54 @@ export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, pro
 
       {items.length > 0 && (
         <div className="border border-slate-200 rounded-[4px] overflow-hidden">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-slate-50 text-slate-600 font-semibold">
-              <tr>
-                <th className="py-1 px-2">Componente</th>
-                <th className="py-1 px-2 text-right">Cant./Combo</th>
-                <th className="py-1 px-2 text-center">Activo</th>
-                <th className="py-1 px-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <tr key={item.id} className={!item.active ? 'opacity-60' : ''}>
-                  <td className="py-1 px-2">{item.componentName ?? item.componentId}</td>
-                  <td className="py-1 px-2 text-right font-mono">{item.quantity}</td>
-                  <td className="py-1 px-2 text-center">{item.active ? 'Sí' : 'No'}</td>
-                  <td className="py-1 px-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(item)}
-                        title="Editar componente"
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(item)}
-                        title="Quitar componente"
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold">
+                <tr>
+                  <th className="py-1 px-2">Componente</th>
+                  <th className="py-1 px-2 text-right">Cant./Combo</th>
+                  <th className="py-1 px-2 text-center">Activo</th>
+                  <th className="py-1 px-2 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagination.items.map((item) => (
+                  <tr key={item.id} className={!item.active ? 'opacity-60' : ''}>
+                    <td className="py-1 px-2">{item.componentName ?? item.componentId}</td>
+                    <td className="py-1 px-2 text-right font-mono">{item.quantity}</td>
+                    <td className="py-1 px-2 text-center">{item.active ? 'Sí' : 'No'}</td>
+                    <td className="py-1 px-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          title="Editar componente"
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(item)}
+                          title="Quitar componente"
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 
@@ -178,6 +190,7 @@ export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, pro
               </label>
               <ProductSearchSelect
                 products={eligible}
+                excludeCombos
                 value={draft.componentId}
                 onChange={(componentId) => setDraft({ ...draft, componentId })}
                 label="Producto componente"

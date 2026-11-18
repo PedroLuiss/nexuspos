@@ -1,19 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type {
   Brand,
-  Product,
+  ProductPageQuery,
+  ProductStockFilter,
+  ProductType,
   Supplier,
-  TaxRate,
-  ProductType
+  TaxRate
 } from '@shared/contracts'
-import { formatTaxLabel } from '@shared/lib/tax'
+import { useProductFilterOptions, type TaxFilterOption } from './useProductFilterOptions'
 
-export type StockFilter = 'ALL' | 'LOW' | 'OUT'
-
-export interface TaxFilterOption {
-  value: string
-  label: string
-}
+export type StockFilter = ProductStockFilter
+export type { TaxFilterOption } from './useProductFilterOptions'
 
 export interface ProductStats {
   total: number
@@ -43,136 +40,123 @@ export interface UseProductFiltersResult {
   setTypeFilter: (value: string) => void
   typeOptions: TaxFilterOption[]
   categories: string[]
-  filtered: Product[]
-  stats: ProductStats
+  page: number
+  setPage: (page: number) => void
+  pageSize: number
+  setPageSize: (pageSize: number) => void
+  query: ProductPageQuery
 }
 
-/** Filtrado y métricas del catálogo, calculados en memoria. */
 export function useProductFilters(
-  products: Product[],
+  categories: string[],
   taxes: TaxRate[] = [],
   brands: Brand[] = [],
   suppliers: Supplier[] = [],
   types: ProductType[] = []
 ): UseProductFiltersResult {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('ALL')
-  const [stockFilter, setStockFilter] = useState<StockFilter>('ALL')
-  const [taxFilter, setTaxFilter] = useState('ALL')
-  const [brandFilter, setBrandFilter] = useState('ALL')
-  const [supplierFilter, setSupplierFilter] = useState('ALL')
-  const [typeFilter, setTypeFilter] = useState('ALL')
+  const [searchTerm, setSearch] = useState('')
+  const [selectedCategory, setCategory] = useState('ALL')
+  const [stockFilter, setStock] = useState<StockFilter>('ALL')
+  const [taxFilter, setTax] = useState('ALL')
+  const [brandFilter, setBrand] = useState('ALL')
+  const [supplierFilter, setSupplier] = useState('ALL')
+  const [typeFilter, setType] = useState('ALL')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
 
-  const categories = useMemo(
-    () => ['ALL', ...Array.from(new Set(products.map((p) => p.category)))],
-    [products]
+  const resetPage = useCallback(() => setPage(1), [])
+  const setSearchTerm = useCallback(
+    (value: string) => {
+      setSearch(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setSelectedCategory = useCallback(
+    (value: string) => {
+      setCategory(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setStockFilter = useCallback(
+    (value: StockFilter) => {
+      setStock(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setTaxFilter = useCallback(
+    (value: string) => {
+      setTax(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setBrandFilter = useCallback(
+    (value: string) => {
+      setBrand(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setSupplierFilter = useCallback(
+    (value: string) => {
+      setSupplier(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const setTypeFilter = useCallback(
+    (value: string) => {
+      setType(value)
+      resetPage()
+    },
+    [resetPage]
+  )
+  const updatePageSize = useCallback(
+    (value: number) => {
+      setPageSize(Math.min(100, Math.max(25, value)))
+      resetPage()
+    },
+    [resetPage]
   )
 
-  const taxOptions = useMemo<TaxFilterOption[]>(() => {
-    const options = taxes
-      .filter((tax) => tax.active || products.some((p) => p.taxId === tax.id))
-      .map((tax) => ({ value: tax.id, label: formatTaxLabel(tax.name, tax.rate) }))
-    if (products.some((p) => !p.taxId)) {
-      options.push({ value: 'NONE', label: 'Sin tasa asignada' })
-    }
-    return options
-  }, [taxes, products])
+  const { taxOptions, brandOptions, supplierOptions, typeOptions } = useProductFilterOptions(
+    taxes,
+    brands,
+    suppliers,
+    types
+  )
 
-  const brandOptions = useMemo<TaxFilterOption[]>(() => {
-    const options = brands
-      .filter((b) => b.active || products.some((p) => p.brandId === b.id))
-      .map((b) => ({ value: b.id, label: b.name }))
-    if (products.some((p) => !p.brandId)) {
-      options.push({ value: 'NONE', label: 'Sin marca asignada' })
-    }
-    return options
-  }, [brands, products])
-
-  const supplierOptions = useMemo<TaxFilterOption[]>(() => {
-    const options = suppliers
-      .filter((s) => s.active || products.some((p) => p.supplierId === s.id))
-      .map((s) => ({ value: s.id, label: s.name }))
-    if (products.some((p) => !p.supplierId)) {
-      options.push({ value: 'NONE', label: 'Sin proveedor asignado' })
-    }
-    return options
-  }, [suppliers, products])
-
-  const typeOptions = useMemo<TaxFilterOption[]>(() => {
-    const options = types
-      .filter((t) => t.active || products.some((p) => p.typeId === t.id))
-      .map((t) => ({ value: t.id, label: t.name }))
-    if (products.some((p) => !p.typeId)) {
-      options.push({ value: 'NONE', label: 'Sin tipo asignado' })
-    }
-    return options
-  }, [types, products])
-
-  const filtered = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-    return products.filter((p) => {
-      const matchesSearch =
-        !term ||
-        p.name.toLowerCase().includes(term) ||
-        p.code.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term)
-      const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory
-      const matchesTax =
-        taxFilter === 'ALL' ? true : taxFilter === 'NONE' ? !p.taxId : p.taxId === taxFilter
-      const matchesBrand =
-        brandFilter === 'ALL'
-          ? true
-          : brandFilter === 'NONE'
-            ? !p.brandId
-            : p.brandId === brandFilter
-      const matchesSupplier =
-        supplierFilter === 'ALL'
-          ? true
-          : supplierFilter === 'NONE'
-            ? !p.supplierId
-            : p.supplierId === supplierFilter
-      const matchesType =
-        typeFilter === 'ALL'
-          ? true
-          : typeFilter === 'NONE'
-            ? !p.typeId
-            : p.typeId === typeFilter
-      const matchesStock =
-        stockFilter === 'ALL'
-          ? true
-          : stockFilter === 'LOW'
-            ? p.stock > 0 && p.stock <= p.minStock
-            : p.stock === 0
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesTax &&
-        matchesBrand &&
-        matchesSupplier &&
-        matchesType &&
-        matchesStock
-      )
-    })
-  }, [
-    products,
-    searchTerm,
-    selectedCategory,
-    stockFilter,
-    taxFilter,
-    brandFilter,
-    supplierFilter,
-    typeFilter
-  ])
-
-  const stats = useMemo<ProductStats>(
+  const query = useMemo<ProductPageQuery>(
     () => ({
-      total: products.length,
-      totalStock: products.reduce((acc, p) => acc + p.stock, 0),
-      totalValue: products.reduce((acc, p) => acc + p.stock * p.costPrice, 0),
-      lowStock: products.filter((p) => p.stock > 0 && p.stock <= p.minStock).length,
-      outOfStock: products.filter((p) => p.stock === 0).length
+      page,
+      pageSize,
+      search: searchTerm.trim() || undefined,
+      category: selectedCategory === 'ALL' ? undefined : selectedCategory,
+      stockFilter,
+      taxId: taxFilter !== 'ALL' && taxFilter !== 'NONE' ? taxFilter : undefined,
+      taxUnassigned: taxFilter === 'NONE',
+      brandId: brandFilter !== 'ALL' && brandFilter !== 'NONE' ? brandFilter : undefined,
+      brandUnassigned: brandFilter === 'NONE',
+      supplierId:
+        supplierFilter !== 'ALL' && supplierFilter !== 'NONE' ? supplierFilter : undefined,
+      supplierUnassigned: supplierFilter === 'NONE',
+      typeId: typeFilter !== 'ALL' && typeFilter !== 'NONE' ? typeFilter : undefined,
+      typeUnassigned: typeFilter === 'NONE'
     }),
-    [products]
+    [
+      page,
+      pageSize,
+      searchTerm,
+      selectedCategory,
+      stockFilter,
+      taxFilter,
+      brandFilter,
+      supplierFilter,
+      typeFilter
+    ]
   )
 
   return {
@@ -194,8 +178,11 @@ export function useProductFilters(
     typeFilter,
     setTypeFilter,
     typeOptions,
-    categories,
-    filtered,
-    stats
+    categories: ['ALL', ...Array.from(new Set(categories))],
+    page,
+    setPage,
+    pageSize,
+    setPageSize: updatePageSize,
+    query
   }
 }

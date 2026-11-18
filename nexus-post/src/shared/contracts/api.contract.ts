@@ -1,4 +1,10 @@
-import type { Product, ProductInput, ProductFilter } from './product.contract'
+import type {
+  Product,
+  ProductInput,
+  ProductFilter,
+  ProductPageQuery,
+  ProductPageResult
+} from './product.contract'
 import type { TaxesApi } from './tax.contract'
 import type { Brand, BrandInput, BrandFilter } from './brand.contract'
 import type { Supplier, SupplierInput, SupplierFilter } from './supplier.contract'
@@ -35,6 +41,7 @@ import type { DatabaseMaintenanceApi } from './database.contract'
 export const IPC_CHANNELS = {
   products: {
     list: 'products:list',
+    listPage: 'products:listPage',
     getById: 'products:getById',
     listVariants: 'products:listVariants',
     create: 'products:create',
@@ -192,6 +199,7 @@ export const IPC_CHANNELS = {
 
 export interface ProductsApi {
   list(filter?: ProductFilter): Promise<Product[]>
+  listPage(query: ProductPageQuery): Promise<ProductPageResult>
   getById(id: string): Promise<Product | null>
   listVariants(parentId: string): Promise<Product[]>
   create(input: ProductInput): Promise<Product>

@@ -2,14 +2,18 @@ import React, { useState } from 'react'
 import type { Product, ProductInput } from '@shared/contracts'
 import { FileSpreadsheet, X } from '../../../shared/icons/Icons'
 import ProductExportTab from './ProductExportTab'
-import ProductImportTab from './ProductImportTab'
+import ProductImportTab, { type ProductImportBatchResult } from './ProductImportTab'
 
 interface ProductImportExportModalProps {
   isOpen: boolean
   initialTab?: 'export' | 'import'
   onClose: () => void
   products: Product[]
-  onImportBatch: (inputs: ProductInput[]) => Promise<number>
+  isLoadingProducts: boolean
+  onImportBatch: (
+    inputs: ProductInput[],
+    onProgress?: (completed: number, total: number) => void
+  ) => Promise<ProductImportBatchResult>
 }
 
 export const ProductImportExportModal: React.FC<ProductImportExportModalProps> = ({
@@ -17,6 +21,7 @@ export const ProductImportExportModal: React.FC<ProductImportExportModalProps> =
   initialTab = 'export',
   onClose,
   products,
+  isLoadingProducts,
   onImportBatch
 }) => {
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(initialTab)
@@ -77,7 +82,11 @@ export const ProductImportExportModal: React.FC<ProductImportExportModalProps> =
 
         {/* Contenido de Tabs */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {activeTab === 'export' ? (
+          {isLoadingProducts ? (
+            <div className="p-10 text-center text-xs font-semibold text-slate-500">
+              Cargando catálogo de productos...
+            </div>
+          ) : activeTab === 'export' ? (
             <ProductExportTab products={products} />
           ) : (
             <ProductImportTab onImportBatch={onImportBatch} products={products} />

@@ -2,6 +2,8 @@ import type {
   Product,
   ProductInput,
   ProductFilter,
+  ProductPageQuery,
+  ProductPageResult,
   TaxRate,
   Brand,
   Supplier,
@@ -13,7 +15,6 @@ import type { BrandRepository } from '../../ports/brand.repository'
 import type { SupplierRepository } from '../../ports/supplier.repository'
 import type { ProductTypeRepository } from '../../ports/product-type.repository'
 import type { ProductBatchRepository } from '../../ports/product-batch.repository'
-import type { ComboItemRepository } from '../../ports/combo-item.repository'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeProductInput, validateProductInput } from './product.entity'
 
@@ -25,12 +26,17 @@ export class ProductService {
     private readonly brands: BrandRepository,
     private readonly suppliers: SupplierRepository,
     private readonly productTypes: ProductTypeRepository,
-    private readonly batches: ProductBatchRepository,
-    private readonly combos: ComboItemRepository
+    private readonly batches: ProductBatchRepository
   ) {}
 
   list(filter?: ProductFilter): Product[] {
     return this.products.findAll(filter)
+  }
+
+  listPage(query: ProductPageQuery): ProductPageResult {
+    const page = Math.max(1, Math.floor(query.page) || 1)
+    const pageSize = Math.min(100, Math.max(1, Math.floor(query.pageSize) || 50))
+    return this.products.findPage({ ...query, page, pageSize })
   }
 
   getById(id: string): Product | null {
@@ -120,23 +126,7 @@ export class ProductService {
   }
 
   softDelete(id: string): void {
-    if (!this.products.findById(id)) throw new NotFoundError('Producto no encontrado')
-
-    // Cascada de baja lógica: variantes, lotes y relaciones de combo.
-    // Así el catálogo de lotes/variantes no queda con huérfanos de un producto dado de baja.
-    for (const variant of this.products.findByParentId(id)) {
-      this.products.softDelete(variant.id)
-    }
-    for (const batch of this.batches.findByProductId(id, false)) {
-      this.batches.softDelete(batch.id)
-    }
-    for (const relation of this.combos.findAll({ includeDeleted: false })) {
-      if (relation.comboId === id || relation.componentId === id) {
-        this.combos.softDelete(relation.id)
-      }
-    }
-
-    this.products.softDelete(id)
+    if (!this.products.softDeleteCascade(id)) throw new NotFoundError('Producto no encontrado')
   }
 
   toggleStatus(id: string): Product {

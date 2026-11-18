@@ -1,5 +1,12 @@
 import type Database from 'better-sqlite3'
-import type { Product, ProductInput, ProductFilter } from '@shared/contracts'
+import type {
+  Product,
+  ProductInput,
+  ProductFilter,
+  ProductPageQuery,
+  ProductPageResult,
+  ProductCatalogStats
+} from '@shared/contracts'
 import type { ProductRepository } from '../../../ports/product.repository'
 
 interface ProductRow {
@@ -75,6 +82,70 @@ const SELECT_PRODUCTS = `
   LEFT JOIN product_types t ON t.id = p.type_id
   LEFT JOIN taxes tx ON tx.id = p.tax_id
 `
+
+const EFFECTIVE_STOCK = `CASE
+  WHEN t.kind = 'combo' THEN COALESCE((
+    SELECT MIN(CAST(cp.stock / ci.quantity AS INTEGER))
+    FROM combo_items ci
+    JOIN products cp ON cp.id = ci.component_id
+    WHERE ci.combo_id = p.id AND ci.deleted = 0 AND ci.active = 1 AND cp.deleted = 0
+  ), 0)
+  WHEN p.track_batches = 1 THEN COALESCE((
+    SELECT SUM(pb.quantity)
+    FROM product_batches pb
+    WHERE pb.product_id = p.id AND pb.deleted = 0 AND pb.active = 1
+  ), 0)
+  ELSE p.stock
+END`
+
+function buildPageWhere(query: ProductPageQuery): {
+  where: string
+  params: Record<string, unknown>
+} {
+  const clauses = ['p.deleted = 0']
+  const params: Record<string, unknown> = {}
+
+  if (query.onlyActive) clauses.push('p.active = 1')
+  if (query.category) {
+    clauses.push('p.category = @category')
+    params.category = query.category
+  }
+  if (query.brandId) {
+    clauses.push('p.brand_id = @brandId')
+    params.brandId = query.brandId
+  } else if (query.brandUnassigned) {
+    clauses.push("(p.brand_id IS NULL OR p.brand_id = '')")
+  }
+  if (query.supplierId) {
+    clauses.push('p.supplier_id = @supplierId')
+    params.supplierId = query.supplierId
+  } else if (query.supplierUnassigned) {
+    clauses.push("(p.supplier_id IS NULL OR p.supplier_id = '')")
+  }
+  if (query.typeId) {
+    clauses.push('p.type_id = @typeId')
+    params.typeId = query.typeId
+  } else if (query.typeUnassigned) {
+    clauses.push("(p.type_id IS NULL OR p.type_id = '')")
+  }
+  if (query.taxId) {
+    clauses.push('p.tax_id = @taxId')
+    params.taxId = query.taxId
+  } else if (query.taxUnassigned) {
+    clauses.push("(p.tax_id IS NULL OR p.tax_id = '')")
+  }
+  if (query.search?.trim()) {
+    clauses.push('(p.code LIKE @search OR p.name LIKE @search OR p.category LIKE @search)')
+    params.search = `%${query.search.trim()}%`
+  }
+  if (query.stockFilter === 'LOW') {
+    clauses.push(`(${EFFECTIVE_STOCK}) > 0 AND (${EFFECTIVE_STOCK}) <= p.min_stock`)
+  } else if (query.stockFilter === 'OUT') {
+    clauses.push(`(${EFFECTIVE_STOCK}) = 0`)
+  }
+
+  return { where: `WHERE ${clauses.join(' AND ')}`, params }
+}
 
 function mapRow(row: ProductRow): Product {
   const hasTax =
@@ -156,6 +227,82 @@ export class SqliteProductRepository implements ProductRepository {
       .all(params) as ProductRow[]
 
     return rows.map(mapRow)
+  }
+
+  findPage(query: ProductPageQuery): ProductPageResult {
+    const { where, params } = buildPageWhere(query)
+    const countRow = this.db
+      .prepare(
+        `SELECT COUNT(*) AS total
+         FROM products p
+         LEFT JOIN product_types t ON t.id = p.type_id
+         ${where}`
+      )
+      .get(params) as { total: number }
+    const total = countRow.total
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
+    const page = Math.min(query.page, totalPages)
+    const rows = this.db
+      .prepare(
+        `${SELECT_PRODUCTS} ${where}
+         ORDER BY p.name COLLATE NOCASE ASC
+         LIMIT @limit OFFSET @offset`
+      )
+      .all({
+        ...params,
+        limit: query.pageSize,
+        offset: (page - 1) * query.pageSize
+      }) as ProductRow[]
+
+    let stats: ProductCatalogStats | undefined
+    if (query.includeStats) {
+      const row = this.db
+        .prepare(
+          `WITH batch_stock AS (
+             SELECT product_id, SUM(quantity) AS quantity
+             FROM product_batches
+             WHERE deleted = 0 AND active = 1
+             GROUP BY product_id
+           ),
+           combo_stock AS (
+             SELECT ci.combo_id, MIN(CAST(cp.stock / ci.quantity AS INTEGER)) AS quantity
+             FROM combo_items ci
+             JOIN products cp ON cp.id = ci.component_id
+             WHERE ci.deleted = 0 AND ci.active = 1 AND cp.deleted = 0
+             GROUP BY ci.combo_id
+           ),
+           effective_products AS (
+             SELECT p.cost_price, p.min_stock,
+               CASE
+                 WHEN t.kind = 'combo' THEN COALESCE(cs.quantity, 0)
+                 WHEN p.track_batches = 1 THEN COALESCE(bs.quantity, 0)
+                 ELSE p.stock
+               END AS effective_stock
+             FROM products p
+             LEFT JOIN product_types t ON t.id = p.type_id
+             LEFT JOIN batch_stock bs ON bs.product_id = p.id
+             LEFT JOIN combo_stock cs ON cs.combo_id = p.id
+             WHERE p.deleted = 0
+           )
+           SELECT COUNT(*) AS total,
+             COALESCE(SUM(effective_stock), 0) AS totalStock,
+             COALESCE(SUM(effective_stock * cost_price), 0) AS totalValue,
+             COALESCE(SUM(CASE WHEN effective_stock > 0 AND effective_stock <= min_stock THEN 1 ELSE 0 END), 0) AS lowStock,
+             COALESCE(SUM(CASE WHEN effective_stock = 0 THEN 1 ELSE 0 END), 0) AS outOfStock
+           FROM effective_products`
+        )
+        .get() as ProductCatalogStats
+      stats = row
+    }
+
+    return {
+      items: rows.map(mapRow),
+      page,
+      pageSize: query.pageSize,
+      total,
+      totalPages,
+      ...(stats ? { stats } : {})
+    }
   }
 
   findById(id: string): Product | null {
@@ -284,6 +431,34 @@ export class SqliteProductRepository implements ProductRepository {
     this.db
       .prepare('UPDATE products SET deleted = 1, active = 0, updated_at = ? WHERE id = ?')
       .run(new Date().toISOString(), id)
+  }
+
+  softDeleteCascade(id: string): boolean {
+    const now = new Date().toISOString()
+    return this.db.transaction((productId: string) => {
+      const exists = this.db.prepare('SELECT 1 FROM products WHERE id = ?').get(productId)
+      if (!exists) return false
+
+      this.db
+        .prepare(
+          'UPDATE products SET deleted = 1, active = 0, updated_at = ? WHERE id = ? OR parent_id = ?'
+        )
+        .run(now, productId, productId)
+      this.db
+        .prepare(
+          `UPDATE product_batches SET deleted = 1, active = 0, updated_at = ?
+           WHERE product_id IN (SELECT id FROM products WHERE id = ? OR parent_id = ?)`
+        )
+        .run(now, productId, productId)
+      this.db
+        .prepare(
+          `UPDATE combo_items SET deleted = 1, active = 0, updated_at = ?
+           WHERE combo_id IN (SELECT id FROM products WHERE id = ? OR parent_id = ?)
+              OR component_id IN (SELECT id FROM products WHERE id = ? OR parent_id = ?)`
+        )
+        .run(now, productId, productId, productId, productId)
+      return true
+    })(id)
   }
 
   toggleStatus(id: string): Product {

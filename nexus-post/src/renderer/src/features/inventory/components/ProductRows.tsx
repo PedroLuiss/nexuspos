@@ -7,6 +7,8 @@ import { formatTaxRate } from '@shared/lib/tax'
 interface ProductRowsProps {
   products: Product[]
   selectedProductId: string | null
+  isLoading: boolean
+  deletingProductId: string | null
   onSelect: (id: string) => void
   onToggleStatus: (id: string) => void
   onEdit: (product: Product) => void
@@ -16,6 +18,8 @@ interface ProductRowsProps {
 export const ProductRows: React.FC<ProductRowsProps> = ({
   products,
   selectedProductId,
+  isLoading,
+  deletingProductId,
   onSelect,
   onToggleStatus,
   onEdit,
@@ -44,7 +48,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
               <td colSpan={10} className="py-20 text-center text-[#717783]">
                 <Package size={40} className="mx-auto mb-2 text-[#D1D1D1]" />
                 <p className="text-xs font-semibold text-[#1B1B1B]">
-                  No se encontraron productos registrados
+                  {isLoading ? 'Cargando catálogo...' : 'No se encontraron productos registrados'}
                 </p>
               </td>
             </tr>
@@ -53,6 +57,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
               const isLow = p.stock > 0 && p.stock <= p.minStock
               const isOut = p.stock === 0
               const isSelected = selectedProductId === p.id
+              const isDeleting = deletingProductId === p.id
 
               return (
                 <tr
@@ -62,7 +67,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                     isSelected
                       ? 'bg-[#EBF0F5] border-l-4 border-l-[#0067C0]'
                       : 'even:bg-[#FDFDFD] hover:bg-[#F9F9F9]'
-                  }`}
+                  } ${isDeleting ? 'opacity-60' : ''}`}
                   style={{ height: '40px' }}
                 >
                   <td className="py-2 px-3 font-mono text-xs text-[#5C5C5C] font-semibold">
@@ -185,12 +190,13 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                         <Edit3 size={13} />
                       </button>
                       <button
+                        disabled={isDeleting}
                         onClick={(e) => {
                           e.stopPropagation()
                           onDelete(p)
                         }}
-                        title="Eliminar producto"
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        title={isDeleting ? 'Dando de baja...' : 'Eliminar producto'}
+                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 disabled:opacity-50 disabled:cursor-wait cursor-pointer"
                       >
                         <Trash2 size={13} />
                       </button>

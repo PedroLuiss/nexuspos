@@ -81,3 +81,35 @@ export interface ProductFilter {
   includeDeleted?: boolean
   onlyActive?: boolean
 }
+
+export type ProductStockFilter = 'ALL' | 'LOW' | 'OUT'
+
+export interface ProductPageQuery extends ProductFilter {
+  page: number
+  pageSize: number
+  taxId?: string
+  taxUnassigned?: boolean
+  brandUnassigned?: boolean
+  supplierUnassigned?: boolean
+  typeUnassigned?: boolean
+  stockFilter?: ProductStockFilter
+  /** Omit aggregate catalog metrics for lightweight product selectors. */
+  includeStats?: boolean
+}
+
+export interface ProductCatalogStats {
+  total: number
+  totalStock: number
+  totalValue: number
+  lowStock: number
+  outOfStock: number
+}
+
+export interface ProductPageResult {
+  items: Product[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  stats?: ProductCatalogStats
+}

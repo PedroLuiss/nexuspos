@@ -8,6 +8,8 @@ import {
 } from '@shared/lib/product-variants'
 import { Edit3, GitBranch, Plus, Trash2, AlertCircle } from '../../../shared/icons/Icons'
 import VariantForm, { type VariantDraft } from './VariantForm'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface VariantEditorProps {
   parent: Product
@@ -27,8 +29,11 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
   const { variants, error, createVariant, updateVariant, deleteVariant } = useProductVariants(
     parent.id
   )
+  const pagination = useTablePagination(variants)
   const [attrText, setAttrText] = useState(() =>
-    parseProductAttributes(variantAttrs).map((a) => a.name).join(', ')
+    parseProductAttributes(variantAttrs)
+      .map((a) => a.name)
+      .join(', ')
   )
   const [draft, setDraft] = useState<VariantDraft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -40,7 +45,9 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     .filter(Boolean)
 
   const commitAttributeNames = (): void => {
-    onVariantAttrsChange(serializeProductAttributes(attributeNames.map((name) => ({ name, value: '' }))))
+    onVariantAttrsChange(
+      serializeProductAttributes(attributeNames.map((name) => ({ name, value: '' })))
+    )
   }
 
   const startCreate = (): void => {
@@ -122,7 +129,8 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     try {
       if (draft.id) {
         const existing = variants.find((v) => v.id === draft.id)
-        if (existing) await updateVariant({ ...base, id: existing.id, createdAt: existing.createdAt })
+        if (existing)
+          await updateVariant({ ...base, id: existing.id, createdAt: existing.createdAt })
       } else {
         await createVariant(base)
       }
@@ -184,7 +192,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
           </button>
         </div>
         <p className="mt-1 text-[9px] text-slate-400">
-          Ej: "Talla, Color" genera combinaciones como Talla M / Color Rojo.
+          Ej: &quot;Talla, Color&quot; genera combinaciones como Talla M / Color Rojo.
         </p>
       </div>
 
@@ -203,50 +211,59 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
 
       {variants.length > 0 && (
         <div className="border border-slate-200 rounded-[4px] overflow-hidden">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-slate-50 text-slate-600 font-semibold">
-              <tr>
-                <th className="py-1 px-2">Variante</th>
-                <th className="py-1 px-2 text-right">Precio</th>
-                <th className="py-1 px-2 text-right">Stock</th>
-                <th className="py-1 px-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {variants.map((variant) => (
-                <tr key={variant.id}>
-                  <td className="py-1 px-2">
-                    <div className="font-medium">{variant.name}</div>
-                    <div className="text-[9px] text-slate-400">
-                      {formatProductAttributes(parseProductAttributes(variant.attributes))}
-                    </div>
-                  </td>
-                  <td className="py-1 px-2 text-right font-mono text-[#107C41]">
-                    ${variant.salePrice.toFixed(2)}
-                  </td>
-                  <td className="py-1 px-2 text-right font-mono">{variant.stock}</td>
-                  <td className="py-1 px-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(variant)}
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(variant)}
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold">
+                <tr>
+                  <th className="py-1 px-2">Variante</th>
+                  <th className="py-1 px-2 text-right">Precio</th>
+                  <th className="py-1 px-2 text-right">Stock</th>
+                  <th className="py-1 px-2 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagination.items.map((variant) => (
+                  <tr key={variant.id}>
+                    <td className="py-1 px-2">
+                      <div className="font-medium">{variant.name}</div>
+                      <div className="text-[9px] text-slate-400">
+                        {formatProductAttributes(parseProductAttributes(variant.attributes))}
+                      </div>
+                    </td>
+                    <td className="py-1 px-2 text-right font-mono text-[#107C41]">
+                      ${variant.salePrice.toFixed(2)}
+                    </td>
+                    <td className="py-1 px-2 text-right font-mono">{variant.stock}</td>
+                    <td className="py-1 px-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(variant)}
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(variant)}
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 

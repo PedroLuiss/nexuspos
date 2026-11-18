@@ -11,6 +11,8 @@ import {
   X,
   AlertCircle
 } from '../../../shared/icons/Icons'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface ProductBarcodesEditorProps {
   /** ID del producto (solo se edita si ya existe). */
@@ -32,9 +34,9 @@ interface Draft {
 
 /** Editor de códigos de barras múltiples de un producto. */
 export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ productId }) => {
-  const { barcodes, error, createBarcode, updateBarcode, deleteBarcode } = useProductBarcodes(
-    productId
-  )
+  const { barcodes, error, createBarcode, updateBarcode, deleteBarcode } =
+    useProductBarcodes(productId)
+  const pagination = useTablePagination(barcodes)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -137,53 +139,62 @@ export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ pr
 
       {barcodes.length > 0 && (
         <div className="border border-slate-200 rounded-[4px] overflow-hidden">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-slate-50 text-slate-600 font-semibold">
-              <tr>
-                <th className="py-1 px-2">Código</th>
-                <th className="py-1 px-2">Formato</th>
-                <th className="py-1 px-2">Etiqueta</th>
-                <th className="py-1 px-2 text-center">Principal</th>
-                <th className="py-1 px-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {barcodes.map((barcode) => (
-                <tr key={barcode.id}>
-                  <td className="py-1 px-2 font-mono">{barcode.barcode}</td>
-                  <td className="py-1 px-2">{barcode.format}</td>
-                  <td className="py-1 px-2 text-slate-500">{barcode.label ?? '-'}</td>
-                  <td className="py-1 px-2 text-center">
-                    {barcode.isPrimary ? (
-                      <Star size={13} className="inline text-amber-500 fill-amber-500" />
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="py-1 px-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(barcode)}
-                        title="Editar código"
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(barcode)}
-                        title="Eliminar código"
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold">
+                <tr>
+                  <th className="py-1 px-2">Código</th>
+                  <th className="py-1 px-2">Formato</th>
+                  <th className="py-1 px-2">Etiqueta</th>
+                  <th className="py-1 px-2 text-center">Principal</th>
+                  <th className="py-1 px-2 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagination.items.map((barcode) => (
+                  <tr key={barcode.id}>
+                    <td className="py-1 px-2 font-mono">{barcode.barcode}</td>
+                    <td className="py-1 px-2">{barcode.format}</td>
+                    <td className="py-1 px-2 text-slate-500">{barcode.label ?? '-'}</td>
+                    <td className="py-1 px-2 text-center">
+                      {barcode.isPrimary ? (
+                        <Star size={13} className="inline text-amber-500 fill-amber-500" />
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="py-1 px-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(barcode)}
+                          title="Editar código"
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(barcode)}
+                          title="Eliminar código"
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 

@@ -15,9 +15,12 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
   products
 }) => {
   const [selectedProductIdValue, setSelectedProductId] = useState<string>('')
+  const [selectedProductOption, setSelectedProductOption] = useState<Product | null>(null)
   const selectedProductId = products.some((product) => product.id === selectedProductIdValue)
     ? selectedProductIdValue
-    : (products[0]?.id ?? '')
+    : selectedProductOption?.id === selectedProductIdValue
+      ? selectedProductIdValue
+      : (products[0]?.id ?? '')
   const [barcodeFormat, setBarcodeFormat] = useState<'EAN-13' | 'Code128'>('EAN-13')
   const [dpi, setDpi] = useState<number>(300)
   const [widthMm, setWidthMm] = useState<number>(50)
@@ -28,7 +31,10 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
 
   if (!isOpen) return null
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0]
+  const selectedProduct =
+    products.find((p) => p.id === selectedProductId) ??
+    (selectedProductOption?.id === selectedProductId ? selectedProductOption : undefined) ??
+    products[0]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
@@ -71,7 +77,10 @@ export const BarcodeGeneratorModal: React.FC<BarcodeGeneratorModalProps> = ({
               <ProductSearchSelect
                 products={products}
                 value={selectedProductId}
-                onChange={setSelectedProductId}
+                onChange={(id, product) => {
+                  setSelectedProductId(id)
+                  setSelectedProductOption(product ?? null)
+                }}
                 label="Seleccionar producto"
                 className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
               />

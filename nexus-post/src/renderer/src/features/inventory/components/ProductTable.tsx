@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { Product, ProductInput, KardexReason } from '@shared/contracts'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
@@ -7,7 +7,7 @@ import { useTaxes } from '../../../shared/hooks/useTaxes'
 import { useBrands } from '../../../shared/hooks/useBrands'
 import { useSuppliers } from '../../../shared/hooks/useSuppliers'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
-import { toErrorMessage } from '../api/products.api'
+import { productsApi, toErrorMessage } from '../api/products.api'
 import AddProductModal from './AddProductModal'
 import BarcodeGeneratorModal from './BarcodeGeneratorModal'
 import StockAdjustmentModal from './StockAdjustmentModal'
@@ -17,10 +17,28 @@ import ProductToolbar from './ProductToolbar'
 import ProductFilters from './ProductFilters'
 import ProductRows from './ProductRows'
 import ProductStatusBar from './ProductStatusBar'
+import TablePagination from './TablePagination'
+import type { ProductImportBatchResult } from './ProductImportTab'
 
 export const ProductTable: React.FC = () => {
+  const categoryManager = useCategories()
+  const categoryNames = useMemo(
+    () => categoryManager.categories.filter((category) => !category.deleted).map((c) => c.name),
+    [categoryManager.categories]
+  )
+
+  const { taxes } = useTaxes()
+  const { brands } = useBrands()
+  const { suppliers } = useSuppliers()
+  const { types } = useProductTypes()
+  const filters = useProductFilters(categoryNames, taxes, brands, suppliers, types)
   const {
     products,
+    page,
+    total,
+    totalPages,
+    stats,
+    isLoading,
     error,
     reload,
     createProduct,
@@ -28,16 +46,7 @@ export const ProductTable: React.FC = () => {
     deleteProduct,
     toggleStatus,
     adjustStock
-  } = useProducts()
-
-  const categoryManager = useCategories()
-  const categoryNames = categoryManager.activeNames
-
-  const { taxes } = useTaxes()
-  const { brands } = useBrands()
-  const { suppliers } = useSuppliers()
-  const { types } = useProductTypes()
-  const filters = useProductFilters(products, taxes, brands, suppliers, types)
+  } = useProducts(filters.query)
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -47,6 +56,9 @@ export const ProductTable: React.FC = () => {
   const [adjustmentMode, setAdjustmentMode] = useState<'IN' | 'OUT' | null>(null)
   const [isImportExportOpen, setIsImportExportOpen] = useState(false)
   const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('export')
+  const [fullCatalog, setFullCatalog] = useState<Product[]>([])
+  const [isLoadingFullCatalog, setIsLoadingFullCatalog] = useState(false)
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
 
   const anyModalOpen =
     isModalOpen ||
@@ -93,10 +105,27 @@ export const ProductTable: React.FC = () => {
 
   const handleDelete = async (product: Product): Promise<void> => {
     if (!window.confirm(`¿Dar de baja el producto "${product.name}"?`)) return
+    setDeletingProductId(product.id)
     try {
       await deleteProduct(product.id)
     } catch (err) {
       window.alert(toErrorMessage(err))
+    } finally {
+      setDeletingProductId(null)
+    }
+  }
+
+  const handleOpenImportExport = async (tab: 'import' | 'export'): Promise<void> => {
+    setImportExportTab(tab)
+    setIsImportExportOpen(true)
+    setIsLoadingFullCatalog(true)
+    try {
+      setFullCatalog(await productsApi.list())
+    } catch (err) {
+      setIsImportExportOpen(false)
+      window.alert(toErrorMessage(err))
+    } finally {
+      setIsLoadingFullCatalog(false)
     }
   }
 
@@ -121,18 +150,27 @@ export const ProductTable: React.FC = () => {
     }
   }
 
-  const handleImportBatch = async (inputs: ProductInput[]): Promise<number> => {
-    let count = 0
-    for (const input of inputs) {
+  const handleImportBatch = async (
+    inputs: ProductInput[],
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<ProductImportBatchResult> => {
+    const createdProducts: Product[] = []
+    const errors: string[] = []
+    for (let index = 0; index < inputs.length; index += 1) {
       try {
-        await createProduct(input)
-        count++
-      } catch {
-        // Continuar con los siguientes si hay algún duplicado
+        createdProducts.push(await productsApi.create(inputs[index]))
+      } catch (error) {
+        errors.push(`Fila ${index + 2}: ${toErrorMessage(error)}`)
+      }
+      if ((index + 1) % 20 === 0) {
+        onProgress?.(index + 1, inputs.length)
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
       }
     }
-    await reload()
-    return count
+    onProgress?.(inputs.length, inputs.length)
+    await reload(true)
+    setFullCatalog((current) => [...current, ...createdProducts])
+    return { created: createdProducts.length, errors }
   }
 
   return (
@@ -151,10 +189,7 @@ export const ProductTable: React.FC = () => {
         onOpenAdjustment={(mode) => setAdjustmentMode(mode)}
         onOpenBarcode={() => setIsBarcodeModalOpen(true)}
         onManageCategories={() => setIsCategoryModalOpen(true)}
-        onOpenImportExport={(tab) => {
-          setImportExportTab(tab)
-          setIsImportExportOpen(true)
-        }}
+        onOpenImportExport={(tab) => void handleOpenImportExport(tab)}
         onSeedDemoProducts={async () => {
           await reload()
         }}
@@ -180,23 +215,30 @@ export const ProductTable: React.FC = () => {
         typeOptions={filters.typeOptions}
         selectedType={filters.typeFilter}
         onTypeChange={filters.setTypeFilter}
-        counts={{
-          all: filters.stats.total,
-          low: filters.stats.lowStock,
-          out: filters.stats.outOfStock
-        }}
+        counts={{ all: stats.total, low: stats.lowStock, out: stats.outOfStock }}
       />
 
       <div className="flex-1 overflow-hidden bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] flex flex-col">
         <ProductRows
-          products={filters.filtered}
+          products={products}
           selectedProductId={selectedProductId}
+          isLoading={isLoading}
+          deletingProductId={deletingProductId}
           onSelect={setSelectedProductId}
           onToggleStatus={handleToggleStatus}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
-        <ProductStatusBar stats={filters.stats} />
+        <ProductStatusBar stats={stats} />
+        <TablePagination
+          page={page}
+          pageSize={filters.pageSize}
+          totalItems={total}
+          totalPages={totalPages}
+          onPageChange={filters.setPage}
+          onPageSizeChange={filters.setPageSize}
+          showSinglePage
+        />
       </div>
 
       {isModalOpen && (
@@ -238,7 +280,8 @@ export const ProductTable: React.FC = () => {
           isOpen={isImportExportOpen}
           initialTab={importExportTab}
           onClose={() => setIsImportExportOpen(false)}
-          products={filters.filtered}
+          products={fullCatalog}
+          isLoadingProducts={isLoadingFullCatalog}
           onImportBatch={handleImportBatch}
         />
       )}

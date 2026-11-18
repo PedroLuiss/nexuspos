@@ -9,7 +9,7 @@
 
 El módulo de Inventario y Productos gestiona el catálogo comercial y las existencias físicas:
 
-- **Tabla Densa Estilo Excel (`ProductTable.tsx`):** Columnas con miniatura (32x32px), SKU / Código de barras, descripción, categoría, costo, precio de venta, stock actual con alertas visuales de mínimo/agotado, columna **Impuesto** (16% / 8% / EXENTO / SIN TASA) y switch de estado activo/inactivo. Filas densas de 40px con resaltado hover y accesibilidad por teclado.
+- **Tabla Densa Estilo Excel (`ProductTable.tsx`):** Columnas con miniatura (32x32px), SKU / Código de barras, descripción, categoría, costo, precio de venta, stock actual con alertas visuales de mínimo/agotado, columna **Impuesto** (16% / 8% / EXENTO / SIN TASA) y switch de estado activo/inactivo. Filas densas de 40px con resaltado hover y accesibilidad por teclado. La consulta pagina desde SQLite (50 por defecto; 25/50/100 configurables) y ejecuta filtros, conteo y métricas fuera del renderer.
 - **Impuesto por producto (multi-alícuota):** cada producto apunta a una tasa del catálogo `taxes` mediante `tax_id`. El formulario sustituye el antiguo checkbox "IVA 8%" por un selector real (`ProductTaxField.tsx`) que muestra todas las alícuotas activas (Exento, IVA General 16%, IVA Reducido 8%, personalizadas) y calcula en vivo el precio sin/con impuesto según si el negocio trabaja con precios finales (IVA incluido) o con impuesto trasladado. El filtro de la tabla y el CSV también trabajan por tasa.
 - **CRUD Completo con Soporte de Imágenes:** Creación (`AddProductModal.tsx`), edición en caliente y selector de imagen totalmente opcional. Permite subida directa local (FileReader a base64 DataURL) o URL web externa (Unsplash, CDN), con previsualización en tiempo real. **Si el producto no tiene imagen, se genera un logo automático con la primera letra del nombre en mayúscula (`ProductAvatar.tsx`)** utilizando una paleta de color armónica y determinista.
 - **Modales responsivos:** los diálogos del módulo limitan su altura al viewport y desplazan internamente el contenido extenso; encabezados y acciones se mantienen accesibles. El formulario de producto usa una anchura máxima mayor, y tablas densas permiten desplazamiento horizontal en pantallas estrechas.
@@ -22,6 +22,8 @@ El módulo de Inventario y Productos gestiona el catálogo comercial y las exist
 - **Generador de Etiquetas de Código de Barras (`BarcodeGeneratorModal.tsx` / `[ALT + B]`):** Formatos EAN-13 y Code128, resolución DPI configurable (203, 300, 600 DPI), dimensiones en milímetros y número de copias por lote para impresoras Zebra o Xprinter.
 - **Gestión de Categorías (`CategoryManagerModal.tsx`):** Modal CRUD para altas, bajas y cambios en el catálogo de categorías comerciales vinculadas a los productos.
 - **Selectores de producto con búsqueda:** los formularios de componentes de combo, ajustes de stock y etiquetas filtran productos por código o nombre y muestran también el código y stock/unidad en los resultados.
+- **Tablas paginadas:** la tabla del catálogo se pagina en SQLite; las tablas secundarias de categorías, lotes, códigos, componentes, escalas, variantes, sucursales y vista previa CSV muestran hasta 10 filas por página.
+- **Acciones de importación:** el procesamiento informa avance por bloques y reporta errores de validación por fila; el catálogo completo para importar/exportar se solicita solo al abrir esa función.
 - **Catálogo Demo Sembrado (`006_seed_products.ts`):** 50 productos realistas precargados divididos en 8 categorías de abarrotes, refrescos, lácteos, panadería, limpieza y cuidado personal, con códigos EAN-13 válidos e imágenes.
 
 ---
@@ -53,7 +55,7 @@ nexus-post/src/
 │   │   ├── product-batch.repository.ts      # Puerto ProductBatchRepository
 │   │   └── category.repository.ts           # Puerto CategoryRepository
 │   ├── adapters/persistence/sqlite/
-│   │   ├── products.sqlite.ts               # Queries SQLite (CRUD + JOIN taxes, brands, suppliers, product_types)
+│   │   ├── products.sqlite.ts               # Queries SQLite (CRUD, páginas, métricas + JOIN taxes, brands, suppliers, product_types)
 │   │   ├── taxes.sqlite.ts                  # CRUD del catálogo de alícuotas
 │   │   ├── brands.sqlite.ts                 # CRUD de marcas
 │   │   ├── suppliers.sqlite.ts              # CRUD de proveedores
@@ -75,9 +77,10 @@ nexus-post/src/
 │   │       ├── 019_combo_items.ts           # combo_items + índice único combo+componente
 │   │       ├── 020_product_variants.ts      # products.parent_id / attributes / variant_attrs
 │   │       ├── 021_product_batches.ts       # product_batches + products.track_batches
-│   │       └── 022_sale_item_traceability.ts  # sale_items.is_combo / combo_id / batches_json
+│   │       ├── 022_sale_item_traceability.ts # sale_items.is_combo / combo_id / batches_json
+│   │       └── 023_product_list_indexes.ts   # Índices parciales para listado por nombre/categoría
 │   └── ipc/
-│       ├── products.ipc.ts                  # Handlers 'products:*'
+│       ├── products.ipc.ts                  # Handlers 'products:*' (listPage paginada)
 │       ├── taxes.ipc.ts                     # Handlers 'taxes:*'
 │       ├── brands.ipc.ts                    # Handlers 'brands:*'
 │       ├── suppliers.ipc.ts                 # Handlers 'suppliers:*'
@@ -90,7 +93,7 @@ nexus-post/src/
 │
 ├── shared/
 │   ├── contracts/
-│   │   ├── product.contract.ts              # Product (brandId/supplierId/typeId/taxId), ProductInput, ProductFilter
+│   │   ├── product.contract.ts              # Product, ProductFilter, ProductPageQuery y ProductPageResult
 │   │   ├── tax.contract.ts                  # TaxRate, TaxInput, TaxesApi
 │   │   ├── brand.contract.ts                # Brand, BrandInput, BrandFilter
 │   │   ├── supplier.contract.ts             # Supplier, SupplierInput, SupplierFilter
@@ -126,8 +129,10 @@ nexus-post/src/
         │   ├── products.api.ts              # Invocación IPC para productos
         │   └── categories.api.ts            # Invocación IPC para categorías
         ├── hooks/
-        │   ├── useProducts.ts               # Carga reactiva de productos e integración Kardex
-        │   ├── useProductFilters.ts         # Filtros por categoría, marca, proveedor, tipo, impuesto, stock y búsqueda
+        │   ├── useProducts.ts               # Carga de página SQLite y mutaciones del catálogo
+        │   ├── useProductFilters.ts         # Estado de filtros/página y construcción del query
+        │   ├── useProductFilterOptions.ts   # Opciones de filtros por catálogo
+        │   ├── useTablePagination.ts        # Paginación de tablas secundarias
         │   ├── useProductForm.ts            # Validación, brandId/supplierId/typeId/taxId, imageUrl y cálculo de márgenes
         │   └── useCategories.ts             # Carga de categorías activas
         ├── lib/
@@ -136,7 +141,8 @@ nexus-post/src/
             ├── ProductTable.tsx                 # Contenedor principal de la tabla densa
             ├── ProductToolbar.tsx               # Barra de acciones [ALT+N], [ALT+E], Excel, Demos
             ├── ProductFilters.tsx               # Chips de estado, categoría, marca, proveedor, tipo e impuesto
-            ├── ProductRows.tsx                  # Filas con miniatura 32x32 e icono fallback
+            ├── ProductRows.tsx                  # Filas de la página actual con miniatura 32x32
+            ├── TablePagination.tsx               # Controles de página reutilizables
             ├── ProductStatusBar.tsx             # Resumen inferior de SKU totales y valor inventario
             ├── AddProductModal.tsx              # Modal de nuevo/editar producto
             ├── ProductBasicFields.tsx           # Subcomponente campos básicos, marca, proveedor, tipo e imagen
@@ -176,10 +182,11 @@ nexus-post/src/
 
 ## 4. Reglas Críticas de Negocio
 
-1. **Borrado Lógico Obligatorio:** NUNCA ejecutar `DELETE FROM products WHERE id = ?`. La eliminación se implementa como:
+1. **Borrado Lógico Obligatorio:** NUNCA ejecutar `DELETE FROM products WHERE id = ?`. La baja en cascada se ejecuta en una transacción con actualizaciones SQL por conjunto para el producto, sus variantes, lotes y relaciones de combo:
    ```sql
-   UPDATE products SET deleted = 1, active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+   UPDATE products SET deleted = 1, active = 0, updated_at = ? WHERE id = ? OR parent_id = ?
    ```
+   `ProductService.softDelete()` delega a `ProductRepository.softDeleteCascade()`: evita cargar todas las variantes, lotes y relaciones en JavaScript y actualiza sus tablas con consultas acotadas.
 2. **Cálculo Automático de Precio de Venta por % de Ganancia:** El usuario ingresa el **Precio Costo ($)** y el **% de Ganancia deseado (%)** (ej: 10%, 15%, 20%, 30%). El sistema calcula en tiempo real:
    $$\text{Ganancia } \$ = \text{Precio Costo} \times \left(\frac{\%\text{ Ganancia}}{100}\right)$$
    $$\text{Precio Venta Final} = \text{Precio Costo} \times \left(1 + \frac{\%\text{ Ganancia}}{100}\right)$$
@@ -228,10 +235,12 @@ nexus-post/src/
     - Se gestionan en la pestaña "Lotes y Caducidad" del formulario de producto; la UI muestra insignias de VENCIDO / vence en Nd / sin vencimiento.
 13. **Servicios e insumos vendibles (auditoría de integración):** `Product` expone `trackStock` (resuelto desde `product_types.track_stock`). Los productos de tipo **Servicio** (`trackStock = false`) **no validan ni descuentan stock** en `SalesService`, `App.tsx` ni `POSView`, y no generan movimientos Kardex — antes con stock 0 eran invendibles. `InventoryService` bloquea con mensaje claro los ajustes manuales de stock sobre servicios (no manejan existencias) y sobre combos (su stock se deriva de componentes; hay que ajustar los componentes).
 14. **Trazabilidad de devoluciones (migración 022) y baja en cascada:** `sale_items` guarda `is_combo`, `combo_id` y `batches_json` (lotes FEFO descontados con su `productId`). `CashService.returnSale()` usa esa información para reponer **los componentes** de un combo y **los lotes exactos** de cada línea (creando lote `DEVOLUCION-YYYY-MM-DD` si la venta es anterior a la trazabilidad). `ProductService.softDelete()` da de baja en cascada variantes, lotes y relaciones de combo, evitando huérfanos.
+15. **Paginación del catálogo (migración 023):** `products:listPage` recibe filtros y página; el adaptador SQLite ejecuta `COUNT`, `LIMIT/OFFSET` y, al cargar/actualizar, calcula métricas agregadas. `ProductService` limita el tamaño de página a 100. Las tablas secundarias usan `useTablePagination` (10 elementos por defecto) para limitar filas renderizadas.
 
 ## 5. Estado de integración operativa
 
 - El catálogo y las categorías se consultan y modifican mediante servicios SQLite e IPC; el POS usa productos persistidos y vuelve a validar disponibilidad, precio y permisos al cobrar.
+- El listado de Productos usa `products:listPage` (server-side). Los selectores buscables consultan una página limitada; importación/exportación solicita el catálogo completo solo al abrirse. En `App.tsx`, la carga de productos del POS se difiere hasta que el usuario autenticado entra a esa pestaña.
 - Los ajustes manuales de existencias actualizan producto y Kardex en una transacción. Las ventas registran salidas y las devoluciones registran entradas desde el servicio de Caja.
 - Los productos se desactivan/eliminan mediante baja lógica para conservar referencias de ventas y auditoría.
 - El lector USB/Bluetooth se comporta como teclado: el POS busca el código recibido y agrega la coincidencia exacta al confirmar con Enter; no requiere un canal de hardware dedicado.

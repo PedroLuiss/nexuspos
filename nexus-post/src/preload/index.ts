@@ -5,6 +5,7 @@ import type {
   NexusApi,
   Product,
   ProductFilter,
+  ProductPageQuery,
   ProductInput,
   AdjustStockInput,
   Category,
@@ -60,6 +61,8 @@ import type {
 const api: NexusApi = {
   products: {
     list: (filter?: ProductFilter) => ipcRenderer.invoke(IPC_CHANNELS.products.list, filter),
+    listPage: (query: ProductPageQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.products.listPage, query),
     getById: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.products.getById, id),
     listVariants: (parentId: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.products.listVariants, parentId),

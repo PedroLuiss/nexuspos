@@ -82,6 +82,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 ## 4. Conexiones con Otros Módulos
 
 - ➡️ **Módulo 03 (Inventario):** El catálogo se carga desde SQLite. La venta descuenta existencias de forma atómica; `CAN_OVERRIDE_NO_STOCK` permite vender y registrar saldo negativo.
+- La carga del catálogo POS se difiere hasta que hay un usuario autenticado y la pestaña POS está activa; al regresar a POS se vuelve a consultar el catálogo.
 - ➡️ **Módulo 04 (Kardex):** Cada venta genera un movimiento `SALIDA`/`VENTA` dentro de la misma transacción de venta y stock.
 - ➡️ **Módulo 05 (Caja y Turno):** El cobro y la pausa de ventas requieren que el usuario tenga un turno abierto. Cada venta se asocia a ese turno y su componente en efectivo se registra como movimiento; los detalles están en [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md).
 - ➡️ **Módulo 06 (Clientes):** El cliente asociado queda guardado en la venta. El pago a crédito registra la deuda y valida el límite dentro del flujo transaccional.

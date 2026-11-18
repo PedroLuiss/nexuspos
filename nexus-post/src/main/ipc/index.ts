@@ -108,8 +108,7 @@ export function registerIpcHandlers(): void {
     brandRepository,
     supplierRepository,
     productTypeRepository,
-    productBatchRepository,
-    comboItemRepository
+    productBatchRepository
   )
   const brandService = new BrandService(brandRepository)
   const supplierService = new SupplierService(supplierRepository)

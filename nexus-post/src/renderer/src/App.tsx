@@ -40,7 +40,11 @@ function AppContent(): React.JSX.Element {
   const { config: businessConfig } = useBusinessConfig()
   const { tiersByProduct: appTiersByProduct } = useAllPriceTiers()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const { products, error: productsError, reload: reloadProducts } = useProducts()
+  const {
+    products,
+    error: productsError,
+    reload: reloadProducts
+  } = useProducts(undefined, Boolean(currentUser && activeTab === 'pos'))
   const {
     rate: usdVesRate,
     isLoading: isExchangeRateLoading,
@@ -64,10 +68,9 @@ function AppContent(): React.JSX.Element {
 
   useEffect(() => {
     if (currentUser && activeTab === 'pos') {
-      void reloadProducts()
       void reloadCustomers()
     }
-  }, [activeTab, currentUser, reloadCustomers, reloadProducts])
+  }, [activeTab, currentUser, reloadCustomers])
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([])

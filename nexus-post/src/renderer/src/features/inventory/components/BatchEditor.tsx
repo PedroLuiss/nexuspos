@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import type { ProductBatch, ProductBatchInput } from '@shared/contracts'
 import { useProductBatches, daysToExpiry, isBatchExpired } from '../../../shared/hooks/useProductBatches'
 import { Check, Edit3, Plus, Trash2, X, AlertCircle, CalendarClock } from '../../../shared/icons/Icons'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface BatchEditorProps {
   productId?: string
@@ -50,6 +52,7 @@ export const BatchEditor: React.FC<BatchEditorProps> = ({
   onEnableTracking
 }) => {
   const { batches, error, receive, update, softDelete, totalStock } = useProductBatches(productId)
+  const pagination = useTablePagination(batches)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -169,49 +172,58 @@ export const BatchEditor: React.FC<BatchEditorProps> = ({
 
       {trackBatches && batches.length === 0 && (
         <p className="text-[10px] text-slate-500">
-          No hay lotes registrados para "{productName}". Agregue una entrada de lote.
+          No hay lotes registrados para &quot;{productName}&quot;. Agregue una entrada de lote.
         </p>
       )}
 
       {batches.length > 0 && (
         <div className="border border-slate-200 rounded-[4px] overflow-hidden">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-slate-50 text-slate-600 font-semibold">
-              <tr>
-                <th className="py-1 px-2">Lote</th>
-                <th className="py-1 px-2 text-right">Cant.</th>
-                <th className="py-1 px-2 text-center">Vencimiento</th>
-                <th className="py-1 px-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {batches.map((batch) => (
-                <tr key={batch.id}>
-                  <td className="py-1 px-2 font-mono">{batch.batchNumber}</td>
-                  <td className="py-1 px-2 text-right font-mono">{batch.quantity}</td>
-                  <td className="py-1 px-2 text-center">{expiryBadge(batch)}</td>
-                  <td className="py-1 px-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(batch)}
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(batch)}
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold">
+                <tr>
+                  <th className="py-1 px-2">Lote</th>
+                  <th className="py-1 px-2 text-right">Cant.</th>
+                  <th className="py-1 px-2 text-center">Vencimiento</th>
+                  <th className="py-1 px-2 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagination.items.map((batch) => (
+                  <tr key={batch.id}>
+                    <td className="py-1 px-2 font-mono">{batch.batchNumber}</td>
+                    <td className="py-1 px-2 text-right font-mono">{batch.quantity}</td>
+                    <td className="py-1 px-2 text-center">{expiryBadge(batch)}</td>
+                    <td className="py-1 px-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(batch)}
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(batch)}
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 

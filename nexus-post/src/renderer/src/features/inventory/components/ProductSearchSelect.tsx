@@ -1,11 +1,13 @@
-import React, { useId, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import type { Product } from '@shared/contracts'
+import { productsApi, toErrorMessage } from '../api/products.api'
 
 interface ProductSearchSelectProps {
   products: Product[]
   value: string
-  onChange: (productId: string) => void
+  onChange: (productId: string, product?: Product) => void
   label: string
+  excludeCombos?: boolean
   placeholder?: string
   className?: string
 }
@@ -19,6 +21,7 @@ export const ProductSearchSelect: React.FC<ProductSearchSelectProps> = ({
   value,
   onChange,
   label,
+  excludeCombos = false,
   placeholder = 'Buscar por código o nombre...',
   className = defaultClassName
 }) => {
@@ -26,15 +29,77 @@ export const ProductSearchSelect: React.FC<ProductSearchSelectProps> = ({
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const selectedProduct = products.find((product) => product.id === value)
+  const [results, setResults] = useState<Product[]>([])
+  const [cachedSelection, setCachedSelection] = useState<Product | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const requestId = useRef(0)
+  const selectedProduct =
+    products.find((product) => product.id === value) ??
+    results.find((product) => product.id === value) ??
+    (cachedSelection?.id === value ? cachedSelection : undefined)
   const selectedLabel = selectedProduct ? `${selectedProduct.name} (${selectedProduct.code})` : ''
   const normalizedQuery = query.trim().toLocaleLowerCase()
-  const filteredProducts = products.filter((product) =>
-    `${product.code} ${product.name}`.toLocaleLowerCase().includes(normalizedQuery)
-  )
+  const filteredProducts = results.filter((product) => {
+    const matchesText = `${product.code} ${product.name}`
+      .toLocaleLowerCase()
+      .includes(normalizedQuery)
+    return matchesText && (!excludeCombos || product.typeKind !== 'combo')
+  })
+
+  useEffect(() => {
+    if (!value || selectedProduct) return
+    let active = true
+    void productsApi
+      .getById(value)
+      .then((product) => {
+        if (active && product) setCachedSelection(product)
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(toErrorMessage(error))
+      })
+    return () => {
+      active = false
+    }
+  }, [value, selectedProduct])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const request = ++requestId.current
+    let active = true
+    const timer = window.setTimeout(
+      () => {
+        setIsLoading(true)
+        setLoadError(null)
+        void productsApi
+          .listPage({
+            page: 1,
+            pageSize: 50,
+            search: query.trim() || undefined,
+            onlyActive: true,
+            includeStats: false
+          })
+          .then((result) => {
+            if (active && request === requestId.current) setResults(result.items)
+          })
+          .catch((error: unknown) => {
+            if (active && request === requestId.current) setLoadError(toErrorMessage(error))
+          })
+          .finally(() => {
+            if (active && request === requestId.current) setIsLoading(false)
+          })
+      },
+      query ? 200 : 0
+    )
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [isOpen, query])
 
   const chooseProduct = (product: Product): void => {
-    onChange(product.id)
+    setCachedSelection(product)
+    onChange(product.id, product)
     setQuery('')
     setIsOpen(false)
     setActiveIndex(0)
@@ -113,11 +178,15 @@ export const ProductSearchSelect: React.FC<ProductSearchSelectProps> = ({
           role="listbox"
           className="mt-1 max-h-48 overflow-y-auto border border-slate-200 bg-white rounded-[4px] shadow-md"
         >
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <p className="px-2.5 py-2 text-[11px] text-slate-500">Buscando productos...</p>
+          ) : loadError ? (
+            <p role="alert" className="px-2.5 py-2 text-[11px] text-red-600">
+              No se pudieron cargar productos: {loadError}
+            </p>
+          ) : filteredProducts.length === 0 ? (
             <p className="px-2.5 py-2 text-[11px] text-slate-500">
-              {products.length === 0
-                ? 'No hay productos disponibles.'
-                : 'No se encontraron productos con ese código o nombre.'}
+              No se encontraron productos con ese código o nombre.
             </p>
           ) : (
             filteredProducts.map((product, index) => (

@@ -25,16 +25,22 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   onConfirmAdjustment
 }) => {
   const [selectedProductIdValue, setSelectedProductId] = useState<string>('')
+  const [selectedProductOption, setSelectedProductOption] = useState<Product | null>(null)
   const selectedProductId = products.some((product) => product.id === selectedProductIdValue)
     ? selectedProductIdValue
-    : (products[0]?.id ?? '')
+    : selectedProductOption?.id === selectedProductIdValue
+      ? selectedProductIdValue
+      : (products[0]?.id ?? '')
   const [quantity, setQuantity] = useState<number>(10)
   const [reason, setReason] = useState<KardexReason>(mode === 'IN' ? 'ENTRADA_MASIVA' : 'MERMA')
   const [notes, setNotes] = useState('')
 
   if (!isOpen) return null
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0]
+  const selectedProduct =
+    products.find((p) => p.id === selectedProductId) ??
+    (selectedProductOption?.id === selectedProductId ? selectedProductOption : undefined) ??
+    products[0]
   const isInputMode = mode === 'IN'
 
   const currentStock = selectedProduct?.stock || 0
@@ -90,7 +96,10 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
               <ProductSearchSelect
                 products={products}
                 value={selectedProductId}
-                onChange={setSelectedProductId}
+                onChange={(id, product) => {
+                  setSelectedProductId(id)
+                  setSelectedProductOption(product ?? null)
+                }}
                 label="Producto a ajustar"
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
               />

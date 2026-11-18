@@ -2,6 +2,8 @@ import type {
   Product,
   ProductInput,
   ProductFilter,
+  ProductPageQuery,
+  ProductPageResult,
   AdjustStockInput,
   AdjustStockResult,
   KardexMovement
@@ -17,6 +19,9 @@ function bridge(): Window['api'] {
 
 export const productsApi = {
   list: (filter?: ProductFilter): Promise<Product[]> => bridge().products.list(filter),
+  listPage: (query: ProductPageQuery): Promise<ProductPageResult> =>
+    bridge().products.listPage(query),
+  getById: (id: string): Promise<Product | null> => bridge().products.getById(id),
   create: (input: ProductInput): Promise<Product> => bridge().products.create(input),
   update: (product: Product): Promise<Product> => bridge().products.update(product),
   softDelete: (id: string): Promise<void> => bridge().products.softDelete(id),

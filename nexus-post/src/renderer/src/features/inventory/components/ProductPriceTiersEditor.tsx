@@ -1,15 +1,9 @@
 import React, { useState } from 'react'
 import type { ProductPriceTier, ProductPriceTierInput } from '@shared/contracts'
 import { useProductPriceTiers } from '../../../shared/hooks/useProductPriceTiers'
-import {
-  Check,
-  Edit3,
-  Plus,
-  Trash2,
-  X,
-  AlertCircle,
-  Layers
-} from '../../../shared/icons/Icons'
+import { Check, Edit3, Plus, Trash2, X, AlertCircle, Layers } from '../../../shared/icons/Icons'
+import { useTablePagination } from '../hooks/useTablePagination'
+import TablePagination from './TablePagination'
 
 interface ProductPriceTiersEditorProps {
   /** ID del producto (solo se edita si ya existe). */
@@ -35,6 +29,7 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
   salePrice
 }) => {
   const { tiers, error, createTier, updateTier, deleteTier } = useProductPriceTiers(productId)
+  const pagination = useTablePagination(tiers)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -147,49 +142,58 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
 
       {tiers.length > 0 && (
         <div className="border border-slate-200 rounded-[4px] overflow-hidden">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-slate-50 text-slate-600 font-semibold">
-              <tr>
-                <th className="py-1 px-2 text-right">Desde</th>
-                <th className="py-1 px-2 text-right">Hasta</th>
-                <th className="py-1 px-2 text-right">Precio</th>
-                <th className="py-1 px-2 text-center">Activo</th>
-                <th className="py-1 px-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {tiers.map((tier) => (
-                <tr key={tier.id} className={!tier.active ? 'opacity-60' : ''}>
-                  <td className="py-1 px-2 text-right font-mono">{tier.minQuantity}</td>
-                  <td className="py-1 px-2 text-right font-mono">{tier.maxQuantity ?? '∞'}</td>
-                  <td className="py-1 px-2 text-right font-mono font-bold text-[#107C41]">
-                    ${tier.price.toFixed(2)}
-                  </td>
-                  <td className="py-1 px-2 text-center">{tier.active ? 'Sí' : 'No'}</td>
-                  <td className="py-1 px-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(tier)}
-                        title="Editar escala"
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(tier)}
-                        title="Eliminar escala"
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold">
+                <tr>
+                  <th className="py-1 px-2 text-right">Desde</th>
+                  <th className="py-1 px-2 text-right">Hasta</th>
+                  <th className="py-1 px-2 text-right">Precio</th>
+                  <th className="py-1 px-2 text-center">Activo</th>
+                  <th className="py-1 px-2 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagination.items.map((tier) => (
+                  <tr key={tier.id} className={!tier.active ? 'opacity-60' : ''}>
+                    <td className="py-1 px-2 text-right font-mono">{tier.minQuantity}</td>
+                    <td className="py-1 px-2 text-right font-mono">{tier.maxQuantity ?? '∞'}</td>
+                    <td className="py-1 px-2 text-right font-mono font-bold text-[#107C41]">
+                      ${tier.price.toFixed(2)}
+                    </td>
+                    <td className="py-1 px-2 text-center">{tier.active ? 'Sí' : 'No'}</td>
+                    <td className="py-1 px-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(tier)}
+                          title="Editar escala"
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(tier)}
+                          title="Eliminar escala"
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 
