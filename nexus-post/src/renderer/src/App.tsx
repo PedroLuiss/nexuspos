@@ -29,8 +29,8 @@ import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
 import { resolveUnitPrice } from '@shared/lib/product-pricing'
 import { useCustomers } from './features/customers/hooks/useCustomers'
 import { useKardex } from './features/kardex/hooks/useKardex'
-import { useProducts } from './features/inventory/hooks/useProducts'
 import { useUsdVesRate } from './features/pos/hooks/useUsdVesRate'
+import { posProductsApi } from './features/pos/api/products.api'
 import { salesApi, salesErrorMessage } from './features/pos/api/sales.api'
 import { cashApi, cashErrorMessage } from './features/cash-shift/api/cash.api'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
@@ -40,11 +40,6 @@ function AppContent(): React.JSX.Element {
   const { config: businessConfig } = useBusinessConfig()
   const { tiersByProduct: appTiersByProduct } = useAllPriceTiers()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const {
-    products,
-    error: productsError,
-    reload: reloadProducts
-  } = useProducts(undefined, Boolean(currentUser && activeTab === 'pos'))
   const {
     rate: usdVesRate,
     isLoading: isExchangeRateLoading,
@@ -128,8 +123,8 @@ function AppContent(): React.JSX.Element {
 
   // Cart operations
   const handleAddToCart = (product: Product, quantity = 1): void => {
-    const catalogProduct = products.find((item) => item.id === product.id)
-    if (!catalogProduct || !catalogProduct.active || catalogProduct.deleted) {
+    const catalogProduct = product
+    if (!catalogProduct.active || catalogProduct.deleted) {
       showToast('El producto ya no está disponible en el catálogo.', 'error')
       return
     }
@@ -141,6 +136,10 @@ function AppContent(): React.JSX.Element {
       return
     }
     const alreadyInCart = cart.find((item) => item.product.id === product.id)?.quantity ?? 0
+    if (catalogProduct.trackStock !== false && catalogProduct.stock <= 0) {
+      showToast(`"${catalogProduct.name}" no tiene existencias y no se puede facturar.`, 'error')
+      return
+    }
     if (
       catalogProduct.trackStock !== false &&
       !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
@@ -191,6 +190,10 @@ function AppContent(): React.JSX.Element {
 
   const handleUpdateQuantity = (productId: string, quantity: number): void => {
     const currentItem = cart.find((item) => item.product.id === productId)
+    if (quantity <= 0) {
+      handleRemoveFromCart(productId)
+      return
+    }
     if (currentItem && !isValidProductQuantity(quantity, currentItem.product.unit)) {
       showToast(
         isValidProductQuantity(0.001, currentItem.product.unit)
@@ -200,18 +203,21 @@ function AppContent(): React.JSX.Element {
       )
       return
     }
-    if (
-      currentItem?.product.trackStock !== false &&
-      !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
-      currentItem &&
-      quantity > currentItem.product.stock
-    ) {
-      showToast(`Stock insuficiente para "${currentItem.product.name}".`, 'error')
-      return
-    }
-    if (quantity <= 0) {
-      handleRemoveFromCart(productId)
-      return
+    if (currentItem && currentItem.product.trackStock !== false) {
+      if (currentItem.product.stock <= 0) {
+        showToast(
+          `"${currentItem.product.name}" no tiene existencias y no se puede facturar.`,
+          'error'
+        )
+        return
+      }
+      if (
+        !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+        quantity > currentItem.product.stock
+      ) {
+        showToast(`Stock insuficiente para "${currentItem.product.name}".`, 'error')
+        return
+      }
     }
     setCart((prev) =>
       prev.map((item) =>
@@ -304,7 +310,6 @@ function AppContent(): React.JSX.Element {
         exchangeRate: usdVesRate?.rate,
         exchangeRateUpdatedAt: usdVesRate?.updatedAt
       })
-      await reloadProducts()
       if (payment.method === 'credit') await reloadCustomers()
       await reloadCashRegister()
     } catch (error: unknown) {
@@ -336,11 +341,13 @@ function AppContent(): React.JSX.Element {
       return false
     }
     try {
+      const items = await Promise.all(
+        sale.items.map(async (item) => ({
+          ...item,
+          product: (await posProductsApi.getById(item.product.id)) ?? item.product
+        }))
+      )
       await salesApi.deleteSuspended(sale.id)
-      const items = sale.items.map((item) => ({
-        ...item,
-        product: products.find((product) => product.id === item.product.id) ?? item.product
-      }))
       setCart(items)
       setSuspendedSales((prev) => prev.filter((item) => item.id !== sale.id))
       showToast(`Venta "${sale.name}" recuperada a caja`)
@@ -418,7 +425,6 @@ function AppContent(): React.JSX.Element {
     try {
       await cashApi.returnSale(saleId)
       await reloadCashRegister()
-      await reloadProducts()
       await reloadKardex()
       await reloadCustomers()
       showToast(
@@ -489,19 +495,9 @@ function AppContent(): React.JSX.Element {
           No se pudieron cargar los clientes: {customersError}
         </div>
       )}
-      {productsError && (
-        <div
-          role="alert"
-          className="absolute top-24 right-4 z-50 max-w-md rounded border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-[#C42B1C] shadow-lg"
-        >
-          No se pudo cargar el catálogo de productos: {productsError}
-        </div>
-      )}
-
       {/* 1. MÓDULO DE VENTAS (POS) */}
       {activeTab === 'pos' && (
         <POSView
-          products={products}
           cart={cart}
           suspendedSales={suspendedSales}
           customers={customers}

@@ -5,9 +5,9 @@ import SplitPaymentModal from './components/SplitPaymentModal'
 import SuspendedSalesModal from './components/SuspendedSalesModal'
 import TicketPreviewModal from './components/TicketPreviewModal'
 import ProductAvatar from '../../shared/ui/ProductAvatar'
+import POSProductSearch, { type POSProductSearchHandle } from './components/POSProductSearch'
 import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from '../../shared/hooks/useAllPriceTiers'
-import { useAllBarcodes } from '../../shared/hooks/useAllBarcodes'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
 import { resolveUnitPrice } from '@shared/lib/product-pricing'
 import {
@@ -40,7 +40,6 @@ const createSuspendedSaleId = (): string => `susp-${Date.now()}`
 const getCurrentTimestamp = (): string => new Date().toISOString()
 
 export const POSView: React.FC<POSViewProps> = ({
-  products,
   cart,
   suspendedSales,
   customers = [],
@@ -65,11 +64,9 @@ export const POSView: React.FC<POSViewProps> = ({
 }) => {
   const { config: businessConfig } = useBusinessConfig()
   const { tiersByProduct } = useAllPriceTiers()
-  const { barcodeToProduct } = useAllBarcodes()
-  const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const productSearchRef = useRef<POSProductSearchHandle>(null)
 
   // =========================================================
   // CUSTOMER ASSIGNMENT STATE
@@ -133,30 +130,10 @@ export const POSView: React.FC<POSViewProps> = ({
   const hasStockDeficit = cart.some(
     (item) => item.product.trackStock !== false && item.quantity > item.product.stock
   )
-  const cannotCompleteSale = hasStockDeficit && !canOverrideNoStock
-
-  const searchMatches = useMemo(() => {
-    if (!searchInput.trim())
-      return products.filter((product) => product.active && !product.deleted).slice(0, 100)
-    const query = searchInput.toLowerCase().trim()
-
-    // Si el texto coincide exactamente con un código de barras secundario,
-    // priorizar ese producto (lo que ocurriría al escanear con pistola).
-    const barcodeProductId = barcodeToProduct.get(searchInput.trim())
-    const byBarcode = barcodeProductId
-      ? products.find((p) => p.id === barcodeProductId && p.active && !p.deleted)
-      : undefined
-    if (byBarcode) return [byBarcode]
-
-    return products
-      .filter(
-        (product) =>
-          product.active &&
-          !product.deleted &&
-          (product.name.toLowerCase().includes(query) || product.code.toLowerCase().includes(query))
-      )
-      .slice(0, 6)
-  }, [searchInput, products, barcodeToProduct])
+  const hasZeroStockProduct = cart.some(
+    (item) => item.product.trackStock !== false && item.product.stock <= 0
+  )
+  const cannotCompleteSale = hasZeroStockProduct || (hasStockDeficit && !canOverrideNoStock)
 
   // Customer search by Cédula / RFC / Name
   const customerMatches = useMemo(() => {
@@ -176,30 +153,10 @@ export const POSView: React.FC<POSViewProps> = ({
       ? `${selectedCustomer.name} (${selectedCustomer.taxId})`
       : '000 - Consumidor Final'
 
-  // Handle enter key in product search
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      const query = searchInput.trim()
-      if (!query) return
-
-      const exactMatch = products.find(
-        (product) => product.code.trim().toLowerCase() === query.toLowerCase() && product.active
-      )
-      if (exactMatch) {
-        onAddToCart(exactMatch, 1)
-        setSearchInput('')
-        setShowSearchResults(false)
-        return
-      }
-
-      if (searchMatches.length > 0) {
-        onAddToCart(searchMatches[0], 1)
-        setSearchInput('')
-        setShowSearchResults(false)
-      }
-      setShowSearchResults(true)
-    }
+  const completeSale = async (details: PaymentDetails): Promise<boolean | void> => {
+    const completed = await onCompleteSale(details)
+    if (completed !== false) productSearchRef.current?.refresh()
+    return completed
   }
 
   // Handle enter key in customer cédula search
@@ -283,7 +240,7 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Quick cash checkout [ALT+Q]
   const handleQuickCash = async (): Promise<void> => {
-    if (cart.length === 0 || !cashShiftOpen) return
+    if (cart.length === 0 || !cashShiftOpen || cannotCompleteSale) return
     const details: PaymentDetails = {
       method: 'cash',
       amountPaid: finalTotal,
@@ -291,7 +248,7 @@ export const POSView: React.FC<POSViewProps> = ({
       customerId: assignCustomer ? selectedCustomer?.id : undefined,
       ticketNumber
     }
-    const completed = await onCompleteSale(details)
+    const completed = await completeSale(details)
     if (completed === false) return
     setLastPaymentDetails(details)
     setLastTicketNumber(ticketNumber)
@@ -357,15 +314,14 @@ export const POSView: React.FC<POSViewProps> = ({
     // [F2]: Focus barcode / product search
     if (e.key === 'F2') {
       e.preventDefault()
-      searchInputRef.current?.focus()
-      searchInputRef.current?.select()
+      productSearchRef.current?.focusSearch()
       return
     }
 
     // [F12]: Open Checkout modal
     if (e.key === 'F12') {
       e.preventDefault()
-      if (cart.length > 0 && cashShiftOpen) {
+      if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('cash')
         setIsSaleModalOpen(true)
       }
@@ -375,7 +331,7 @@ export const POSView: React.FC<POSViewProps> = ({
     // [F6]: Fast Cash checkout
     if (e.key === 'F6') {
       e.preventDefault()
-      if (cart.length > 0 && cashShiftOpen) {
+      if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('cash')
         setIsSaleModalOpen(true)
       }
@@ -385,7 +341,7 @@ export const POSView: React.FC<POSViewProps> = ({
     // [F7]: Fast Card checkout
     if (e.key === 'F7') {
       e.preventDefault()
-      if (cart.length > 0 && cashShiftOpen) {
+      if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('card')
         setIsSaleModalOpen(true)
       }
@@ -395,7 +351,7 @@ export const POSView: React.FC<POSViewProps> = ({
     // [F8]: Split payment modal
     if (e.key === 'F8') {
       e.preventDefault()
-      if (cart.length > 0 && cashShiftOpen) setIsSplitModalOpen(true)
+      if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) setIsSplitModalOpen(true)
       return
     }
 
@@ -427,8 +383,8 @@ export const POSView: React.FC<POSViewProps> = ({
     // [ALT+L]: Toggle search list
     if (e.altKey && (e.key === 'l' || e.key === 'L')) {
       e.preventDefault()
-      setShowSearchResults((prev) => !prev)
-      searchInputRef.current?.focus()
+      productSearchRef.current?.toggleList()
+      productSearchRef.current?.focusSearch()
       return
     }
 
@@ -449,7 +405,7 @@ export const POSView: React.FC<POSViewProps> = ({
     // [Escape]: Clear cart / Close dropdowns
     if (e.key === 'Escape') {
       if (showSearchResults) {
-        setShowSearchResults(false)
+        productSearchRef.current?.closeResults()
       } else if (showCustomerDropdown) {
         setShowCustomerDropdown(false)
       } else if (cart.length > 0) {
@@ -475,7 +431,7 @@ export const POSView: React.FC<POSViewProps> = ({
       customerId: assignCustomer ? selectedCustomer?.id : undefined,
       ticketNumber
     }
-    const completed = await onCompleteSale(details)
+    const completed = await completeSale(details)
     if (completed === false) return
     setLastPaymentDetails(details)
     setLastTicketNumber(ticketNumber)
@@ -503,30 +459,16 @@ export const POSView: React.FC<POSViewProps> = ({
         {/* Top Command Bar & Search (Fluent Box) */}
         <div className="relative bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-2.5">
           <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]"
-              />
-              <input
-                ref={searchInputRef}
-                type="text"
-                autoFocus
-                placeholder="Escanear código de barras o buscar producto [F2]..."
-                value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value)
-                  setShowSearchResults(true)
-                }}
-                onKeyDown={handleSearchKeyDown}
-                className="w-full pl-9 pr-24 py-2 text-xs bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] focus:bg-white focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] font-medium text-[#1B1B1B] placeholder:text-[#717783]"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 kbd-badge">ENTER</span>
-            </div>
+            <POSProductSearch
+              ref={productSearchRef}
+              showResults={showSearchResults}
+              onResultsVisibilityChange={setShowSearchResults}
+              onAddToCart={onAddToCart}
+            />
 
             {/* Buscar en Lista [ALT+L] */}
             <button
-              onClick={() => setShowSearchResults(!showSearchResults)}
+              onClick={() => productSearchRef.current?.toggleList()}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1B1B1B] bg-white hover:bg-[#F9F9F9] border border-[#D1D1D1] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors cursor-pointer"
             >
               <List size={14} className="text-[#0067C0]" />
@@ -561,50 +503,6 @@ export const POSView: React.FC<POSViewProps> = ({
               <span className="kbd-badge">ALT+E</span>
             </button>
           </div>
-
-          {/* Search Dropdown Results */}
-          {showSearchResults && (
-            <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-[#D1D1D1] rounded-[4px] shadow-lg max-h-60 overflow-y-auto divide-y divide-[#E5E5E5]">
-              {searchMatches.length === 0 ? (
-                <div className="p-3 text-xs text-[#717783]">
-                  No se encontraron productos por nombre o código.
-                </div>
-              ) : (
-                searchMatches.map((prod) => (
-                  <div
-                    key={prod.id}
-                    onClick={() => {
-                      onAddToCart(prod, 1)
-                      setSearchInput('')
-                      setShowSearchResults(false)
-                    }}
-                    className="flex items-center justify-between p-2.5 hover:bg-[#EBF0F5] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ProductAvatar name={prod.name} imageUrl={prod.imageUrl} size="xs" />
-                      <span className="font-mono text-xs text-[#5C5C5C] bg-[#F3F3F3] px-1.5 py-0.5 rounded-[2px] border border-[#E5E5E5]">
-                        {prod.code}
-                      </span>
-                      <div>
-                        <div className="font-semibold text-xs text-[#1B1B1B]">{prod.name}</div>
-                        <div className="text-[11px] text-[#717783]">
-                          {prod.category} | Stock: {prod.stock}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold font-mono text-[#0067C0]">
-                        ${prod.salePrice.toFixed(2)}
-                      </div>
-                      <span className="text-[10px] text-emerald-700 font-semibold">
-                        Click para agregar
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
 
         {/* Data Table: Sales Ticket (Stitch Design Specification) */}
@@ -1206,7 +1104,7 @@ export const POSView: React.FC<POSViewProps> = ({
           exchangeRate={exchangeRate}
           onClose={() => setIsSaleModalOpen(false)}
           onConfirmSale={async (details) => {
-            const completed = await onCompleteSale(details)
+            const completed = await completeSale(details)
             if (completed === false) return false
             setLastPaymentDetails(details)
             setLastTicketNumber(ticketNumber)

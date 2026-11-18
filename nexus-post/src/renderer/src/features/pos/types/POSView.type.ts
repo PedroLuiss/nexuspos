@@ -7,7 +7,6 @@ import type {
 import type { Customer, CustomerInput, UsdVesExchangeRate } from '@shared/contracts'
 
 export interface POSViewProps {
-  products: Product[]
   cart: CartItem[]
   suspendedSales: SuspendedSale[]
   customers?: Customer[]

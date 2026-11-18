@@ -9,8 +9,8 @@
 
 El módulo POS es el núcleo transaccional de atención rápida:
 
-- Búsqueda reactiva de productos por nombre o código; lectores USB/Bluetooth tipo teclado agregan el código al presionar Enter.
-- Carrito conectado al catálogo SQLite, descuentos sujetos al permiso `CAN_APPLY_DISCOUNT` y validación de stock conforme a `CAN_OVERRIDE_NO_STOCK`.
+- Búsqueda reactiva SQLite por nombre, código o código de barras; el buscador trae páginas de 50 productos y permite cargar más. Un campo vacío oculta resultados; el botón Lista abre el primer lote.
+- Carrito conectado al catálogo SQLite; descuentos requieren `CAN_APPLY_DISCOUNT` y `CAN_OVERRIDE_NO_STOCK` permite sobreventa solo si hay stock positivo.
 - La cantidad depende de la unidad del producto: kilogramo y litro admiten decimales (hasta 3 posiciones); pieza, unidad, caja y paquete requieren enteros. Esta regla se valida en el POS y nuevamente al registrar la venta.
 - Los importes se manejan en USD. Bajo el total se muestra la conversión informativa a bolívares con tasa oficial BCV.
 - Modal de Cobro Estándar (`[F12]`): Métodos de pago en Efectivo, Tarjeta, Mixto y Crédito.
@@ -81,8 +81,8 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 
 ## 4. Conexiones con Otros Módulos
 
-- ➡️ **Módulo 03 (Inventario):** El catálogo se carga desde SQLite. La venta descuenta existencias de forma atómica; `CAN_OVERRIDE_NO_STOCK` permite vender y registrar saldo negativo.
-- La carga del catálogo POS se difiere hasta que hay un usuario autenticado y la pestaña POS está activa; al regresar a POS se vuelve a consultar el catálogo.
+- ➡️ **Módulo 03 (Inventario):** POS consulta el catálogo bajo demanda en páginas SQLite de 50 resultados; no carga el catálogo completo en memoria. La venta descuenta existencias de forma atómica.
+- La búsqueda del catálogo solo consulta SQLite cuando hay texto o se abre explícitamente la Lista; trabaja mientras POS está activo y vuelve a consultar al regresar al módulo.
 - ➡️ **Módulo 04 (Kardex):** Cada venta genera un movimiento `SALIDA`/`VENTA` dentro de la misma transacción de venta y stock.
 - ➡️ **Módulo 05 (Caja y Turno):** El cobro y la pausa de ventas requieren que el usuario tenga un turno abierto. Cada venta se asocia a ese turno y su componente en efectivo se registra como movimiento; los detalles están en [`05-CASH-SHIFT.md`](./05-CASH-SHIFT.md).
 - ➡️ **Módulo 06 (Clientes):** El cliente asociado queda guardado en la venta. El pago a crédito registra la deuda y valida el límite dentro del flujo transaccional.
@@ -106,7 +106,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 ## 5. Reglas de Negocio Específicas
 
 1. **Transaccionalidad Atómica:** El registro de la venta, el decremento de existencias en `products` y la inserción en `kardex` deben ocurrir dentro de una misma transacción SQLite (`db.transaction()`).
-2. **Validación de Sobrevendido:** Si un producto no tiene suficiente stock y el usuario carece de `CAN_OVERRIDE_NO_STOCK`, la interfaz y backend bloquean el cobro. Con permiso, la existencia puede quedar negativa y el Kardex conserva el saldo resultante.
+2. **Validación de Existencias:** Un producto con control de stock y existencia igual o menor a cero no se puede agregar ni facturar, incluso con `CAN_OVERRIDE_NO_STOCK`. Ese permiso solo permite sobreventa cuando todavía existe stock positivo; el POS y `SalesService` validan el límite, y el Kardex conserva el saldo resultante. Los servicios (`trackStock = false`) no están sujetos a esta regla.
 3. **Descuentos:** El permiso `CAN_APPLY_DISCOUNT` se valida tanto en la interfaz como en el servicio de ventas.
 4. **Restricción de Tamaño:** `POSView.tsx` no debe rebasar **300 líneas**. Extraer componentes como `CartTable`, `TotalsPanel` y `SearchBar` si el archivo se expande.
 5. **Impuesto multi-tasa:** cada producto aporta su propia alícuota (`product.taxRate`/`taxName` resueltos del catálogo `taxes`). El POS calcula subtotal, descuento y **desglose por tasa** con `computeSaleTotals` de `@shared/lib/tax` (misma función que usa el backend al cobrar). Si `taxEnabled` es `false`, no se traslada impuesto y la línea desaparece del resumen y del ticket. Con `pricesIncludeTax` activo el impuesto se desagrega del precio y el total no cambia; los productos exentos alimentan la **base exenta**.
@@ -118,3 +118,4 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 11. **Servicios vendibles (auditoría):** los tipos con `trackStock = false` (Servicio) se pueden agregar y cobrar aunque tengan stock 0: `App.tsx`, `POSView` (déficit de stock) y `SalesService` omiten la validación y el descuento de existencias, y no generan Kardex. Esto permite al POS atender negocios de servicios (peluquería, talleres, consultoría), no solo venta de artículos físicos.
 12. **Carrito coherente con el cobro:** el campo `total` de cada línea del carrito se recalcula con `resolveUnitPrice` (escalas de mayoreo) al agregar, cambiar cantidad o aplicar descuento, de modo que coincida con lo que `computeSaleTotals` y el backend calculan.
 13. **Devoluciones con trazabilidad:** cada línea de venta persiste `is_combo`, `combo_id` y `batches_json` (migración 022). Al devolver un ticket, `CashService` repone los componentes del combo y los lotes exactos descontados (ver contexto 05), en lugar de sumar stock al producto equivocado.
+14. **Buscador paginado:** POS usa `products:listPage` con `pageSize: 50`, filtros de nombre/código/categoría/códigos de barras secundarios y `onlyActive`; la búsqueda se retrasa 250 ms mientras se escribe. El código exacto se prioriza y las ventas exitosas actualizan los resultados abiertos. El listado explícito también se carga de 50 en 50 y presenta skeletons durante la carga.

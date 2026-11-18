@@ -18,6 +18,7 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
     - `CAN_DELETE_PRODUCT`, `CAN_MODIFY_PRICE`, `CAN_APPLY_DISCOUNT`,
       `CAN_MANUAL_CASH_MOVEMENTS`, `CAN_OVERRIDE_NO_STOCK`, `MANAGE_USERS`.
     - `MANAGE_USERS` se muestra bloqueado y **solo lo posee el rol `ADMIN`**.
+    - `CAN_OVERRIDE_NO_STOCK` solo permite sobreventa si el producto todavía tiene existencias; nunca permite facturar productos con stock cero.
   - **Presets por rol** (`ROLE_DEFAULT_PERMISSIONS` en `@shared/contracts`): se aplican al crear un usuario o al cambiar de rol sin enviar permisos explícitos.
   - El Administrador siempre obtiene el catálogo completo (`ADMIN_PERMISSION_KEYS`), independientemente de la matriz guardada.
   - Reglas de integridad: no puede auto-desactivarse ni auto-eliminarse, y siempre debe quedar al menos un `ADMIN` activo.

@@ -68,8 +68,8 @@ export const ALL_ACTION_PERMISSIONS: PermissionDescriptor<ActionPermission>[] = 
   },
   {
     key: 'CAN_OVERRIDE_NO_STOCK',
-    label: 'Vender sin Stock',
-    description: 'Permitir venta de producto agotado'
+    label: 'Sobreventa con Stock Positivo',
+    description: 'Permitir superar las existencias disponibles si aún hay stock'
   },
   {
     key: 'MANAGE_USERS',

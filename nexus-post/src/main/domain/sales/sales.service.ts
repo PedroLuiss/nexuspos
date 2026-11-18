@@ -72,12 +72,15 @@ export class SalesService {
       if (!isValidProductQuantity(quantity, product.unit)) {
         throw new ValidationError(`La cantidad de "${product.name}" no es válida para su unidad.`)
       }
-      if (
-        product.trackStock !== false &&
-        !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
-        quantity > product.stock
-      ) {
-        throw new ValidationError(`Stock insuficiente para "${product.name}".`)
+      if (product.trackStock !== false) {
+        if (product.stock <= 0) {
+          throw new ValidationError(
+            `"${product.name}" no tiene existencias y no se puede facturar.`
+          )
+        }
+        if (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
+          throw new ValidationError(`Stock insuficiente para "${product.name}".`)
+        }
       }
 
       // Precio efectivo: aplica escalas de mayoreo si la cantidad lo amerita.
@@ -170,8 +173,9 @@ export class SalesService {
           product.deleted ||
           !isValidProductQuantity(item.quantity, product.unit) ||
           (product.trackStock !== false &&
-            !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
-            item.quantity > product.stock)
+            (product.stock <= 0 ||
+              (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+                item.quantity > product.stock)))
         ) {
           throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
         }
@@ -195,14 +199,20 @@ export class SalesService {
                 `Un componente del combo "${product.name}" ya no está disponible.`
               )
             }
-            if (
-              componentProduct.trackStock !== false &&
-              !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
-              consumptionQty > componentProduct.stock
-            ) {
-              throw new ValidationError(
-                `Stock insuficiente de "${componentProduct.name}" para el combo "${product.name}".`
-              )
+            if (componentProduct.trackStock !== false) {
+              if (componentProduct.stock <= 0) {
+                throw new ValidationError(
+                  `"${componentProduct.name}" no tiene existencias para el combo "${product.name}".`
+                )
+              }
+              if (
+                !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+                consumptionQty > componentProduct.stock
+              ) {
+                throw new ValidationError(
+                  `Stock insuficiente de "${componentProduct.name}" para el combo "${product.name}".`
+                )
+              }
             }
             // Los componentes servicio (sin control de stock) no descuentan existencias.
             if (componentProduct.trackStock === false) continue

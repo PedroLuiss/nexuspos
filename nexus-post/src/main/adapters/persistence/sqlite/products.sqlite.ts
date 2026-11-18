@@ -169,8 +169,16 @@ function buildPageWhere(query: ProductPageQuery): {
     clauses.push("(p.tax_id IS NULL OR p.tax_id = '')")
   }
   if (query.search?.trim()) {
-    clauses.push('(p.code LIKE @search OR p.name LIKE @search OR p.category LIKE @search)')
+    clauses.push(`(
+      p.code LIKE @search OR p.name LIKE @search OR p.category LIKE @search OR
+      EXISTS (
+        SELECT 1 FROM product_barcodes pb
+        WHERE pb.product_id = p.id AND pb.deleted = 0 AND pb.active = 1
+          AND pb.barcode LIKE @search
+      )
+    )`)
     params.search = `%${query.search.trim()}%`
+    params.exactSearch = query.search.trim()
   }
   if (query.stockFilter === 'LOW') {
     clauses.push(`(${EFFECTIVE_STOCK}) > 0 AND (${EFFECTIVE_STOCK}) <= p.min_stock`)
@@ -276,10 +284,17 @@ export class SqliteProductRepository implements ProductRepository {
     const total = countRow.total
     const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
     const page = Math.min(query.page, totalPages)
+    const orderBy = query.search?.trim()
+      ? `ORDER BY CASE WHEN LOWER(p.code) = LOWER(@exactSearch) OR EXISTS (
+          SELECT 1 FROM product_barcodes pb
+          WHERE pb.product_id = p.id AND pb.deleted = 0 AND pb.active = 1
+            AND LOWER(pb.barcode) = LOWER(@exactSearch)
+        ) THEN 0 ELSE 1 END, p.name COLLATE NOCASE ASC`
+      : 'ORDER BY p.name COLLATE NOCASE ASC'
     const rows = this.db
       .prepare(
         `${SELECT_PRODUCTS} ${where}
-         ORDER BY p.name COLLATE NOCASE ASC
+         ${orderBy}
          LIMIT @limit OFFSET @offset`
       )
       .all({
