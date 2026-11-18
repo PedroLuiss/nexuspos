@@ -34,24 +34,13 @@ export interface KardexMovement {
 /** Datos de entrada para registrar un ajuste manual de stock. */
 export interface AdjustStockInput {
   productId: string
+  type: KardexMovementType
   quantity: number
   reason: KardexReason
   notes?: string
-  responsibleUser: string
 }
 
 export interface AdjustStockResult {
   product: Product
   movement: KardexMovement
-}
-
-/** Motivos que representan una entrada (+) en el Kardex. */
-export const INBOUND_REASONS: KardexReason[] = [
-  'ENTRADA_MASIVA',
-  'INVENTARIO_INICIAL',
-  'DEVOLUCION'
-]
-
-export function isInboundReason(reason: KardexReason): boolean {
-  return INBOUND_REASONS.includes(reason)
 }

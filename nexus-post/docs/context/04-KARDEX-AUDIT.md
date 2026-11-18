@@ -10,9 +10,9 @@
 El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos y contables de stock:
 - **Trazabilidad Completa:** Cada incremento o decremento de stock queda grabado permanentemente con fecha/hora exacta, usuario responsable, stock previo, cantidad movida y stock resultante.
 - **Tipos de Movimiento:**
-  - `ENTRADA (+)`: Actualmente soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION`.
-  - `SALIDA (-)`: Actualmente soporta `VENTA`, `COMBO`, `SALIDA_AJUSTE` y `MERMA`. El motivo `COMBO` se genera al cobrar un producto tipo bundle: se descuenta cada componente del combo (no el combo directamente) y se registra una salida por componente con las cantidades consumidas.
-  - **Lotes (FEFO):** cuando un producto controla lotes (`track_batches`), cada salida (`VENTA`, `COMBO` o ajuste) se desglosa en un movimiento por lote consumido, con el nº de lote en las notas. Las salidas descuentan primero el lote que vence antes (First Expired, First Out); los lotes sin vencimiento salen al final.
+  - `ENTRADA (+)`: soporta `ENTRADA_MASIVA`, `INVENTARIO_INICIAL` y `DEVOLUCION` (devolución de cliente).
+  - `SALIDA (-)`: soporta `VENTA`, `COMBO`, `SALIDA_AJUSTE`, `MERMA` y `DEVOLUCION` (devolución a proveedor). El tipo de movimiento se envía explícitamente; no se infiere del motivo `DEVOLUCION`, que aplica a ambos sentidos. El motivo `COMBO` se genera al cobrar un producto tipo bundle: se descuenta cada componente del combo (no el combo directamente) y se registra una salida por componente con las cantidades consumidas.
+  - **Lotes (FEFO):** cuando un producto controla lotes (`track_batches`), las ventas (`VENTA`/`COMBO`) se desglosan en un movimiento por lote consumido, con el nº de lote en las notas. Los ajustes manuales registran un movimiento agregado, aunque actualizan los lotes consumidos. En ambos flujos se descuenta primero el lote que vence antes (First Expired, First Out); los lotes sin vencimiento salen al final.
 - **Filtrado Avanzado:** Búsqueda reactiva por nombre de producto, SKU o usuario responsable; filtros por tipo (`ENTRADA`/`SALIDA`) y motivo específico.
 - **Exportación Contable:** El botón de exportación está presente como placeholder visual; la generación real de `.xlsx`/`.csv` sigue pendiente.
 
@@ -20,7 +20,7 @@ El módulo de Kardex constituye el libro mayor inmutable de movimientos físicos
 
 ## 2. Persistencia e integración actual
 
-Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryService.adjustStock()` actualiza el stock y agrega el movimiento en una misma transacción; `InventoryService.listMovements()` consulta el historial. Ambos flujos están disponibles mediante los canales IPC `inventory:adjustStock` e `inventory:listMovements`, expuestos en `window.api.inventory`.
+Los movimientos se guardan en la tabla SQLite `stock_movements`. `InventoryService.adjustStock()` recibe el tipo explícito (`ENTRADA`/`SALIDA`), valida que el motivo corresponda y rechaza salidas mayores al stock disponible; el responsable se obtiene de la sesión autenticada en el proceso principal. Luego actualiza stock/lotes e inserta el movimiento en una misma transacción. La tabla Kardex muestra ese responsable y permite buscarlo. `InventoryService.listMovements()` consulta el historial. Ambos flujos están disponibles mediante los canales IPC `inventory:adjustStock` e `inventory:listMovements`, expuestos en `window.api.inventory`.
 
 La vista Kardex obtiene el historial persistido al abrir el módulo y permite volver a cargarlo. Los errores de lectura se muestran en pantalla; un listado vacío no se sustituye por registros de demostración.
 

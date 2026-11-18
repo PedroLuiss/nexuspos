@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { Product, KardexReason } from '@shared/contracts'
+import type { Product, KardexMovementType, KardexReason } from '@shared/contracts'
 import { Plus, Minus, X, Check } from '../../../shared/icons/Icons'
 import { getProductQuantityStep } from '@shared/lib/product-quantity'
 import ProductSearchSelect from './ProductSearchSelect'
@@ -11,6 +11,7 @@ interface StockAdjustmentModalProps {
   onClose: () => void
   onConfirmAdjustment: (
     productId: string,
+    type: KardexMovementType,
     quantity: number,
     reason: KardexReason,
     notes: string
@@ -43,17 +44,22 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     products[0]
   const isInputMode = mode === 'IN'
 
-  const currentStock = selectedProduct?.stock || 0
+  const currentStock = selectedProduct?.stock ?? 0
+  const exceedsAvailableStock = !isInputMode && quantity > currentStock
   const quantityStep = getProductQuantityStep(selectedProduct?.unit || '')
-  const calculatedStock = isInputMode
-    ? currentStock + quantity
-    : Math.max(0, currentStock - quantity)
+  const calculatedStock = isInputMode ? currentStock + quantity : currentStock - quantity
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
-    if (!selectedProduct || quantity <= 0) return
+    if (!selectedProduct || quantity <= 0 || exceedsAvailableStock) return
 
-    onConfirmAdjustment(selectedProduct.id, quantity, reason, notes)
+    onConfirmAdjustment(
+      selectedProduct.id,
+      isInputMode ? 'ENTRADA' : 'SALIDA',
+      quantity,
+      reason,
+      notes
+    )
     onClose()
   }
 
@@ -114,6 +120,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 <input
                   type="number"
                   min={quantityStep}
+                  max={isInputMode ? undefined : currentStock}
                   step={quantityStep}
                   required
                   autoFocus
@@ -121,6 +128,11 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                   onChange={(e) => setQuantity(Number(e.target.value) || 0)}
                   className="w-full px-3 py-2 text-lg font-bold font-tabular bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
                 />
+                {exceedsAvailableStock && (
+                  <p className="mt-1 text-[11px] text-red-600" role="alert">
+                    La salida supera el stock disponible ({currentStock} {selectedProduct?.unit}).
+                  </p>
+                )}
               </div>
 
               <div>
@@ -203,7 +215,8 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             </button>
             <button
               type="submit"
-              className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-sm ${
+              disabled={!selectedProduct || quantity <= 0 || exceedsAvailableStock}
+              className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                 isInputMode ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
               }`}
             >

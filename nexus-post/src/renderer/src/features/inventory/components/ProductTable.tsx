@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Product, ProductInput, KardexReason } from '@shared/contracts'
+import type { Product, ProductInput, KardexMovementType, KardexReason } from '@shared/contracts'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
 import { useProductFilters } from '../hooks/useProductFilters'
@@ -130,12 +130,13 @@ export const ProductTable: React.FC = () => {
 
   const handleStockAdjustment = async (
     productId: string,
+    type: KardexMovementType,
     quantity: number,
     reason: KardexReason,
     notes: string
   ): Promise<void> => {
     try {
-      await adjustStock({ productId, quantity, reason, notes, responsibleUser: 'Cajero' })
+      await adjustStock({ productId, type, quantity, reason, notes })
     } catch (err) {
       window.alert(toErrorMessage(err))
     }
@@ -261,6 +262,7 @@ export const ProductTable: React.FC = () => {
       />
 
       <StockAdjustmentModal
+        key={adjustmentMode ?? 'closed'}
         isOpen={adjustmentMode !== null}
         mode={adjustmentMode || 'IN'}
         products={products}

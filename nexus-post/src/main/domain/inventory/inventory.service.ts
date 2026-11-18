@@ -1,9 +1,9 @@
 import type { AdjustStockInput, AdjustStockResult, KardexMovement } from '@shared/contracts'
-import { isInboundReason } from '@shared/contracts'
 import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import type { TransactionRunner } from '../../ports/transaction'
+import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
 import { issueFromBatches } from '@shared/lib/product-batches'
@@ -14,10 +14,16 @@ export class InventoryService {
     private readonly products: ProductRepository,
     private readonly movements: StockMovementRepository,
     private readonly batches: ProductBatchRepository,
+    private readonly auth: AuthService,
     private readonly tx: TransactionRunner
   ) {}
 
   adjustStock(input: AdjustStockInput): AdjustStockResult {
+    const user = this.auth.getSessionUser()
+    if (!user) {
+      throw new ValidationError('Debe iniciar sesión para ajustar el inventario.')
+    }
+
     const product = this.products.findById(input.productId)
     if (!product) throw new NotFoundError('Producto no encontrado')
 
@@ -42,11 +48,29 @@ export class InventoryService {
       )
     }
 
-    const inbound = isInboundReason(input.reason)
+    if (input.type !== 'ENTRADA' && input.type !== 'SALIDA') {
+      throw new ValidationError('El tipo de movimiento no es válido.')
+    }
+
+    const inbound = input.type === 'ENTRADA'
+    const validReason = inbound
+      ? input.reason === 'ENTRADA_MASIVA' ||
+        input.reason === 'INVENTARIO_INICIAL' ||
+        input.reason === 'DEVOLUCION'
+      : input.reason === 'SALIDA_AJUSTE' ||
+        input.reason === 'MERMA' ||
+        input.reason === 'DEVOLUCION'
+    if (!validReason) {
+      throw new ValidationError('El motivo seleccionado no corresponde al tipo de movimiento.')
+    }
+
     const previousStock = product.stock
-    const newStock = inbound
-      ? previousStock + input.quantity
-      : Math.max(0, previousStock - input.quantity)
+    if (!inbound && input.quantity > previousStock) {
+      throw new ValidationError(
+        `Stock insuficiente para "${product.name}". Disponible: ${previousStock}.`
+      )
+    }
+    const newStock = inbound ? previousStock + input.quantity : previousStock - input.quantity
 
     const movement: KardexMovement = {
       id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -54,12 +78,12 @@ export class InventoryService {
       productId: product.id,
       productName: product.name,
       productCode: product.code,
-      type: inbound ? 'ENTRADA' : 'SALIDA',
+      type: input.type,
       reason: input.reason,
       previousStock,
       quantity: input.quantity,
       newStock,
-      responsibleUser: input.responsibleUser,
+      responsibleUser: user.name,
       notes: input.notes
     }
 

@@ -117,15 +117,16 @@ export function registerIpcHandlers(): void {
   const productPriceTierService = new ProductPriceTierService(productPriceTierRepository)
   const comboItemService = new ComboItemService(comboItemRepository, productRepository)
   const productBatchService = new ProductBatchService(productBatchRepository, productRepository)
+  const authAdapter = new LaravelAuthAdapter()
+  const authService = new AuthService(userRepository, authAdapter)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
     productBatchRepository,
+    authService,
     transactionRunner
   )
   const categoryService = new CategoryService(categoryRepository)
-  const authAdapter = new LaravelAuthAdapter()
-  const authService = new AuthService(userRepository, authAdapter)
   const taxService = new TaxService(taxRepository, authService)
   const userService = new UserService(userRepository, authService)
   const settingsService = new SettingsService(settingsRepository, authService)
