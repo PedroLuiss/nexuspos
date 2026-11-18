@@ -4,6 +4,7 @@ import { useComboItems } from '../../../shared/hooks/useComboItems'
 import { Check, Edit3, Layers, Plus, Trash2, X, AlertCircle } from '../../../shared/icons/Icons'
 import ProductSearchSelect from './ProductSearchSelect'
 import { useTablePagination } from '../hooks/useTablePagination'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
 
 interface ComboItemsEditorProps {
@@ -27,6 +28,7 @@ interface Draft {
 export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, products }) => {
   const { items, error, createItem, updateItem, deleteItem } = useComboItems(comboId)
   const pagination = useTablePagination(items)
+  const confirmation = useConfirmDialog()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -86,7 +88,12 @@ export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, pro
   }
 
   const handleDelete = async (item: ComboItem): Promise<void> => {
-    if (!window.confirm(`¿Quitar "${item.componentName ?? item.componentId}" del combo?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Quitar componente',
+      message: `¿Quitar "${item.componentName ?? item.componentId}" del combo?`,
+      confirmLabel: 'Quitar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await deleteItem(item.id)
@@ -244,6 +251,7 @@ export const ComboItemsEditor: React.FC<ComboItemsEditorProps> = ({ comboId, pro
           </div>
         </div>
       )}
+      {confirmation.dialog}
     </div>
   )
 }

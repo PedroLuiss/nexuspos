@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from '../../../shared/icons/Icons'
 import { useTablePagination } from '../hooks/useTablePagination'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
 
 interface ProductBarcodesEditorProps {
@@ -37,6 +38,7 @@ export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ pr
   const { barcodes, error, createBarcode, updateBarcode, deleteBarcode } =
     useProductBarcodes(productId)
   const pagination = useTablePagination(barcodes)
+  const confirmation = useConfirmDialog()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -95,7 +97,12 @@ export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ pr
   }
 
   const handleDelete = async (barcode: ProductBarcode): Promise<void> => {
-    if (!window.confirm(`¿Eliminar el código "${barcode.barcode}"?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Eliminar código de barras',
+      message: `¿Eliminar el código "${barcode.barcode}"?`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await deleteBarcode(barcode.id)
@@ -284,6 +291,7 @@ export const ProductBarcodesEditor: React.FC<ProductBarcodesEditorProps> = ({ pr
           </div>
         </div>
       )}
+      {confirmation.dialog}
     </div>
   )
 }

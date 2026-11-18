@@ -17,7 +17,6 @@ import ProductImportExportModal from './ProductImportExportModal'
 import ProductToolbar from './ProductToolbar'
 import ProductFilters from './ProductFilters'
 import ProductRows from './ProductRows'
-import { ProductDeleteConfirmModal } from './ProductDeleteConfirmModal'
 import ProductStatusBar from './ProductStatusBar'
 import TablePagination from './TablePagination'
 import type { ProductImportBatchResult } from './ProductImportTab'
@@ -60,7 +59,7 @@ export const ProductTable: React.FC = () => {
   const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('export')
   const [fullCatalog, setFullCatalog] = useState<Product[]>([])
   const [isLoadingFullCatalog, setIsLoadingFullCatalog] = useState(false)
-  const { productToDelete, deletingProductId, requestDelete, cancelDelete, confirmDelete } =
+  const { deletingProductId, requestDelete, confirmationOpen, confirmationDialog } =
     useProductDelete({ deleteProduct })
 
   const anyModalOpen =
@@ -69,7 +68,7 @@ export const ProductTable: React.FC = () => {
     isCategoryModalOpen ||
     isImportExportOpen ||
     adjustmentMode !== null ||
-    productToDelete !== null
+    confirmationOpen
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -247,11 +246,7 @@ export const ProductTable: React.FC = () => {
         />
       )}
 
-      <ProductDeleteConfirmModal
-        productName={productToDelete?.name ?? null}
-        onCancel={cancelDelete}
-        onConfirm={() => void confirmDelete()}
-      />
+      {confirmationDialog}
 
       <CategoryManagerModal
         isOpen={isCategoryModalOpen}

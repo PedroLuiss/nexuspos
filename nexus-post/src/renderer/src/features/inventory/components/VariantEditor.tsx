@@ -9,6 +9,7 @@ import {
 import { Edit3, GitBranch, Plus, Trash2, AlertCircle } from '../../../shared/icons/Icons'
 import VariantForm, { type VariantDraft } from './VariantForm'
 import { useTablePagination } from '../hooks/useTablePagination'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
 
 interface VariantEditorProps {
@@ -30,6 +31,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     parent.id
   )
   const pagination = useTablePagination(variants)
+  const confirmation = useConfirmDialog()
   const [attrText, setAttrText] = useState(() =>
     parseProductAttributes(variantAttrs)
       .map((a) => a.name)
@@ -143,7 +145,12 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
   }
 
   const handleDelete = async (variant: Product): Promise<void> => {
-    if (!window.confirm(`¿Eliminar la variante "${variant.name}"?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Eliminar variante',
+      message: `¿Eliminar la variante "${variant.name}"?`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await deleteVariant(variant.id)
@@ -279,6 +286,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
           onCancel={() => setDraft(null)}
         />
       )}
+      {confirmation.dialog}
     </div>
   )
 }

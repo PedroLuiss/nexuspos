@@ -186,7 +186,7 @@ nexus-post/src/
    ```sql
    UPDATE products SET deleted = 1, active = 0, updated_at = ? WHERE id = ? OR parent_id = ?
    ```
-   `ProductService.softDelete()` delega a `ProductRepository.softDeleteCascade()`: evita cargar variantes, lotes y relaciones en JavaScript. La operación devuelve la variación de métricas del catálogo solo para el producto afectado, sus variantes y combos relacionados; el renderer actualiza el resumen sin recalcular el agregado completo del inventario después de cada baja. La confirmación del catálogo es un modal asíncrono de React, no `window.confirm`, para que Cancelar libere la interfaz de inmediato.
+   `ProductService.softDelete()` delega a `ProductRepository.softDeleteCascade()`: evita cargar variantes, lotes y relaciones en JavaScript. La operación devuelve la variación de métricas del catálogo solo para el producto afectado, sus variantes y combos relacionados; el renderer actualiza el resumen sin recalcular el agregado completo del inventario después de cada baja. Las confirmaciones del módulo usan el `ConfirmDialog` reutilizable y asíncrono, nunca `window.confirm`.
 2. **Cálculo Automático de Precio de Venta por % de Ganancia:** El usuario ingresa el **Precio Costo ($)** y el **% de Ganancia deseado (%)** (ej: 10%, 15%, 20%, 30%). El sistema calcula en tiempo real:
    $$\text{Ganancia } \$ = \text{Precio Costo} \times \left(\frac{\%\text{ Ganancia}}{100}\right)$$
    $$\text{Precio Venta Final} = \text{Precio Costo} \times \left(1 + \frac{\%\text{ Ganancia}}{100}\right)$$

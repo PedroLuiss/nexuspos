@@ -3,6 +3,7 @@ import type { ProductBatch, ProductBatchInput } from '@shared/contracts'
 import { useProductBatches, daysToExpiry, isBatchExpired } from '../../../shared/hooks/useProductBatches'
 import { Check, Edit3, Plus, Trash2, X, AlertCircle, CalendarClock } from '../../../shared/icons/Icons'
 import { useTablePagination } from '../hooks/useTablePagination'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
 
 interface BatchEditorProps {
@@ -53,6 +54,7 @@ export const BatchEditor: React.FC<BatchEditorProps> = ({
 }) => {
   const { batches, error, receive, update, softDelete, totalStock } = useProductBatches(productId)
   const pagination = useTablePagination(batches)
+  const confirmation = useConfirmDialog()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -116,7 +118,12 @@ export const BatchEditor: React.FC<BatchEditorProps> = ({
   }
 
   const handleDelete = async (batch: ProductBatch): Promise<void> => {
-    if (!window.confirm(`¿Eliminar el lote "${batch.batchNumber}"?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Eliminar lote',
+      message: `¿Eliminar el lote "${batch.batchNumber}"?`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await softDelete(batch.id)
@@ -282,6 +289,7 @@ export const BatchEditor: React.FC<BatchEditorProps> = ({
           </div>
         </div>
       )}
+      {confirmation.dialog}
     </div>
   )
 }

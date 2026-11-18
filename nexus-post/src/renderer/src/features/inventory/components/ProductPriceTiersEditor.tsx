@@ -3,6 +3,7 @@ import type { ProductPriceTier, ProductPriceTierInput } from '@shared/contracts'
 import { useProductPriceTiers } from '../../../shared/hooks/useProductPriceTiers'
 import { Check, Edit3, Plus, Trash2, X, AlertCircle, Layers } from '../../../shared/icons/Icons'
 import { useTablePagination } from '../hooks/useTablePagination'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
 
 interface ProductPriceTiersEditorProps {
@@ -30,6 +31,7 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
 }) => {
   const { tiers, error, createTier, updateTier, deleteTier } = useProductPriceTiers(productId)
   const pagination = useTablePagination(tiers)
+  const confirmation = useConfirmDialog()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -98,7 +100,12 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
   }
 
   const handleDelete = async (tier: ProductPriceTier): Promise<void> => {
-    if (!window.confirm(`¿Eliminar el tier ${tier.minQuantity}-${tier.maxQuantity ?? '∞'}?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Eliminar escala de precio',
+      message: `¿Eliminar el tier ${tier.minQuantity}-${tier.maxQuantity ?? '∞'}?`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await deleteTier(tier.id)
@@ -272,6 +279,7 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
           </div>
         </div>
       )}
+      {confirmation.dialog}
     </div>
   )
 }

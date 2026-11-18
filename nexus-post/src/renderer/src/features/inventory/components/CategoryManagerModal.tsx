@@ -5,6 +5,7 @@ import type { UseCategoriesResult } from '../hooks/useCategories'
 import { toErrorMessage } from '../api/products.api'
 import CategoryTable from './CategoryTable'
 import CategoryForm from './CategoryForm'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 
 interface CategoryManagerModalProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const mounted = useRef(true)
+  const confirmation = useConfirmDialog()
 
   useEffect(() => {
     mounted.current = true
@@ -35,11 +37,11 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
   useEffect(() => {
     if (!isOpen) return
     const handleKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !confirmation.isOpen) onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, confirmation.isOpen])
 
   if (!isOpen) return null
 
@@ -63,7 +65,12 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
   }
 
   const handleDelete = async (category: Category): Promise<void> => {
-    if (!window.confirm(`¿Eliminar la categoría "${category.name}"?`)) return
+    const confirmed = await confirmation.confirm({
+      title: 'Eliminar categoría',
+      message: `¿Eliminar la categoría "${category.name}"?`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     try {
       await deleteCategory(category.id)
     } catch (err) {
@@ -158,6 +165,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
           />
         </div>
       </div>
+      {confirmation.dialog}
     </div>
   )
 }
