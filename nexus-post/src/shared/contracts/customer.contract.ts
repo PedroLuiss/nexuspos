@@ -79,13 +79,6 @@ export interface CustomerPaymentInput {
   concept: string
 }
 
-export interface CreateCreditSaleInput {
-  customerId: string
-  ticketNumber: string
-  totalAmount: number
-  date: string
-}
-
 export interface ApplyPaymentToDebtInput {
   debtId: string
   amount: number
@@ -103,6 +96,5 @@ export interface CustomersApi {
   recordPayment(input: CustomerPaymentInput): Promise<CustomerPayment>
   listDebts(customerId: string): Promise<CustomerDebt[]>
   listPayments(customerId: string): Promise<CustomerPayment[]>
-  createCreditSale(input: CreateCreditSaleInput): Promise<CustomerDebt>
   applyPaymentToDebt(input: ApplyPaymentToDebtInput): Promise<CustomerDebt>
 }

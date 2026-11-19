@@ -5,7 +5,6 @@ import type {
   CustomerUpdateInput,
   CustomerFilter,
   CustomerPaymentInput,
-  CreateCreditSaleInput,
   ApplyPaymentToDebtInput
 } from '@shared/contracts'
 import type { CustomerService } from '../domain/customers/customer.service'
@@ -13,7 +12,7 @@ import type { CustomerService } from '../domain/customers/customer.service'
 /**
  * Canales IPC de clientes, crédito y cobranza.
  * - Lectura (list, getById, account summary, debts, payments): disponible para cualquier sesión autenticada.
- * - Escritura (create, update, delete, toggleStatus, recordPayment, createCreditSale, applyPaymentToDebt):
+ * - Escritura (create, update, delete, toggleStatus, recordPayment, applyPaymentToDebt):
  *   requiere rol ADMIN o CASHIER según la operación (validado en CustomerService).
  */
 export function registerCustomerIpc(customerService: CustomerService): void {
@@ -59,18 +58,6 @@ export function registerCustomerIpc(customerService: CustomerService): void {
   ipcMain.handle(IPC_CHANNELS.customers.listPayments, async (_event, customerId: string) => {
     return customerService.listPayments(customerId)
   })
-
-  ipcMain.handle(
-    IPC_CHANNELS.customers.createCreditSale,
-    async (_event, input: CreateCreditSaleInput) => {
-      return customerService.createCreditSale(
-        input.customerId,
-        input.ticketNumber,
-        input.totalAmount,
-        input.date
-      )
-    }
-  )
 
   ipcMain.handle(
     IPC_CHANNELS.customers.applyPaymentToDebt,

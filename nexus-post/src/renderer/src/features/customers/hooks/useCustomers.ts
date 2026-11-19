@@ -4,12 +4,8 @@ import type {
   CustomerInput,
   CustomerUpdateInput,
   CustomerFilter,
-  CustomerDebt,
   CustomerPayment,
-  CustomerAccountSummary,
-  CustomerPaymentInput,
-  CreateCreditSaleInput,
-  ApplyPaymentToDebtInput
+  CustomerPaymentInput
 } from '@shared/contracts'
 import { customersApi, customersErrorMessage } from '../api/customers.api'
 
@@ -18,28 +14,23 @@ interface CustomersHookValue {
   isLoading: boolean
   error: string | null
   reload: (filter?: CustomerFilter) => Promise<boolean>
-  clearError: () => void
   createCustomer: (input: CustomerInput) => Promise<Customer>
   updateCustomer: (input: CustomerUpdateInput) => Promise<Customer>
   deleteCustomer: (id: string) => Promise<void>
   toggleStatus: (id: string) => Promise<Customer>
-  getAccountSummary: (customerId: string) => Promise<CustomerAccountSummary | null>
-  listDebts: (customerId: string) => Promise<CustomerDebt[]>
-  listPayments: (customerId: string) => Promise<CustomerPayment[]>
   recordPayment: (input: CustomerPaymentInput) => Promise<CustomerPayment>
-  createCreditSale: (input: CreateCreditSaleInput) => Promise<CustomerDebt>
-  applyPaymentToDebt: (input: ApplyPaymentToDebtInput) => Promise<CustomerDebt>
 }
 
 /**
  * Hook transversal de clientes, crédito y cobranza.
  * Lo consumen el módulo de Clientes y el POS para asociar clientes a ventas.
  */
-export function useCustomers(enabled = true): CustomersHookValue {
+export function useCustomers(enabled = true, includeInactive = false): CustomersHookValue {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
+  const requestVersion = useRef(0)
 
   useEffect(() => {
     mounted.current = true
@@ -51,20 +42,23 @@ export function useCustomers(enabled = true): CustomersHookValue {
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
+    const requestId = ++requestVersion.current
 
     const load = async (): Promise<void> => {
       try {
-        const data = await customersApi.list()
-        if (!cancelled && mounted.current) {
+        const data = await customersApi.list(
+          includeInactive ? { includeInactive: true } : undefined
+        )
+        if (!cancelled && mounted.current && requestId === requestVersion.current) {
           setCustomers(data)
           setError(null)
         }
       } catch (err: unknown) {
-        if (!cancelled && mounted.current) {
+        if (!cancelled && mounted.current && requestId === requestVersion.current) {
           setError(customersErrorMessage(err))
         }
       } finally {
-        if (!cancelled && mounted.current) {
+        if (!cancelled && mounted.current && requestId === requestVersion.current) {
           setIsLoading(false)
         }
       }
@@ -75,59 +69,50 @@ export function useCustomers(enabled = true): CustomersHookValue {
     return () => {
       cancelled = true
     }
-  }, [enabled])
+  }, [enabled, includeInactive])
 
   const reload = useCallback(async (filter?: CustomerFilter): Promise<boolean> => {
+    const requestId = ++requestVersion.current
     setError(null)
     try {
       const data = await customersApi.list(filter)
-      if (mounted.current) setCustomers(data)
+      if (mounted.current && requestId === requestVersion.current) setCustomers(data)
       return true
     } catch (err: unknown) {
-      if (mounted.current) setError(customersErrorMessage(err))
+      if (mounted.current && requestId === requestVersion.current) {
+        setError(customersErrorMessage(err))
+      }
       return false
     }
   }, [])
 
-  const clearError = useCallback((): void => {
+  const createCustomer = useCallback(async (input: CustomerInput): Promise<Customer> => {
     setError(null)
+    try {
+      const created = await customersApi.create(input)
+      if (mounted.current) setCustomers((prev) => [...prev, created])
+      return created
+    } catch (err: unknown) {
+      const message = customersErrorMessage(err)
+      setError(message)
+      throw new Error(message)
+    }
   }, [])
 
-  const createCustomer = useCallback(
-    async (input: CustomerInput): Promise<Customer> => {
-      setError(null)
-      try {
-        const created = await customersApi.create(input)
-        if (mounted.current) setCustomers((prev) => [...prev, created])
-        return created
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
+  const updateCustomer = useCallback(async (input: CustomerUpdateInput): Promise<Customer> => {
+    setError(null)
+    try {
+      const updated = await customersApi.update(input)
+      if (mounted.current) {
+        setCustomers((prev) => prev.map((c) => (c.id === input.id ? updated : c)))
       }
-    },
-    []
-  )
-
-  const updateCustomer = useCallback(
-    async (input: CustomerUpdateInput): Promise<Customer> => {
-      setError(null)
-      try {
-        const updated = await customersApi.update(input)
-        if (mounted.current) {
-          setCustomers((prev) =>
-            prev.map((c) => (c.id === input.id ? updated : c))
-          )
-        }
-        return updated
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
-      }
-    },
-    []
-  )
+      return updated
+    } catch (err: unknown) {
+      const message = customersErrorMessage(err)
+      setError(message)
+      throw new Error(message)
+    }
+  }, [])
 
   const deleteCustomer = useCallback(async (id: string): Promise<void> => {
     setError(null)
@@ -141,17 +126,14 @@ export function useCustomers(enabled = true): CustomersHookValue {
       setError(message)
       throw new Error(message)
     }
-  },
-  [])
+  }, [])
 
   const toggleStatus = useCallback(async (id: string): Promise<Customer> => {
     setError(null)
     try {
       const updated = await customersApi.toggleStatus(id)
       if (mounted.current) {
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === id ? updated : c))
-        )
+        setCustomers((prev) => prev.map((c) => (c.id === id ? updated : c)))
       }
       return updated
     } catch (err: unknown) {
@@ -160,45 +142,6 @@ export function useCustomers(enabled = true): CustomersHookValue {
       throw new Error(message)
     }
   }, [])
-
-  const getAccountSummary = useCallback(
-    async (customerId: string): Promise<CustomerAccountSummary | null> => {
-      setError(null)
-      try {
-        return await customersApi.getAccountSummary(customerId)
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
-      }
-    },
-    []
-  )
-
-  const listDebts = useCallback(async (customerId: string): Promise<CustomerDebt[]> => {
-    setError(null)
-    try {
-      return await customersApi.listDebts(customerId)
-    } catch (err: unknown) {
-      const message = customersErrorMessage(err)
-      setError(message)
-      throw new Error(message)
-    }
-  }, [])
-
-  const listPayments = useCallback(
-    async (customerId: string): Promise<CustomerPayment[]> => {
-      setError(null)
-      try {
-        return await customersApi.listPayments(customerId)
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
-      }
-    },
-    []
-  )
 
   const recordPayment = useCallback(
     async (input: CustomerPaymentInput): Promise<CustomerPayment> => {
@@ -225,78 +168,28 @@ export function useCustomers(enabled = true): CustomersHookValue {
     []
   )
 
-  const createCreditSale = useCallback(
-    async (input: CreateCreditSaleInput): Promise<CustomerDebt> => {
-      setError(null)
-      try {
-        const debt = await customersApi.createCreditSale(input)
-        if (mounted.current) {
-          setCustomers((prev) =>
-            prev.map((c) =>
-              c.id === input.customerId
-                ? { ...c, currentDebt: c.currentDebt + input.totalAmount }
-                : c
-            )
-          )
-        }
-        return debt
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
-      }
-    },
-    []
-  )
-
-  const applyPaymentToDebt = useCallback(
-    async (input: ApplyPaymentToDebtInput): Promise<CustomerDebt> => {
-      setError(null)
-      try {
-        return await customersApi.applyPaymentToDebt(input)
-      } catch (err: unknown) {
-        const message = customersErrorMessage(err)
-        setError(message)
-        throw new Error(message)
-      }
-    },
-    []
-  )
-
   const value = useMemo(
     () => ({
       customers,
       isLoading,
       error,
       reload,
-      clearError,
       createCustomer,
       updateCustomer,
       deleteCustomer,
       toggleStatus,
-      getAccountSummary,
-      listDebts,
-      listPayments,
-      recordPayment,
-      createCreditSale,
-      applyPaymentToDebt
+      recordPayment
     }),
     [
       customers,
       isLoading,
       error,
       reload,
-      clearError,
       createCustomer,
       updateCustomer,
       deleteCustomer,
       toggleStatus,
-      getAccountSummary,
-      listDebts,
-      listPayments,
-      recordPayment,
-      createCreditSale,
-      applyPaymentToDebt
+      recordPayment
     ]
   )
 

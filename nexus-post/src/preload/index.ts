@@ -24,7 +24,6 @@ import type {
   CustomerUpdateInput,
   CustomerFilter,
   CustomerPaymentInput,
-  CreateCreditSaleInput,
   ApplyPaymentToDebtInput,
   CreateSaleInput,
   SuspendedSale,
@@ -249,8 +248,6 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.customers.listDebts, customerId),
     listPayments: (customerId: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.customers.listPayments, customerId),
-    createCreditSale: (input: CreateCreditSaleInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.customers.createCreditSale, input),
     applyPaymentToDebt: (input: ApplyPaymentToDebtInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.customers.applyPaymentToDebt, input)
   },

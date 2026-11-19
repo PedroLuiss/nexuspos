@@ -9,11 +9,12 @@
 
 El módulo de Clientes administra el directorio de compradores y la cartera de créditos comerciales:
 - **Padrón de Clientes:** Identificación mediante código único (`CLI-xxx`), nombre/razón social, RFC/documento fiscal, teléfono, dirección y email.
+- **Administración del directorio:** Alta y edición de datos comerciales; baja lógica para preservar los vínculos históricos.
 - **Límites de Crédito:** Asignación de cupo máximo financiado para ventas fiadas.
 - **Estados de Cartera:** Clasificación automática en badges visuales:
   - **DEUDOR** (en rojo con badge `#FDE8E8`): Posee saldo pendiente vencido o por pagar.
   - **AL DÍA** (en verde con badge `#E8F5E9`): Sin deudas activas.
-- **Detalle de Cuenta Corriente:** Desglose de compras a crédito pendientes con folio de ticket, fecha y monto original, mostrado desde `CustomersView.tsx`.
+- **Detalle de Cuenta Corriente:** Resumen de límite, deuda, crédito disponible y saldo a favor, más tickets pendientes e historial de abonos.
 - **Recepción de Abonos a Cuenta:**
   - Registro de pagos parciales o liquidación total con un clic.
   - **Efecto Contable Inmediato:** El dinero abonado se resta del saldo deudor del cliente y **se registra automáticamente como entrada de efectivo en la gaveta de caja del turno activo**.
@@ -33,12 +34,20 @@ nexus-post/src/
 │   └── ipc/customers.ipc.ts                 # Handlers 'customers:*'
 │
 ├── shared/contracts/
-│   └── customers.contract.ts                # Interfaces Customer, DebtItem, PaymentInput
+│   └── customer.contract.ts                 # Contratos Customer, deudas y pagos
 │
 └── renderer/src/features/customers/
-    ├── CustomersView.tsx                    # Vista, estados de cuenta, pagos y clientes inactivos
+    ├── CustomersView.tsx                    # Orquestación de vistas y operaciones del módulo
     ├── api/customers.api.ts                 # Operaciones por window.api
-    └── hooks/useCustomers.ts                # Carga/CRUD, deudas y pagos
+    ├── hooks/useCustomers.ts                # Carga, CRUD y pagos
+    └── components/
+        ├── CustomersHeader.tsx               # Encabezado y nivel de operación
+        ├── CustomersMetrics.tsx              # Indicadores de clientes y cartera
+        ├── CustomersToolbar.tsx               # Búsqueda, filtros y alternancia de listas
+        ├── CustomersTable.tsx                 # Directorio y acciones disponibles por rol
+        ├── CustomerFormDialog.tsx              # Alta y edición
+        ├── CustomerAccountDialog.tsx           # Estado de cuenta e historial
+        └── CustomerPaymentDialog.tsx            # Registro de abono
 ```
 
 ---
@@ -62,7 +71,7 @@ nexus-post/src/
 
 ## 5. Tareas Pendientes / Deuda Técnica
 
-- ⚠️ **Refactorización de Líneas:** `CustomersView.tsx` sigue concentrando listado, deuda y abonos en un componente extenso. Modularizarlo sin mover la lógica del feature a otros módulos y respetando el máximo de 300 líneas por componente.
+- ⚠️ **Paginación del directorio:** el módulo carga el padrón completo para calcular indicadores y alternar activos/desactivados localmente. Si el volumen de clientes crece significativamente, migrar la búsqueda y paginación al repositorio SQLite.
 
 ## 6. Estado de Integración con SQLite y POS
 
@@ -73,7 +82,12 @@ nexus-post/src/
 - El listado y el estado de cuenta se cargan desde SQLite; los datos de clientes que antes vivían únicamente en el estado de React fueron retirados de `App.tsx`.
 - Las ventas regulares (efectivo/tarjeta/mixto/crédito) y facturas se persisten en SQLite por el módulo POS/Ventas; el cliente seleccionado queda asociado a la venta. No hay que recrear ventas desde Clientes.
 - El listado principal muestra solo clientes activos. El botón **Clientes desactivados** carga desde SQLite y muestra en una vista separada los clientes inactivos; estos no se ofrecen para asociar a ventas en el POS.
+- El módulo consulta activos e inactivos en su propia vista; al alternar listas, reinicia el filtro de deuda para que no oculte registros desactivados. Los filtros y búsquedas se aplican al subconjunto activo o inactivo correspondiente.
 - No se permite desactivar clientes con deuda pendiente: el botón se deshabilita en la interfaz y `CustomerService.toggleStatus` vuelve a validar la regla antes de modificar el estado en SQLite.
 - Una devolución de venta a crédito cancela la deuda pendiente; los abonos ya registrados para esa venta no se eliminan, se convierten en saldo a favor del cliente (`credit_balance`). El saldo a favor se expone en el estado de cuenta del cliente.
 - Los abonos requieren un turno abierto del usuario y se persisten junto con su movimiento de ingreso en caja; el flujo transaccional coordina `CustomerService`, `CashRepository` y SQLite.
-- La UI del feature está actualmente concentrada en `CustomersView.tsx`; el mapa de archivos no presupone componentes modales separados que aún no existen.
+- Los permisos de la interfaz corresponden a las reglas del dominio: ADMIN puede crear/editar/dar de baja y activar/desactivar; ADMIN y CASHIER pueden registrar abonos, pero la acción se deshabilita si no hay turno de caja abierto. Los demás roles autorizados al módulo tienen consulta.
+- La baja es lógica (`deleted = 1`, `active = 0`) y el dominio impide dar de baja clientes con deuda pendiente; el historial de ventas, pagos y movimientos se conserva.
+- La deuda de una venta solo se genera desde `SalesService` en el flujo transaccional del POS. Ya no existe un canal IPC independiente para crear deudas, evitando insertar una deuda sin la venta asociada.
+- La vista usa `useConfirmDialog` para confirmar la baja y los cambios de estado; no usa `window.confirm`.
+- La tabla del directorio carga el padrón completo actualmente; no tiene paginación.

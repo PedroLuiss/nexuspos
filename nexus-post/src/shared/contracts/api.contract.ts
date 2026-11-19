@@ -200,7 +200,6 @@ export const IPC_CHANNELS = {
     recordPayment: 'customers:recordPayment',
     listDebts: 'customers:listDebts',
     listPayments: 'customers:listPayments',
-    createCreditSale: 'customers:createCreditSale',
     applyPaymentToDebt: 'customers:applyPaymentToDebt'
   },
   appWindow: {

@@ -7,7 +7,6 @@ import type {
   CustomerPayment,
   CustomerAccountSummary,
   CustomerPaymentInput,
-  CreateCreditSaleInput,
   ApplyPaymentToDebtInput
 } from '@shared/contracts'
 
@@ -90,7 +89,10 @@ const fallbackPayments: CustomerPayment[] = [
 export const customersApi = {
   list: async (filter?: CustomerFilter): Promise<Customer[]> => {
     if (window.api?.customers) return window.api.customers.list(filter)
-    let result = [...fallbackCustomers]
+    let result = fallbackCustomers.filter((customer) => !customer.deleted)
+    if (filter?.includeInactive !== true || filter?.onlyActive === true) {
+      result = result.filter((customer) => customer.active)
+    }
     if (filter?.search) {
       const s = filter.search.toLowerCase()
       result = result.filter(
@@ -101,7 +103,6 @@ export const customersApi = {
           c.phone.toLowerCase().includes(s)
       )
     }
-    if (filter?.onlyActive === true) result = result.filter((c) => c.active)
     if (filter?.onlyWithDebt === true) result = result.filter((c) => c.currentDebt > 0)
     return result
   },
@@ -130,7 +131,11 @@ export const customersApi = {
     if (window.api?.customers) return window.api.customers.update(input)
     const idx = fallbackCustomers.findIndex((c) => c.id === input.id)
     if (idx === -1) throw new Error('Cliente no encontrado.')
-    fallbackCustomers[idx] = { ...fallbackCustomers[idx], ...input, updatedAt: new Date().toISOString() }
+    fallbackCustomers[idx] = {
+      ...fallbackCustomers[idx],
+      ...input,
+      updatedAt: new Date().toISOString()
+    }
     return fallbackCustomers[idx]
   },
 
@@ -175,7 +180,11 @@ export const customersApi = {
       .filter((d) => d.customerId === input.customerId && d.balance > 0)
       .sort((a, b) => a.date.localeCompare(b.date))
     if (!customer) throw new Error('Cliente no encontrado.')
-    if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > customer.currentDebt) {
+    if (
+      !Number.isFinite(input.amount) ||
+      input.amount <= 0 ||
+      input.amount > customer.currentDebt
+    ) {
       throw new Error('El monto del abono no es válido para la deuda actual.')
     }
     if (debts.reduce((sum, debt) => sum + debt.balance, 0) < input.amount) {
@@ -213,31 +222,6 @@ export const customersApi = {
   listPayments: async (customerId: string): Promise<CustomerPayment[]> => {
     if (window.api?.customers) return window.api.customers.listPayments(customerId)
     return fallbackPayments.filter((p) => p.customerId === customerId)
-  },
-
-  createCreditSale: async (input: CreateCreditSaleInput): Promise<CustomerDebt> => {
-    if (window.api?.customers) return window.api.customers.createCreditSale(input)
-    const customer = fallbackCustomers.find((c) => c.id === input.customerId)
-    if (!customer) throw new Error('Cliente no encontrado.')
-    if (!customer.active) throw new Error('El cliente está desactivado.')
-    if (!Number.isFinite(input.totalAmount) || input.totalAmount <= 0) {
-      throw new Error('El total de la venta a crédito debe ser mayor a 0.')
-    }
-    if (customer.currentDebt + input.totalAmount > customer.creditLimit) {
-      throw new Error('La venta excedería el límite de crédito del cliente.')
-    }
-    const debt: CustomerDebt = {
-      id: `debt-${Date.now()}`,
-      customerId: input.customerId,
-      ticketNumber: input.ticketNumber,
-      date: input.date,
-      totalAmount: input.totalAmount,
-      balance: input.totalAmount,
-      status: 'PENDING'
-    }
-    fallbackDebts.push(debt)
-    customer.currentDebt += input.totalAmount
-    return debt
   },
 
   applyPaymentToDebt: async (input: ApplyPaymentToDebtInput): Promise<CustomerDebt> => {

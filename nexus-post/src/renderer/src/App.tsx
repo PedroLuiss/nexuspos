@@ -580,7 +580,12 @@ function AppContent(): React.JSX.Element {
 
       {/* 5. MÓDULO DE CLIENTES (CRÉDITOS Y CUENTAS POR COBRAR) */}
       {activeTab === 'customers' && canAccessTab(currentUser, 'customers') && (
-        <CustomersView onPaymentReceived={handleCustomerPaymentReceived} />
+        <CustomersView
+          canManageCustomers={currentUser.role === 'ADMIN'}
+          canReceivePayments={currentUser.role === 'ADMIN' || currentUser.role === 'CASHIER'}
+          isCashShiftOpen={Boolean(cashRegister.activeShiftId)}
+          onPaymentReceived={handleCustomerPaymentReceived}
+        />
       )}
 
       {/* 6. MÓDULO DE REPORTES Y MÉTRICAS */}
