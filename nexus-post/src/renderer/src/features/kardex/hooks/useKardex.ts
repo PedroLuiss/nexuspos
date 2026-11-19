@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
+import type { KardexExportFormat, KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
 import { getKardexPeriodRange } from '@shared/lib/kardex-period'
 import { kardexApi, kardexErrorMessage } from '../api/kardex.api'
 
@@ -38,6 +38,7 @@ export function useKardex(enabled = true): {
   isLoading: boolean
   error: string | null
   reload: () => Promise<boolean>
+  exportMovements: (format: KardexExportFormat) => Promise<boolean>
 } {
   const [data, setData] = useState<KardexMovementPage>(EMPTY_PAGE)
   const [query, setQuery] = useState<KardexMovementQuery>(createInitialQuery)
@@ -80,6 +81,20 @@ export function useKardex(enabled = true): {
     }
   }, [query])
 
+  const exportMovements = useCallback(
+    (format: KardexExportFormat): Promise<boolean> =>
+      kardexApi.exportMovements(
+        {
+          ...query,
+          ...getKardexPeriodRange(query.period),
+          page: 1,
+          pageSize: 100
+        },
+        format
+      ),
+    [query]
+  )
+
   useEffect(() => {
     if (!enabled) return
     const timer = window.setTimeout(() => void reload(), 0)
@@ -89,5 +104,5 @@ export function useKardex(enabled = true): {
     }
   }, [enabled, reload])
 
-  return { data, query, setQuery, isLoading, error, reload }
+  return { data, query, setQuery, isLoading, error, reload, exportMovements }
 }

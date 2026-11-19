@@ -54,6 +54,7 @@ import type {
   ProductBatchInput,
   ProductBatchFilter,
   KardexMovementQuery,
+  KardexExportFormat,
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
@@ -154,7 +155,9 @@ const api: NexusApi = {
     adjustStock: (input: AdjustStockInput) =>
       ipcRenderer.invoke(IPC_CHANNELS.inventory.adjustStock, input),
     listMovements: (query: KardexMovementQuery) =>
-      ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, query)
+      ipcRenderer.invoke(IPC_CHANNELS.inventory.listMovements, query),
+    exportMovements: (query: KardexMovementQuery, format: KardexExportFormat) =>
+      ipcRenderer.invoke(IPC_CHANNELS.inventory.exportMovements, query, format)
   },
   sales: {
     complete: (input: CreateSaleInput) => ipcRenderer.invoke(IPC_CHANNELS.sales.complete, input),

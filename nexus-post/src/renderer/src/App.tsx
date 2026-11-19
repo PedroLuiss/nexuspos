@@ -52,7 +52,8 @@ function AppContent(): React.JSX.Element {
     setQuery: setKardexQuery,
     isLoading: isKardexLoading,
     error: kardexError,
-    reload: reloadKardex
+    reload: reloadKardex,
+    exportMovements: exportKardexMovements
   } = useKardex(Boolean(currentUser) && activeTab === 'kardex')
   const {
     customers,
@@ -546,6 +547,7 @@ function AppContent(): React.JSX.Element {
           isLoading={isKardexLoading}
           error={kardexError}
           onRefresh={() => void reloadKardex()}
+          onExport={exportKardexMovements}
         />
       )}
 

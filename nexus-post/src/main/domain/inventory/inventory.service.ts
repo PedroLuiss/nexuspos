@@ -153,6 +153,15 @@ export class InventoryService {
   }
 
   listMovements(query: KardexMovementQuery): KardexMovementPage {
+    return this.movements.findPage(this.normalizeMovementQuery(query))
+  }
+
+  listAllMovements(query: KardexMovementQuery): KardexMovement[] {
+    const normalized = this.normalizeMovementQuery(query)
+    return this.movements.findAll({ ...normalized, page: 1, pageSize: 100 })
+  }
+
+  private normalizeMovementQuery(query: KardexMovementQuery): KardexMovementQuery {
     if (!query || typeof query !== 'object') {
       throw new ValidationError('Los filtros del Kardex no son válidos.')
     }
@@ -194,11 +203,11 @@ export class InventoryService {
       }
     }
 
-    return this.movements.findPage({
+    return {
       ...query,
       search: query.search.trim(),
       from: query.period === 'ALL' ? undefined : query.from,
       to: query.period === 'ALL' ? undefined : query.to
-    })
+    }
   }
 }

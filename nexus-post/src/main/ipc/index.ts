@@ -195,7 +195,7 @@ export function registerIpcHandlers(): void {
   registerProductPriceTierIpc(productPriceTierService)
   registerComboItemIpc(comboItemService)
   registerProductBatchIpc(productBatchService)
-  registerInventoryIpc(inventoryService)
+  registerInventoryIpc(inventoryService, settingsService)
   registerCategoryIpc(categoryService)
   registerAuthIpc(authService)
   registerUsersIpc(userService)

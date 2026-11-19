@@ -54,6 +54,41 @@ function mapRow(row: MovementRow): KardexMovement {
   }
 }
 
+function buildFilter(query: KardexMovementQuery): {
+  where: string
+  parameters: Record<string, string | number>
+} {
+  const conditions: string[] = []
+  const parameters: Record<string, string | number> = {}
+
+  if (query.period !== 'ALL' && query.from && query.to) {
+    conditions.push('created_at >= @from AND created_at < @to')
+    parameters.from = query.from
+    parameters.to = query.to
+  }
+  if (query.type !== 'ALL') {
+    conditions.push('type = @type')
+    parameters.type = query.type
+  }
+  if (query.reason !== 'ALL') {
+    conditions.push('reason = @reason')
+    parameters.reason = query.reason
+  }
+  if (query.search.trim()) {
+    conditions.push(`(
+      product_name LIKE @search OR product_code LIKE @search OR
+      responsible_user LIKE @search OR COALESCE(reference, '') LIKE @search OR
+      COALESCE(batch_number, '') LIKE @search OR COALESCE(notes, '') LIKE @search
+    )`)
+    parameters.search = `%${query.search.trim()}%`
+  }
+
+  return {
+    where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+    parameters
+  }
+}
+
 /** Adaptador SQLite del puerto `StockMovementRepository`. */
 export class SqliteStockMovementRepository implements StockMovementRepository {
   constructor(private readonly db: Database.Database) {}
@@ -93,33 +128,16 @@ export class SqliteStockMovementRepository implements StockMovementRepository {
       })
   }
 
+  findAll(query: KardexMovementQuery): KardexMovement[] {
+    const { where, parameters } = buildFilter(query)
+    const rows = this.db
+      .prepare(`SELECT * FROM stock_movements ${where} ORDER BY created_at DESC, id DESC`)
+      .all(parameters) as MovementRow[]
+    return rows.map(mapRow)
+  }
+
   findPage(query: KardexMovementQuery): KardexMovementPage {
-    const conditions: string[] = []
-    const parameters: Record<string, string | number> = {}
-
-    if (query.period !== 'ALL' && query.from && query.to) {
-      conditions.push('created_at >= @from AND created_at < @to')
-      parameters.from = query.from
-      parameters.to = query.to
-    }
-    if (query.type !== 'ALL') {
-      conditions.push('type = @type')
-      parameters.type = query.type
-    }
-    if (query.reason !== 'ALL') {
-      conditions.push('reason = @reason')
-      parameters.reason = query.reason
-    }
-    if (query.search.trim()) {
-      conditions.push(`(
-        product_name LIKE @search OR product_code LIKE @search OR
-        responsible_user LIKE @search OR COALESCE(reference, '') LIKE @search OR
-        COALESCE(batch_number, '') LIKE @search OR COALESCE(notes, '') LIKE @search
-      )`)
-      parameters.search = `%${query.search.trim()}%`
-    }
-
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const { where, parameters } = buildFilter(query)
     const totals = this.db
       .prepare(
         `SELECT

@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
+import type { KardexExportFormat, KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
 import { KardexSummary } from './components/KardexSummary'
 import { KardexTable } from './components/KardexTable'
 import { KardexToolbar } from './components/KardexToolbar'
@@ -12,6 +12,7 @@ interface KardexViewProps {
   isLoading: boolean
   error: string | null
   onRefresh: () => void
+  onExport: (format: KardexExportFormat) => Promise<boolean>
 }
 
 export const KardexView: React.FC<KardexViewProps> = ({
@@ -20,7 +21,8 @@ export const KardexView: React.FC<KardexViewProps> = ({
   onQueryChange,
   isLoading,
   error,
-  onRefresh
+  onRefresh,
+  onExport
 }) => (
   <div className="flex h-full flex-col space-y-2.5 bg-[#F3F3F3] p-3">
     <KardexSummary summary={data.summary} />
@@ -29,6 +31,7 @@ export const KardexView: React.FC<KardexViewProps> = ({
       onQueryChange={onQueryChange}
       isLoading={isLoading}
       onRefresh={onRefresh}
+      onExport={onExport}
     />
     {error && (
       <div

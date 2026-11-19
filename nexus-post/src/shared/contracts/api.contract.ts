@@ -28,7 +28,8 @@ import type {
   AdjustStockInput,
   AdjustStockResult,
   KardexMovementQuery,
-  KardexMovementPage
+  KardexMovementPage,
+  KardexExportFormat
 } from './inventory.contract'
 import type { Category, CategoryInput, CategoryFilter } from './category.contract'
 import type { AuthApi } from './auth.contract'
@@ -120,7 +121,8 @@ export const IPC_CHANNELS = {
   },
   inventory: {
     adjustStock: 'inventory:adjustStock',
-    listMovements: 'inventory:listMovements'
+    listMovements: 'inventory:listMovements',
+    exportMovements: 'inventory:exportMovements'
   },
   sales: {
     complete: 'sales:complete',
@@ -283,6 +285,7 @@ export interface ProductBatchesApi {
 export interface InventoryApi {
   adjustStock(input: AdjustStockInput): Promise<AdjustStockResult>
   listMovements(query: KardexMovementQuery): Promise<KardexMovementPage>
+  exportMovements(query: KardexMovementQuery, format: KardexExportFormat): Promise<boolean>
 }
 
 export interface CategoriesApi {

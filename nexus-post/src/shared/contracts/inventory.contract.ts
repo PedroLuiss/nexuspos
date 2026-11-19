@@ -18,6 +18,7 @@ export type KardexReason =
 export type KardexMovementSource = 'INVENTORY' | 'POS' | 'CASH' | 'LEGACY'
 export type KardexValuationBasis = 'SALE_SNAPSHOT' | 'PRODUCT_COST'
 export type KardexPeriod = 'WEEK' | 'MONTH' | 'YEAR' | 'ALL'
+export type KardexExportFormat = 'XLSX' | 'PDF'
 
 export interface KardexMovement {
   id: string

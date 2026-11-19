@@ -3,6 +3,7 @@ import type { KardexMovement, KardexMovementPage, KardexMovementQuery } from '@s
 /** Puerto de persistencia del Kardex (movimientos de stock inmutables). */
 export interface StockMovementRepository {
   insert(movement: KardexMovement): void
+  findAll(query: KardexMovementQuery): KardexMovement[]
   findPage(query: KardexMovementQuery): KardexMovementPage
   findSaleUnitCost(reference: string, productId: string): number | null
 }
