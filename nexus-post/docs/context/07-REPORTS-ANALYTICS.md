@@ -8,9 +8,10 @@
 ## 1. Responsabilidad del Módulo
 
 Reportes consulta SQLite local mediante el proceso `main`; la UI no usa datos demo ni consulta directamente la base. El tablero incluye:
+
 - **KPIs reales del rango:** ventas netas (facturas emitidas menos devoluciones procesadas), utilidad bruta, margen sobre venta sin impuesto, ticket promedio bruto, cantidad de facturas emitidas y devoluciones procesadas.
 - **Comparación de ventas:** crecimiento contra el período de duración equivalente anterior. Si el período anterior no tuvo ventas, el porcentaje no se presenta como crecimiento calculable.
-- **Gráfico SVG interactivo:** ventas y utilidad bruta, agrupables por día, semana, mes o año. El tooltip expone ingresos, utilidad y cantidad de facturas.
+- **Gráfico SVG interactivo:** ventas y utilidad bruta, agrupables por día, semana, mes o año. Incluye ejes monetarios, fechas espaciadas para evitar saturación, leyenda por color/trazo y tooltip sobre el punto con ventas, utilidad y facturas; el resumen también muestra la conversión VES seleccionada. La tarjeta conserva su altura dentro del contenedor flex desplazable (`shrink-0`) para evitar que `overflow-hidden` la comprima y recorte el gráfico.
 - **Top 5 de productos:** unidades netas y facturación por líneas de venta, descontando devoluciones en la fecha en que se procesaron. El ingreso por producto no incluye impuestos.
 - **Top 5 de clientes:** gasto neto (incluye impuestos) y facturas emitidas asociadas al cliente en el período; cada fila tiene **Ver cliente**, con datos del perfil, crédito, deuda pendiente, deudas y abonos registrados.
 - **Impacto comercial:** mejor período en el gráfico, participación del cliente líder, devoluciones procesadas y distribución por medio de pago.
@@ -45,7 +46,10 @@ renderer/src/features/reports/
     ├── ReportsBusinessImpact.tsx
     ├── ReportsKpis.tsx
     ├── ReportsRankings.tsx
-    └── SalesTrendChart.tsx
+    ├── SalesTrendChart.tsx
+    ├── SalesTrendChartHelpers.ts
+    ├── SalesTrendChartLegend.tsx
+    └── SalesTrendTooltip.tsx
 
 main/
 ├── domain/reports/reports.service.ts
@@ -58,8 +62,8 @@ main/
 
 ## 4. Atajos de Teclado del Módulo
 
-| Atajo | Acción |
-| :---: | :--- |
+| Atajo  | Acción                                    |
+| :----: | :---------------------------------------- |
 | `[F6]` | Cambiar a pestaña **Reportes y Métricas** |
 
 ---
