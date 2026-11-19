@@ -96,7 +96,10 @@ export interface CashRegisterData {
   activeShiftId?: string
   shiftOptions: Array<
     Pick<CashShift, 'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'openingAmount'> &
-      Pick<CashShift, 'expectedCash' | 'countedCash' | 'difference'> & {
+      Pick<
+        CashShift,
+        'expectedCash' | 'countedCash' | 'difference' | 'totalSales' | 'ticketCount'
+      > & {
         cashierRole?: UserRole
       }
   >

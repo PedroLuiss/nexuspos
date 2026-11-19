@@ -197,6 +197,7 @@ export function CashShiftView({
           selectedShiftId={shift?.id}
           disabled={isLoading}
           onSelect={onSelectShift}
+          onRefresh={onRefresh}
           onClose={() => setShowOpenCashiers(false)}
         />
       )}

@@ -136,7 +136,15 @@ export class SqliteCashRepository implements CashRepository {
           SELECT COALESCE(SUM(cash_effect), 0) FROM cash_movements
           WHERE cash_movements.shift_id = cash_shifts.id
         )) AS expectedCash,
-        cash_shifts.counted_cash AS countedCash, cash_shifts.difference
+        cash_shifts.counted_cash AS countedCash, cash_shifts.difference,
+        COALESCE((
+          SELECT SUM(sales.total) FROM sales
+          WHERE sales.cash_shift_id = cash_shifts.id AND sales.returned_at IS NULL
+        ), 0) AS totalSales,
+        (
+          SELECT COUNT(*) FROM sales
+          WHERE sales.cash_shift_id = cash_shifts.id AND sales.returned_at IS NULL
+        ) AS ticketCount
       FROM cash_shifts
       LEFT JOIN users ON users.id = cash_shifts.cashier_id
       WHERE (@includeAllCashiers = 1 OR cash_shifts.cashier_id = @cashierId)
@@ -153,6 +161,8 @@ export class SqliteCashRepository implements CashRepository {
       expectedCash: number
       countedCash: number | null
       difference: number | null
+      totalSales: number
+      ticketCount: number
     }>
     const shiftOptions: CashRegisterData['shiftOptions'] = shiftOptionRows.map(
       ({ closedAt, countedCash, difference, cashierRole, ...option }) => ({
