@@ -17,7 +17,8 @@ const periods: Array<{ value: ReportPeriod; label: string }> = [
   { value: 'today', label: 'Hoy' },
   { value: 'week', label: 'Esta semana' },
   { value: 'month', label: 'Este mes' },
-  { value: 'year', label: 'Año' }
+  { value: 'year', label: 'Año' },
+  { value: 'custom', label: 'Personalizado' }
 ]
 
 const groupings: Array<{ value: ReportGrouping; label: string }> = [
@@ -31,7 +32,21 @@ export function ReportsView(): React.JSX.Element {
   const [period, setPeriod] = useState<ReportPeriod>('week')
   const [year, setYear] = useState(new Date().getFullYear())
   const [grouping, setGrouping] = useState<ReportGrouping>('day')
-  const { data, isLoading, error, reload } = useReports({ period, year, grouping })
+  const [startDate, setStartDate] = useState(() => startOfCurrentMonth())
+  const [endDate, setEndDate] = useState(() => toDateInputValue(new Date()))
+  const hasInvalidCustomRange =
+    period === 'custom' && (!startDate || !endDate || startDate > endDate)
+  const customRangeError =
+    !startDate || !endDate
+      ? 'Selecciona ambas fechas para consultar el rango.'
+      : 'La fecha inicial debe ser anterior o igual a la fecha final.'
+  const { data, isLoading, error, reload } = useReports({
+    period,
+    year,
+    grouping,
+    startDate: period === 'custom' ? startDate : undefined,
+    endDate: period === 'custom' ? endDate : undefined
+  })
   const { rate, error: rateError } = useReportsExchangeRate()
 
   return (
@@ -80,7 +95,7 @@ export function ReportsView(): React.JSX.Element {
           <button
             type="button"
             onClick={reload}
-            disabled={isLoading}
+            disabled={isLoading || hasInvalidCustomRange}
             aria-label="Actualizar reportes"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D1D1D1] bg-white px-3 text-xs font-semibold text-[#1B1B1B] shadow-sm transition hover:bg-[#F3F3F3] disabled:cursor-wait disabled:opacity-60"
           >
@@ -132,17 +147,50 @@ export function ReportsView(): React.JSX.Element {
               </select>
             </label>
           )}
+          {period === 'custom' && (
+            <div className="flex flex-wrap items-end gap-2 rounded-lg border border-[#E5E5E5] bg-[#F9F9F9] p-2">
+              <label className="grid gap-1 text-[10px] font-bold uppercase tracking-wide text-[#5C5C5C]">
+                Desde
+                <input
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  aria-label="Fecha inicial del reporte"
+                  className="rounded-md border border-[#D1D1D1] bg-white px-2.5 py-2 text-xs font-medium normal-case tracking-normal text-[#1B1B1B] outline-none focus:border-[#0067C0] focus:ring-2 focus:ring-[#0067C0]/10"
+                />
+              </label>
+              <span className="pb-2 text-xs text-[#717783]" aria-hidden="true">
+                —
+              </span>
+              <label className="grid gap-1 text-[10px] font-bold uppercase tracking-wide text-[#5C5C5C]">
+                Hasta
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  aria-label="Fecha final del reporte"
+                  className="rounded-md border border-[#D1D1D1] bg-white px-2.5 py-2 text-xs font-medium normal-case tracking-normal text-[#1B1B1B] outline-none focus:border-[#0067C0] focus:ring-2 focus:ring-[#0067C0]/10"
+                />
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-[#5C5C5C]">
             <CalendarDays size={15} className="text-[#0067C0]" aria-hidden="true" />
             <span>
-              {data
-                ? `Período: ${formatDate(data.rangeStart)} – ${formatDate(previousDay(data.rangeEnd))}`
-                : isLoading
-                  ? 'Calculando período…'
-                  : 'Período no disponible'}
+              {hasInvalidCustomRange
+                ? customRangeError
+                : data
+                  ? `Período: ${formatDate(data.rangeStart)} – ${formatInclusiveEnd(data.rangeEnd)}`
+                  : isLoading
+                    ? 'Calculando período…'
+                    : period === 'custom'
+                      ? 'Selecciona un rango de fechas válido.'
+                      : 'Período no disponible'}
             </span>
           </div>
           <div className="flex items-center gap-1 rounded-lg bg-[#F3F3F3] p-1">
@@ -219,10 +267,20 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('es-VE')
 }
 
-function previousDay(value: string): string {
+function formatInclusiveEnd(value: string): string {
   const date = new Date(value)
   date.setDate(date.getDate() - 1)
-  return date.toISOString()
+  return date.toLocaleDateString('es-VE')
+}
+
+function toDateInputValue(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function startOfCurrentMonth(): string {
+  return toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 }
 
 const emptyKpis = {

@@ -1,12 +1,14 @@
 import type { CustomerAccountSummary } from './customer.contract'
 
-export type ReportPeriod = 'today' | 'week' | 'month' | 'year'
+export type ReportPeriod = 'today' | 'week' | 'month' | 'year' | 'custom'
 export type ReportGrouping = 'day' | 'week' | 'month' | 'year'
 
 export interface ReportsQuery {
   period: ReportPeriod
   year: number
   grouping: ReportGrouping
+  startDate?: string
+  endDate?: string
 }
 
 export interface ReportKpis {

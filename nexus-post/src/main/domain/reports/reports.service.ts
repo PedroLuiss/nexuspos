@@ -13,6 +13,20 @@ function localDate(year: number, month: number, day: number): Date {
   return new Date(year, month, day)
 }
 
+function parseLocalDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+  const [, yearText, monthText, dayText] = match
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const date = localDate(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null
+  }
+  return date
+}
+
 function rangeFor(
   query: ReportsQuery,
   now = new Date()
@@ -34,6 +48,14 @@ function rangeFor(
   } else if (query.period === 'month') {
     start = localDate(now.getFullYear(), now.getMonth(), 1)
     end = localDate(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  } else if (query.period === 'custom') {
+    const customStart = query.startDate ? parseLocalDate(query.startDate) : null
+    const customEnd = query.endDate ? parseLocalDate(query.endDate) : null
+    if (!customStart || !customEnd || customStart > customEnd) {
+      throw new Error('El rango de fechas personalizado no es válido.')
+    }
+    start = customStart
+    end = localDate(customEnd.getFullYear(), customEnd.getMonth(), customEnd.getDate() + 1)
   } else {
     start = localDate(query.year, 0, 1)
     end =
@@ -50,6 +72,10 @@ function rangeFor(
       query.year === now.getFullYear()
         ? localDate(query.year - 1, now.getMonth(), now.getDate() + 1)
         : start
+  } else if (query.period === 'custom') {
+    const duration = end.getTime() - start.getTime()
+    previousStart = new Date(start.getTime() - duration)
+    previousEnd = start
   } else if (query.period === 'week') {
     previousStart = localDate(start.getFullYear(), start.getMonth(), start.getDate() - 7)
     previousEnd = localDate(end.getFullYear(), end.getMonth(), end.getDate() - 7)
@@ -95,7 +121,7 @@ export class ReportsService {
     if (!query || typeof query !== 'object') {
       throw new Error('Los filtros del reporte no son válidos.')
     }
-    if (!['today', 'week', 'month', 'year'].includes(query.period)) {
+    if (!['today', 'week', 'month', 'year', 'custom'].includes(query.period)) {
       throw new Error('El período del reporte no es válido.')
     }
     if (!['day', 'week', 'month', 'year'].includes(query.grouping)) {
@@ -103,6 +129,16 @@ export class ReportsService {
     }
     if (!Number.isInteger(query.year) || query.year < 2000 || query.year > 9999) {
       throw new Error('El año del reporte no es válido.')
+    }
+    if (
+      query.period === 'custom' &&
+      (typeof query.startDate !== 'string' ||
+        typeof query.endDate !== 'string' ||
+        !parseLocalDate(query.startDate) ||
+        !parseLocalDate(query.endDate) ||
+        query.startDate > query.endDate)
+    ) {
+      throw new Error('Selecciona un rango de fechas válido para consultar el reporte.')
     }
 
     const { current, previous } = rangeFor(query)
