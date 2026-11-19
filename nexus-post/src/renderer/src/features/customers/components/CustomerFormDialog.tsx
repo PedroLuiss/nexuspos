@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, JSX } from 'react'
 import type { Customer, CustomerInput } from '@shared/contracts'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import { Modal } from '../../../shared/ui/Modal'
 
 interface CustomerFormDialogProps {
@@ -152,13 +153,11 @@ export function CustomerFormDialog({
           Límite de crédito
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">$</span>
-            <input
-              type="number"
+            <CurrencyInput
               min="0"
-              step="0.01"
               required
               value={form.creditLimit}
-              onChange={(event) => updateField('creditLimit', Number(event.target.value))}
+              onValueChange={(value) => updateField('creditLimit', value)}
               className="w-full rounded-md border border-[#D1D1D1] bg-white py-2 pl-7 pr-3 font-mono text-xs outline-none focus:border-[#0067C0] focus:ring-2 focus:ring-[#0067C0]/15"
             />
           </div>

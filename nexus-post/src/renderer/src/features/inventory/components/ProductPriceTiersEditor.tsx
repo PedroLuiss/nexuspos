@@ -4,6 +4,7 @@ import { useProductPriceTiers } from '../../../shared/hooks/useProductPriceTiers
 import { Check, Edit3, Plus, Trash2, X, AlertCircle, Layers } from '../../../shared/icons/Icons'
 import { useTablePagination } from '../hooks/useTablePagination'
 import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import TablePagination from './TablePagination'
 
 interface ProductPriceTiersEditorProps {
@@ -237,12 +238,10 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
               <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
                 Precio ($)
               </label>
-              <input
-                type="number"
+              <CurrencyInput
                 min="0"
-                step="0.01"
-                value={draft.price}
-                onChange={(e) => setDraft({ ...draft, price: e.target.value })}
+                value={Number(draft.price) || 0}
+                onValueChange={(price) => setDraft({ ...draft, price: price.toFixed(2) })}
                 className={`${inputClass} font-mono`}
               />
             </div>

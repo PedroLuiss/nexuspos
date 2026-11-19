@@ -5,6 +5,7 @@ import type {
   CreateCashMovementInput,
   OpenCashShiftInput
 } from '@shared/contracts'
+import { roundMoney } from '@shared/lib/tax'
 import { CashCloseSummary } from './CashCloseSummary'
 
 export type CashShiftDialogType = 'open' | 'close' | 'income' | 'expense'
@@ -26,18 +27,20 @@ export function CashShiftDialog({
   onCloseShift,
   onAddCashMovement
 }: CashShiftDialogProps): React.JSX.Element {
-  const [amount, setAmount] = useState(dialog === 'open' ? '0' : '')
+  const [amount, setAmount] = useState(dialog === 'open' ? '0.00' : '')
   const [concept, setConcept] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const expectedCash = shift?.expectedCash ?? 0
-  const countedCash = amount.trim() === '' ? null : Number(amount)
+  const countedCash = amount.trim() === '' ? null : Number(amount.replace(',', '.'))
   const difference =
-    countedCash !== null && Number.isFinite(countedCash) ? countedCash - expectedCash : null
+    countedCash !== null && Number.isFinite(countedCash)
+      ? roundMoney(countedCash - expectedCash)
+      : null
 
   const submitDialog = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault()
-    const parsedAmount = Number(amount)
+    const parsedAmount = roundMoney(Number(amount.replace(',', '.')))
     if (
       !Number.isFinite(parsedAmount) ||
       parsedAmount < 0 ||
@@ -93,12 +96,17 @@ export function CashShiftDialog({
                 : 'Monto ($)'}
             <input
               autoFocus
-              type="number"
+              type="text"
+              inputMode="decimal"
               min="0"
-              step="0.01"
               required
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
+              onBlur={() => {
+                if (!amount.trim()) return
+                const parsed = Number(amount.replace(',', '.'))
+                if (Number.isFinite(parsed)) setAmount(roundMoney(parsed).toFixed(2))
+              }}
               placeholder={dialog === 'close' ? 'Cuenta el efectivo y escribe el total' : undefined}
               className="mt-1 w-full rounded border border-[#D1D1D1] px-3 py-2 text-lg font-mono"
             />

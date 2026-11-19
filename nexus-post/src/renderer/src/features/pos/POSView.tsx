@@ -34,6 +34,7 @@ import { POSViewProps } from './types'
 import type { Customer } from '@shared/contracts'
 import { formatVesAmount } from '../../shared/lib/currency'
 import { CartQuantityControl } from './components/CartQuantityControl'
+import { CurrencyInput } from '../../shared/ui/CurrencyInput'
 
 const createTicketNumber = (): string => `TK-${Date.now()}`
 const createSuspendedSaleId = (): string => `susp-${Date.now()}`
@@ -1256,12 +1257,10 @@ export const POSView: React.FC<POSViewProps> = ({
                     <label className="block font-semibold text-[#1B1B1B] mb-1">
                       Límite de Crédito ($)
                     </label>
-                    <input
-                      type="number"
-                      step="500"
+                    <CurrencyInput
                       min="0"
                       value={newCustCreditLimit}
-                      onChange={(e) => setNewCustCreditLimit(parseFloat(e.target.value) || 0)}
+                      onValueChange={setNewCustCreditLimit}
                       className="w-full px-2.5 py-1.5 bg-white font-mono font-bold border border-[#D1D1D1] rounded-[4px] text-[#1B1B1B]"
                     />
                   </div>

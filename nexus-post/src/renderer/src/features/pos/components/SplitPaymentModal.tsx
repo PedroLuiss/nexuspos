@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { AlertCircle, Banknote, CreditCard, Layers, X, Check } from '../../../shared/icons/Icons'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
+import { roundMoney } from '@shared/lib/tax'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 
 interface SplitPaymentModalProps {
   isOpen: boolean
@@ -20,12 +22,12 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   onClose,
   onConfirmSplit
 }) => {
-  const [cashAmount, setCashAmount] = useState<number>(total / 2)
+  const [cashAmount, setCashAmount] = useState<number>(() => roundMoney(total / 2))
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const cardRemainder = Math.max(0, total - cashAmount)
+  const cardRemainder = roundMoney(Math.max(0, total - cashAmount))
   const isComplete =
     total > 0 &&
     cashAmount >= 0 &&
@@ -37,7 +39,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
     if (!canCompleteSale || !isComplete || isSubmitting) return
     setIsSubmitting(true)
     try {
-      await onConfirmSplit(cashAmount, cardRemainder)
+      await onConfirmSplit(roundMoney(cashAmount), roundMoney(cardRemainder))
     } finally {
       setIsSubmitting(false)
     }
@@ -100,22 +102,20 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCashAmount(total / 2)}
+                  onClick={() => setCashAmount(roundMoney(total / 2))}
                   className="text-[11px] text-[#0078D4] hover:underline"
                 >
                   50% / 50%
                 </button>
               </div>
 
-              <input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 min="0"
                 max={total}
                 required
                 autoFocus
-                value={cashAmount || ''}
-                onChange={(e) => setCashAmount(Number(e.target.value))}
+                value={cashAmount}
+                onValueChange={setCashAmount}
                 className="w-full px-3 py-2 text-lg font-bold font-tabular bg-white border border-slate-300 rounded-sm focus:border-[#0078D4]"
               />
             </div>

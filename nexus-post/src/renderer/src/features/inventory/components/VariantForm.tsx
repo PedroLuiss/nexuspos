@@ -1,6 +1,7 @@
 import React from 'react'
-import type { Product, ProductInput } from '@shared/contracts'
+import type { Product } from '@shared/contracts'
 import { Check, X, AlertCircle } from '../../../shared/icons/Icons'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 
 const inputClass =
   'w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]'
@@ -82,21 +83,19 @@ export const VariantForm: React.FC<VariantFormProps> = ({
         ))}
         <div>
           <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">Costo</label>
-          <input
-            type="number"
-            step="0.01"
-            value={draft.costPrice}
-            onChange={(e) => onChange({ ...draft, costPrice: e.target.value })}
+          <CurrencyInput
+            min="0"
+            value={Number(draft.costPrice) || 0}
+            onValueChange={(costPrice) => onChange({ ...draft, costPrice: costPrice.toFixed(2) })}
             className={`${inputClass} font-mono`}
           />
         </div>
         <div>
           <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">Precio</label>
-          <input
-            type="number"
-            step="0.01"
-            value={draft.salePrice}
-            onChange={(e) => onChange({ ...draft, salePrice: e.target.value })}
+          <CurrencyInput
+            min="0"
+            value={Number(draft.salePrice) || 0}
+            onValueChange={(salePrice) => onChange({ ...draft, salePrice: salePrice.toFixed(2) })}
             className={`${inputClass} font-mono`}
           />
         </div>

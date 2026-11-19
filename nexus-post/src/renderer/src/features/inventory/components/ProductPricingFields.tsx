@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ProductFormValues } from '../hooks/useProductForm'
 import { Sparkles } from '../../../shared/icons/Icons'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import ProductTaxField from './ProductTaxField'
 import { getProductQuantityStep } from '@shared/lib/product-quantity'
 
@@ -44,14 +45,11 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
               $
             </span>
-            <input
-              type="number"
+            <CurrencyInput
               min="0"
-              step="0.01"
               required
-              value={values.costPrice || ''}
-              onChange={(e) => setCostPrice(parseFloat(e.target.value) || 0)}
-              placeholder="0.00"
+              value={values.costPrice}
+              onValueChange={setCostPrice}
               className="w-full pl-6 pr-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
             />
           </div>
@@ -137,12 +135,10 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
           </span>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-slate-400">¿Ajuste directo?</span>
-            <input
-              type="number"
-              step="0.01"
+            <CurrencyInput
               min="0"
-              value={values.salePrice || ''}
-              onChange={(e) => setSalePrice(parseFloat(e.target.value) || 0)}
+              value={values.salePrice}
+              onValueChange={setSalePrice}
               title="Permite ajustar el precio de venta final manualmente si es necesario"
               className="w-20 px-1.5 py-0.5 text-xs font-mono text-right bg-white border border-slate-300 rounded focus:border-[#0067C0]"
             />

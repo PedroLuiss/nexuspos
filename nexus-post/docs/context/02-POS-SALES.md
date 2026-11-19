@@ -95,6 +95,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 - Carrito, ticket y ventas en espera muestran cantidad junto con su unidad; las cantidades fraccionarias se conservan en venta, stock y Kardex.
 - Las ventas pausadas se serializan en SQLite y pueden restaurarse o eliminarse desde el modal. Restaurar requiere un carrito activo vacío.
 - Los cuatro medios registrados son efectivo, tarjeta, mixto y crédito. Los montos de cobro se expresan exclusivamente en USD; la conversión VES es informativa.
+- Los campos de efectivo y pago mixto usan `CurrencyInput`: muestran dos decimales, redondean al salir y normalizan los cálculos de cambio/reparto a centavos. Las cantidades de producto mantienen su precisión independiente.
 - La venta persiste el cliente y el turno asociados, guarda el costo histórico por artículo y sincroniza venta, stock, Kardex, crédito y movimiento de efectivo dentro de la transacción.
 - Cada movimiento POS incluye como referencia el número de ticket; el costo unitario queda como snapshot en USD. Para combos, el costo se registra por componente y por lote consumido cuando hay FEFO.
 - Las ventas en espera se guardan por cajero y requieren caja abierta para listar, pausar o recuperar. Reanudar requiere carrito vacío; los registros históricos sin cajero asignado no se exponen como ventas de espera del usuario.

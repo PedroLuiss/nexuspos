@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, JSX } from 'react'
 import type { Customer } from '@shared/contracts'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import { Modal } from '../../../shared/ui/Modal'
 
 interface CustomerPaymentDialogProps {
@@ -70,15 +71,13 @@ export function CustomerPaymentDialog({
           Monto recibido
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">$</span>
-            <input
-              type="number"
+            <CurrencyInput
               autoFocus
               min="0.01"
               max={customer.currentDebt}
-              step="0.01"
               required
-              value={amount || ''}
-              onChange={(event) => setAmount(Number(event.target.value))}
+              value={amount}
+              onValueChange={setAmount}
               className="w-full rounded-md border border-[#D1D1D1] py-2 pl-7 pr-3 font-mono text-lg font-bold outline-none focus:border-[#0067C0] focus:ring-2 focus:ring-[#0067C0]/15"
             />
           </div>

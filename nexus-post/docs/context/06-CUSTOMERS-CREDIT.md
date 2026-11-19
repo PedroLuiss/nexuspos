@@ -87,6 +87,7 @@ nexus-post/src/
 - Una devolución de venta a crédito cancela la deuda pendiente; los abonos ya registrados para esa venta no se eliminan, se convierten en saldo a favor del cliente (`credit_balance`). El saldo a favor se expone en el estado de cuenta del cliente.
 - Los abonos requieren un turno abierto del usuario y se persisten junto con su movimiento de ingreso en caja; el flujo transaccional coordina `CustomerService`, `CashRepository` y SQLite.
 - Los permisos de la interfaz corresponden a las reglas del dominio: ADMIN puede crear/editar/dar de baja y activar/desactivar; ADMIN y CASHIER pueden registrar abonos, pero la acción se deshabilita si no hay turno de caja abierto. Los demás roles autorizados al módulo tienen consulta.
+- Los campos de límite de crédito y abonos muestran dos decimales y normalizan los valores a centavos; el estado de cuenta también presenta sus importes con dos decimales.
 - La baja es lógica (`deleted = 1`, `active = 0`) y el dominio impide dar de baja clientes con deuda pendiente; el historial de ventas, pagos y movimientos se conserva.
 - La deuda de una venta solo se genera desde `SalesService` en el flujo transaccional del POS. Ya no existe un canal IPC independiente para crear deudas, evitando insertar una deuda sin la venta asociada.
 - La vista usa `useConfirmDialog` para confirmar la baja y los cambios de estado; no usa `window.confirm`.

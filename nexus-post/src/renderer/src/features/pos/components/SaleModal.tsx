@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/types/domain'
 import type { UsdVesExchangeRate } from '@shared/contracts'
 import { formatVesAmount } from '../../../shared/lib/currency'
+import { roundMoney } from '@shared/lib/tax'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
@@ -15,6 +16,7 @@ import {
   DollarSign,
   AlertCircle
 } from '../../../shared/icons/Icons'
+import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 
 interface SaleModalProps {
   isOpen: boolean
@@ -99,11 +101,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   if (!isOpen) return null
 
   // Cash change calculation
-  const changeDue = Math.max(0, cashTendered - total)
+  const changeDue = roundMoney(Math.max(0, cashTendered - total))
   const isCashSufficient = cashTendered >= total
 
   // Mixed calculation
-  const mixedCardRemainder = Math.max(0, total - mixedCash)
+  const mixedCardRemainder = roundMoney(Math.max(0, total - mixedCash))
 
   const quickCashAmounts = [
     { label: 'Exacto', value: total },
@@ -125,11 +127,12 @@ export const SaleModal: React.FC<SaleModalProps> = ({
 
     const details: PaymentDetails = {
       method,
-      amountPaid: method === 'cash' ? cashTendered : method === 'credit' ? 0 : total,
-      change: method === 'cash' ? changeDue : 0,
+      amountPaid:
+        method === 'cash' ? roundMoney(cashTendered) : method === 'credit' ? 0 : roundMoney(total),
+      change: method === 'cash' ? roundMoney(changeDue) : 0,
       cardReference: method === 'card' ? cardAuth : undefined,
-      cashAmount: method === 'mixed' ? mixedCash : undefined,
-      cardAmount: method === 'mixed' ? mixedCardRemainder : undefined,
+      cashAmount: method === 'mixed' ? roundMoney(mixedCash) : undefined,
+      cardAmount: method === 'mixed' ? roundMoney(mixedCardRemainder) : undefined,
       customerId,
       ticketNumber
     }
@@ -297,13 +300,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783] font-bold text-sm">
                       $
                     </span>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <CurrencyInput
                       min="0"
                       autoFocus
-                      value={cashTendered || ''}
-                      onChange={(e) => setCashTendered(parseFloat(e.target.value) || 0)}
+                      value={cashTendered}
+                      onValueChange={setCashTendered}
                       className="w-full pl-8 pr-3 py-2 text-lg font-bold font-mono text-[#1B1B1B] bg-white border border-[#D1D1D1] rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
                     />
                   </div>
@@ -378,13 +379,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                     <label className="block font-semibold text-[#1B1B1B] mb-1">
                       Parte en Efectivo ($)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <CurrencyInput
                       min="0"
                       max={total}
-                      value={mixedCash || ''}
-                      onChange={(e) => setMixedCash(parseFloat(e.target.value) || 0)}
+                      value={mixedCash}
+                      onValueChange={setMixedCash}
                       className="w-full px-3 py-1.5 bg-white border border-[#D1D1D1] rounded-[4px] font-bold font-mono"
                     />
                   </div>
