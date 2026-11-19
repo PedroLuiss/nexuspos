@@ -75,12 +75,17 @@ export class SqliteReportsRepository implements ReportsRepository {
                WHEN 'credit' THEN CAST(ROUND(s.total * 100) AS INTEGER) ELSE 0 END), 0) AS credit_cents
            FROM sales s
            WHERE s.sold_at >= @start AND s.sold_at < @end
+         ), sale_costs AS (
+           SELECT sale_id,
+             COALESCE(SUM(CAST(ROUND(unit_cost * quantity * 100) AS INTEGER)), 0) AS cost_cents
+           FROM sale_items
+           GROUP BY sale_id
          ), sale_profit AS (
-           SELECT COALESCE(SUM(CAST(ROUND(
-             (si.line_total - si.unit_cost * si.quantity) * 100
-           ) AS INTEGER)), 0) AS profit_cents
-           FROM sale_items si
-           JOIN sales s ON s.id = si.sale_id
+           SELECT COALESCE(SUM(
+             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE(sc.cost_cents, 0)
+           ), 0) AS profit_cents
+           FROM sales s
+           LEFT JOIN sale_costs sc ON sc.sale_id = s.id
            WHERE s.sold_at >= @start AND s.sold_at < @end
          ), refund_totals AS (
            SELECT
@@ -107,12 +112,12 @@ export class SqliteReportsRepository implements ReportsRepository {
            JOIN sales s ON s.id = r.sale_id
            WHERE r.returned_at >= @start AND r.returned_at < @end
          ), refund_profit AS (
-           SELECT COALESCE(SUM(CAST(ROUND(
-             (si.line_total - si.unit_cost * si.quantity) * 100
-           ) AS INTEGER)), 0) AS profit_cents
+           SELECT COALESCE(SUM(
+             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE(sc.cost_cents, 0)
+           ), 0) AS profit_cents
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
-           JOIN sale_items si ON si.sale_id = s.id
+           LEFT JOIN sale_costs sc ON sc.sale_id = s.id
            WHERE r.returned_at >= @start AND r.returned_at < @end
          )
          SELECT
@@ -157,18 +162,18 @@ export class SqliteReportsRepository implements ReportsRepository {
       .prepare(
         `WITH events AS (
            SELECT s.sold_at AS event_at, CAST(ROUND(s.total * 100) AS INTEGER) AS sales_cents,
-             COALESCE((
-               SELECT SUM(CAST(ROUND((si.line_total - si.unit_cost * si.quantity) * 100) AS INTEGER))
+             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE((
+               SELECT SUM(CAST(ROUND(si.unit_cost * si.quantity * 100) AS INTEGER))
                FROM sale_items si WHERE si.sale_id = s.id
              ), 0) AS profit_cents, 1 AS ticket_count
            FROM sales s
            WHERE s.sold_at >= @start AND s.sold_at < @end
            UNION ALL
            SELECT r.returned_at AS event_at, -CAST(ROUND(r.amount * 100) AS INTEGER) AS sales_cents,
-             -COALESCE((
-               SELECT SUM(CAST(ROUND((si.line_total - si.unit_cost * si.quantity) * 100) AS INTEGER))
+             -(CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE((
+               SELECT SUM(CAST(ROUND(si.unit_cost * si.quantity * 100) AS INTEGER))
                FROM sale_items si WHERE si.sale_id = s.id
-             ), 0) AS profit_cents, 0 AS ticket_count
+             ), 0)) AS profit_cents, 0 AS ticket_count
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
            WHERE r.returned_at >= @start AND r.returned_at < @end
@@ -193,13 +198,21 @@ export class SqliteReportsRepository implements ReportsRepository {
       .prepare(
         `WITH product_events AS (
            SELECT si.product_id, si.product_name, si.product_code,
-             si.quantity AS units, CAST(ROUND(si.line_total * 100) AS INTEGER) AS revenue_cents
+             si.quantity AS units,
+             CAST(ROUND(
+               si.line_total * (s.total - s.tax) * 100 /
+               NULLIF((SELECT SUM(sii.line_total) FROM sale_items sii WHERE sii.sale_id = s.id), 0)
+             ) AS INTEGER) AS revenue_cents
            FROM sale_items si
            JOIN sales s ON s.id = si.sale_id
            WHERE s.sold_at >= @start AND s.sold_at < @end
            UNION ALL
            SELECT si.product_id, si.product_name, si.product_code,
-             -si.quantity AS units, -CAST(ROUND(si.line_total * 100) AS INTEGER) AS revenue_cents
+             -si.quantity AS units,
+             -CAST(ROUND(
+               si.line_total * (s.total - s.tax) * 100 /
+               NULLIF((SELECT SUM(sii.line_total) FROM sale_items sii WHERE sii.sale_id = s.id), 0)
+             ) AS INTEGER) AS revenue_cents
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
            JOIN sale_items si ON si.sale_id = s.id

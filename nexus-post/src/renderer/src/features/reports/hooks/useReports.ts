@@ -12,14 +12,17 @@ export function useReports(query: ReportsQuery): {
   data: ReportsData | null
   isLoading: boolean
   error: string | null
+  reload: () => void
 } {
-  const queryKey = `${query.period}:${query.year}:${query.grouping}`
+  const { period, year, grouping } = query
+  const [refreshVersion, setRefreshVersion] = useState(0)
+  const queryKey = `${period}:${year}:${grouping}:${refreshVersion}`
   const [result, setResult] = useState<ReportsResultState | null>(null)
 
   useEffect(() => {
     let active = true
     reportsApi
-      .getDashboard(query)
+      .getDashboard({ period, year, grouping })
       .then((data) => {
         if (active) setResult({ queryKey, data, error: null })
       })
@@ -29,12 +32,13 @@ export function useReports(query: ReportsQuery): {
     return () => {
       active = false
     }
-  }, [query.period, query.year, query.grouping, queryKey])
+  }, [period, year, grouping, queryKey])
 
   const currentResult = result?.queryKey === queryKey ? result : null
   return {
     data: currentResult?.data ?? null,
     isLoading: currentResult === null,
-    error: currentResult?.error ?? null
+    error: currentResult?.error ?? null,
+    reload: () => setRefreshVersion((version) => version + 1)
   }
 }

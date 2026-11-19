@@ -14,10 +14,17 @@ export function ReportsBusinessImpact({
   data,
   rate
 }: ReportsBusinessImpactProps): React.JSX.Element {
-  const strongestBucket = data.series.reduce(
-    (best, point) => (!best || point.totalSales > best.totalSales ? point : best),
-    data.series[0]
+  let strongestBucket = data.series.find(
+    (point) => point.ticketCount > 0 || point.totalSales !== 0 || point.grossProfit !== 0
   )
+  for (const point of data.series) {
+    if (
+      (point.ticketCount > 0 || point.totalSales !== 0 || point.grossProfit !== 0) &&
+      (!strongestBucket || point.totalSales > strongestBucket.totalSales)
+    ) {
+      strongestBucket = point
+    }
+  }
   const topCustomer = data.topCustomers[0]
   const topCustomerShare = topCustomer
     ? percentage(topCustomer.totalSpent, data.kpis.totalSales)
@@ -42,6 +49,7 @@ export function ReportsBusinessImpact({
         <Insight
           label="Mejor período neto"
           amount={strongestBucket?.totalSales}
+          value={strongestBucket ? undefined : '—'}
           rate={rate}
           detail={
             strongestBucket
