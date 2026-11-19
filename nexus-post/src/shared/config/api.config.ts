@@ -22,6 +22,7 @@ export interface ApiConfiguration {
     verifyOtp: string
     resetPassword: string
     checkLicense: string
+    issueReports: string
   }
 }
 
@@ -41,7 +42,8 @@ export const API_CONFIG: ApiConfiguration = {
     forgotPassword: '/auth/forgot-password',
     verifyOtp: '/auth/verify-otp',
     resetPassword: '/auth/reset-password',
-    checkLicense: '/license/validate'
+    checkLicense: '/license/validate',
+    issueReports: '/support/issue-reports'
   }
 }
 

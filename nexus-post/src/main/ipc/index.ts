@@ -31,6 +31,7 @@ import { BarcodeLabelPrinter } from '../adapters/hardware/barcode-label-printer'
 import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
 import { LaravelDatabaseBackupAdapter } from '../adapters/remote/laravel-database-backup.adapter'
+import { LaravelIssueReportAdapter } from '../adapters/remote/laravel-issue-report.adapter'
 import { ProductService } from '../domain/products/product.service'
 import { TaxService } from '../domain/taxes/tax.service'
 import { BrandService } from '../domain/brands/brand.service'
@@ -52,6 +53,7 @@ import { ExchangeRateService } from '../domain/exchange-rate/exchange-rate.servi
 import { CashService } from '../domain/cash/cash.service'
 import { ReportsService } from '../domain/reports/reports.service'
 import { DatabaseMaintenanceService } from '../domain/settings/database-maintenance.service'
+import { IssueReportService } from '../domain/issue-reports/issue-report.service'
 import { registerProductIpc } from './products.ipc'
 import { registerTaxIpc } from './taxes.ipc'
 import { registerBrandIpc } from './brands.ipc'
@@ -74,6 +76,7 @@ import { registerCashIpc } from './cash.ipc'
 import { registerReportsIpc } from './reports.ipc'
 import { registerDatabaseIpc } from './database.ipc'
 import { registerAppWindowIpc } from './window.ipc'
+import { registerIssueReportsIpc } from './issue-reports.ipc'
 import { LATEST_MIGRATION_VERSION } from '../adapters/persistence/sqlite/migrations'
 import { app } from 'electron'
 import { join } from 'node:path'
@@ -119,6 +122,7 @@ export function registerIpcHandlers(): void {
   const authAdapter = new LaravelAuthAdapter()
   const passwordHasher = new ScryptPasswordHasher()
   const authService = new AuthService(userRepository, passwordHasher, authAdapter)
+  const issueReportService = new IssueReportService(new LaravelIssueReportAdapter(), authService)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
@@ -210,4 +214,5 @@ export function registerIpcHandlers(): void {
   registerReportsIpc(reportsService)
   registerDatabaseIpc(databaseMaintenanceService)
   registerAppWindowIpc()
+  registerIssueReportsIpc(issueReportService)
 }

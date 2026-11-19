@@ -3,9 +3,10 @@ import { useRouter } from './providers/HotkeysProvider'
 import { TABS_CONFIG, TabId } from './router/tabs.config'
 import { NavigationTabs } from '../shared/ui/NavigationTabs'
 import OperatorSwitchModal from '../features/auth/components/OperatorSwitchModal'
-import { Lock, LogOut, RefreshCw } from '../shared/icons/Icons'
+import { Lock, LogOut, MessageCircle, RefreshCw } from '../shared/icons/Icons'
 import { canAccessTab } from '../shared/lib/permissions'
 import { ExchangeRateIndicator } from '../shared/ui/ExchangeRateIndicator'
+import { IssueReportModal } from '../features/support/components/IssueReportModal'
 import logoBanner from '@resources/logobanner.png'
 import type { UsdVesExchangeRate, User } from '@shared/contracts'
 
@@ -54,6 +55,7 @@ export function DashboardLayout({
 }: DashboardLayoutProps): React.JSX.Element {
   const { activeTab, setActiveTab } = useRouter()
   const [isLockModalOpen, setIsLockModalOpen] = useState(false)
+  const [isIssueReportOpen, setIsIssueReportOpen] = useState(false)
 
   const user = currentUser ?? DEMO_USER
 
@@ -169,25 +171,39 @@ export function DashboardLayout({
       {/* 3. Main Workspace Area (Stitch Mica Canvas #F3F3F3) */}
       <main className="flex-1 relative overflow-hidden bg-[#F3F3F3] p-3">{children}</main>
 
-      {/* 4. WinUI Status Bar Footer */}
-      <footer className="h-7 flex items-center justify-between px-4 bg-[#0067C0] text-white text-[11px] font-medium shrink-0">
-        <div className="flex items-center gap-5">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>SQLite Local DB: Conectado</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>Impresora 80mm: Lista</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-blue-100">
-            <span>Báscula COM1: 9600 bps</span>
+      {/* 4. Operational Status Footer */}
+      <footer className="flex h-8 shrink-0 items-center justify-between border-t border-white/10 bg-[#005A9E] px-4 text-[10px] text-white">
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              cashShiftOpen ? 'bg-emerald-300' : 'bg-white/50'
+            }`}
+            aria-hidden="true"
+          />
+          <span className="font-semibold tracking-wide">
+            {cashShiftOpen ? 'Turno de caja abierto' : 'Turno de caja cerrado'}
           </span>
         </div>
-        <div className="flex items-center gap-3 font-mono text-[10px]">
-          <span>MODO TECLADO (HOTKEYS ON)</span>
-          <span>•</span>
-          <span>{new Date().toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsIssueReportOpen(true)}
+            className="flex items-center gap-1.5 rounded px-2 py-1 font-semibold text-blue-50 transition-colors hover:bg-white/10 hover:text-white hover:underline"
+          >
+            <MessageCircle size={13} />
+            Reportar un problema
+          </button>
+          <span className="text-white/40" aria-hidden="true">
+            •
+          </span>
+          <time className="font-medium text-blue-50">
+            {new Date().toLocaleDateString('es-VE', {
+              weekday: 'short',
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })}
+          </time>
         </div>
       </footer>
 
@@ -198,6 +214,7 @@ export function DashboardLayout({
         onClose={() => setIsLockModalOpen(false)}
         onSuccess={(nextUser) => onOperatorSwitch?.(nextUser)}
       />
+      {isIssueReportOpen && <IssueReportModal onClose={() => setIsIssueReportOpen(false)} />}
     </div>
   )
 }

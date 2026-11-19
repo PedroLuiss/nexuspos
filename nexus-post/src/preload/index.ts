@@ -57,7 +57,8 @@ import type {
   OpenCashShiftInput,
   CloseCashShiftInput,
   CreateCashMovementInput,
-  ReportsQuery
+  ReportsQuery,
+  IssueReportInput
 } from '@shared/contracts'
 
 // Custom APIs for renderer
@@ -182,6 +183,9 @@ const api: NexusApi = {
       ipcRenderer.invoke(IPC_CHANNELS.reports.getDashboard, query),
     getCustomerDetail: (customerId: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.reports.getCustomerDetail, customerId)
+  },
+  issueReports: {
+    submit: (input: IssueReportInput) => ipcRenderer.invoke(IPC_CHANNELS.issueReports.submit, input)
   },
   database: {
     getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.database.getStatus),
