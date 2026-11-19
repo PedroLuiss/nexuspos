@@ -116,16 +116,24 @@ export class CashService {
 
   returnSale(saleId: string): CashTicket {
     const user = this.requireCashUser()
-    if (user.role !== 'CASHIER' && user.role !== 'ADMIN') {
-      throw new Error('Solo un cajero o administrador puede devolver facturas.')
+    if (user.role !== 'ADMIN') {
+      throw new Error('Solo un administrador puede devolver facturas.')
     }
     if (!saleId.trim()) throw new ValidationError('La factura seleccionada no es válida.')
-    const shift = this.requireOpenShift(user.id)
     const ticket = this.sales.findTicket(saleId)
     if (!ticket) throw new ValidationError('No se encontró la factura seleccionada.')
-    if (ticket.shiftId !== shift.id) {
-      throw new Error('Solo se puede devolver una factura de la caja abierta de este usuario.')
+    const resolveOpenShift = (
+      currentTicket: CashTicket
+    ): NonNullable<CashRegisterData['shift']> => {
+      const register = this.cash.getRegister(user.id, currentTicket.shiftId, true)
+      if (!register.shift?.isOpen || register.shift.id !== currentTicket.shiftId) {
+        throw new ValidationError(
+          'Solo se puede devolver una factura de una caja que sigue abierta.'
+        )
+      }
+      return register.shift
     }
+    resolveOpenShift(ticket)
     if (ticket.returnedAt) throw new ValidationError('La factura ya fue devuelta.')
 
     const returnPayment = this.getReturnPayment(ticket.payment, ticket.total)
@@ -138,14 +146,16 @@ export class CashService {
     const returnedAt = new Date().toISOString()
 
     this.tx.run(() => {
-      const currentShift = this.requireOpenShift(user.id)
       const currentTicket = this.sales.findTicket(saleId)
-      if (!currentTicket || currentTicket.shiftId !== currentShift.id || currentTicket.returnedAt) {
+      if (!currentTicket || currentTicket.returnedAt) {
         throw new ValidationError('El turno o el estado de la factura cambió. Actualice la caja.')
       }
-      const currentRegister = this.getRegisterForUser(user)
+      const currentShift = resolveOpenShift(currentTicket)
+      const currentRegister = this.cash.getRegister(user.id, currentShift.id, true)
       if (!currentRegister.shift || currentRegister.shift.id !== currentShift.id) {
-        throw new Error('No se pudo cargar la caja activa para devolver la factura.')
+        throw new ValidationError(
+          'La caja seleccionada dejó de estar disponible. Actualice la vista.'
+        )
       }
       if (cashAmount > currentRegister.shift.expectedCash) {
         throw new ValidationError('No hay efectivo suficiente en caja para completar el reintegro.')

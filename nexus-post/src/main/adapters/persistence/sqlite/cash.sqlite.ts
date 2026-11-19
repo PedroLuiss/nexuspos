@@ -5,7 +5,8 @@ import type {
   CashSaleItem,
   CashShift,
   CashTicket,
-  SalePayment
+  SalePayment,
+  UserRole
 } from '@shared/contracts'
 import type { CashRepository, OpenCashShiftRecord } from '../../../ports/cash.repository'
 
@@ -128,16 +129,18 @@ export class SqliteCashRepository implements CashRepository {
     const shiftOptionRows = this.db
       .prepare(
         `
-      SELECT id, opened_at AS openedAt, closed_at AS closedAt, cashier_name AS cashierName,
-        opening_amount AS openingAmount,
+      SELECT cash_shifts.id, cash_shifts.opened_at AS openedAt,
+        cash_shifts.closed_at AS closedAt, cash_shifts.cashier_name AS cashierName,
+        cash_shifts.opening_amount AS openingAmount, users.role AS cashierRole,
         COALESCE(expected_cash, opening_amount + (
           SELECT COALESCE(SUM(cash_effect), 0) FROM cash_movements
           WHERE cash_movements.shift_id = cash_shifts.id
         )) AS expectedCash,
-        counted_cash AS countedCash, difference
+        cash_shifts.counted_cash AS countedCash, cash_shifts.difference
       FROM cash_shifts
-      WHERE (@includeAllCashiers = 1 OR cashier_id = @cashierId)
-      ORDER BY opened_at DESC
+      LEFT JOIN users ON users.id = cash_shifts.cashier_id
+      WHERE (@includeAllCashiers = 1 OR cash_shifts.cashier_id = @cashierId)
+      ORDER BY cash_shifts.opened_at DESC
     `
       )
       .all({ cashierId, includeAllCashiers: includeAllCashiers ? 1 : 0 }) as Array<{
@@ -146,16 +149,18 @@ export class SqliteCashRepository implements CashRepository {
       closedAt: string | null
       cashierName: string
       openingAmount: number
+      cashierRole: UserRole | null
       expectedCash: number
       countedCash: number | null
       difference: number | null
     }>
     const shiftOptions: CashRegisterData['shiftOptions'] = shiftOptionRows.map(
-      ({ closedAt, countedCash, difference, ...option }) => ({
+      ({ closedAt, countedCash, difference, cashierRole, ...option }) => ({
         ...option,
         closedAt: closedAt ?? undefined,
         countedCash: countedCash ?? undefined,
-        difference: difference ?? undefined
+        difference: difference ?? undefined,
+        cashierRole: cashierRole ?? undefined
       })
     )
     const selected = shiftId
@@ -169,11 +174,23 @@ export class SqliteCashRepository implements CashRepository {
     if (shiftId && !selected) {
       throw new Error('El turno seleccionado no está disponible para el usuario autenticado.')
     }
+    const latestOpenCashier = includeAllCashiers
+      ? (this.db
+          .prepare(
+            `SELECT cash_shifts.*
+             FROM cash_shifts
+             INNER JOIN users ON users.id = cash_shifts.cashier_id
+             WHERE users.role = 'CASHIER' AND cash_shifts.closed_at IS NULL
+             ORDER BY cash_shifts.opened_at DESC LIMIT 1`
+          )
+          .get() as ShiftRow | undefined)
+      : undefined
     const latest = active
       ? undefined
-      : (this.db
+      : (latestOpenCashier ??
+        (this.db
           .prepare('SELECT * FROM cash_shifts WHERE cashier_id = ? ORDER BY opened_at DESC LIMIT 1')
-          .get(cashierId) as ShiftRow | undefined)
+          .get(cashierId) as ShiftRow | undefined))
     const row = selected ?? active ?? latest
     if (!row)
       return { shift: null, activeShiftId: active?.id, shiftOptions, movements: [], tickets: [] }

@@ -1,4 +1,5 @@
 import type { SalePayment, SaleTaxLine } from './sales.contract'
+import type { UserRole } from './auth.contract'
 
 export type CashMovementType = 'INGRESO' | 'EGRESO' | 'DEVOLUCION'
 export type CashMovementSource = 'MANUAL' | 'SALE' | 'CUSTOMER_PAYMENT' | 'SALE_REFUND'
@@ -95,7 +96,9 @@ export interface CashRegisterData {
   activeShiftId?: string
   shiftOptions: Array<
     Pick<CashShift, 'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'openingAmount'> &
-      Pick<CashShift, 'expectedCash' | 'countedCash' | 'difference'>
+      Pick<CashShift, 'expectedCash' | 'countedCash' | 'difference'> & {
+        cashierRole?: UserRole
+      }
   >
   movements: CashMovement[]
   tickets: CashTicket[]

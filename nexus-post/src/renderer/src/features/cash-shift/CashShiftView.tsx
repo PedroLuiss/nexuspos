@@ -7,6 +7,7 @@ import type {
 } from '@shared/contracts'
 import { CashShiftOverview } from './components/CashShiftOverview'
 import { CashShiftHistoryPanel } from './components/CashShiftHistoryPanel'
+import { CashierOpenShiftsPanel } from './components/CashierOpenShiftsPanel'
 import { CashShiftDialog, type CashShiftDialogType } from './components/CashShiftDialog'
 import { Clock, Minus, Wallet } from '../../shared/icons/Icons'
 
@@ -44,9 +45,14 @@ export function CashShiftView({
   const { shift, movements, tickets } = register
   const [dialog, setDialog] = useState<CashShiftDialogType | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [showOpenCashiers, setShowOpenCashiers] = useState(false)
   const activeShiftId = register.activeShiftId
-  const isOpen = Boolean(shift && shift.id === activeShiftId && shift.isOpen)
+  const isOwnOpenShift = Boolean(shift && shift.id === activeShiftId && shift.isOpen)
+  const isSelectedShiftOpen = Boolean(shift?.isOpen)
   const hasActiveShift = Boolean(activeShiftId)
+  const openCashierShifts = register.shiftOptions.filter(
+    (option) => !option.closedAt && option.cashierRole === 'CASHIER'
+  )
 
   const openDialog = (next: CashShiftDialogType): void => setDialog(next)
 
@@ -71,22 +77,32 @@ export function CashShiftView({
             </h2>
             <p className="mt-1 text-xs text-[#5C5C5C]">
               {shift
-                ? `${shift.cashierName} · ${isOpen ? 'Abierta' : 'Turno cerrado'} · ${formatDate(shift.openedAt)}`
+                ? `${shift.cashierName} · ${isSelectedShiftOpen ? 'Abierta' : 'Turno cerrado'} · ${formatDate(shift.openedAt)}`
                 : 'No hay turnos registrados para este usuario.'}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowHistory(true)}
-              disabled={isLoading}
-              className="rounded border border-[#D1D1D1] bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-            >
-              Historial de cajas ({register.shiftOptions.filter((option) => option.closedAt).length}
-              )
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowOpenCashiers(true)}
+                disabled={isLoading}
+                className="rounded border border-[#0067C0]/30 bg-[#0067C0]/5 px-3 py-1.5 text-xs font-semibold text-[#005A9E] disabled:opacity-50"
+              >
+                Cajas abiertas de cajeros ({openCashierShifts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHistory(true)}
+                disabled={isLoading}
+                className="rounded border border-[#D1D1D1] bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+              >
+                Historial de cajas (
+                {register.shiftOptions.filter((option) => option.closedAt).length})
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -104,7 +120,7 @@ export function CashShiftView({
             >
               <Clock size={14} /> Apertura de caja
             </button>
-          ) : !isOpen && activeShiftId ? (
+          ) : !isOwnOpenShift && activeShiftId ? (
             <button
               type="button"
               onClick={() => onSelectShift(activeShiftId)}
@@ -149,7 +165,7 @@ export function CashShiftView({
           shift={shift}
           movements={movements}
           tickets={tickets}
-          isOpen={isOpen}
+          isOpen={isSelectedShiftOpen}
           canReturnSales={canReturnSales}
           onReturnSale={onReturnSale}
         />
@@ -158,7 +174,7 @@ export function CashShiftView({
       {dialog && (
         <CashShiftDialog
           dialog={dialog}
-          shift={shift}
+          shift={isOwnOpenShift ? shift : null}
           onDismiss={() => setDialog(null)}
           onOpenShift={onOpenShift}
           onCloseShift={onCloseShift}
@@ -173,6 +189,15 @@ export function CashShiftView({
           onSelect={onSelectShift}
           onRefresh={onRefresh}
           onClose={() => setShowHistory(false)}
+        />
+      )}
+      {showOpenCashiers && isAdmin && (
+        <CashierOpenShiftsPanel
+          shifts={openCashierShifts}
+          selectedShiftId={shift?.id}
+          disabled={isLoading}
+          onSelect={onSelectShift}
+          onClose={() => setShowOpenCashiers(false)}
         />
       )}
     </div>

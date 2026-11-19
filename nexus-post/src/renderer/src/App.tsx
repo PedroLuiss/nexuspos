@@ -440,7 +440,7 @@ function AppContent(): React.JSX.Element {
   const handleReturnSale = async (saleId: string): Promise<boolean> => {
     try {
       await cashApi.returnSale(saleId)
-      await reloadCashRegister()
+      await reloadCashRegister(cashRegister.shift?.id)
       await reloadKardex()
       await reloadCustomers()
       showToast(
@@ -566,7 +566,7 @@ function AppContent(): React.JSX.Element {
           isLoading={isCashLoading}
           error={cashError}
           isAdmin={currentUser.role === 'ADMIN'}
-          canReturnSales={currentUser.role === 'ADMIN' || currentUser.role === 'CASHIER'}
+          canReturnSales={currentUser.role === 'ADMIN'}
           canManageMovements={
             currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
           }
