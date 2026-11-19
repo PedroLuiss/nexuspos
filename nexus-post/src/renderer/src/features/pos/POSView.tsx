@@ -55,9 +55,6 @@ export const POSView: React.FC<POSViewProps> = ({
   onResumeSale,
   onDeleteSuspendedSale,
   exchangeRate,
-  exchangeRateLoading,
-  exchangeRateError,
-  onRefreshExchangeRate,
   cashierName,
   cashShiftOpen,
   canOverrideNoStock,
@@ -963,33 +960,21 @@ export const POSView: React.FC<POSViewProps> = ({
                 ${finalTotal.toFixed(2)}
               </div>
               <div className="mt-1 text-xs text-[#5C5C5C]">
-                {exchangeRate
-                  ? `≈ ${formatVesAmount(finalTotal * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}`
-                  : 'Tasa BCV no disponible'}
-                {exchangeRate?.isStale && (
-                  <span className="ml-1 font-semibold text-amber-700">· tasa desactualizada</span>
-                )}
-              </div>
-              <div className="mt-1 flex justify-center gap-2 text-[10px]">
-                {exchangeRate && (
-                  <span className="text-[#717783]">
-                    Actualizada: {new Date(exchangeRate.updatedAt).toLocaleString('es-VE')}
+                {exchangeRate ? (
+                  <>
+                    <span className="font-mono font-semibold">
+                      ≈ {formatVesAmount(finalTotal * exchangeRate.rate)}
+                    </span>
+                    <span className="ml-1.5 text-[10px] text-[#717783]">
+                      Referencia informativa · no modifica el cobro
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-[#717783]">
+                    Referencia en bolívares no disponible
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={onRefreshExchangeRate}
-                  disabled={exchangeRateLoading}
-                  className="text-[#0067C0] underline disabled:opacity-50"
-                >
-                  {exchangeRateLoading ? 'Actualizando tasa…' : 'Actualizar tasa BCV'}
-                </button>
               </div>
-              {!exchangeRate && exchangeRateError && (
-                <div role="alert" className="mt-1 text-[10px] text-[#C42B1C]">
-                  {exchangeRateError}
-                </div>
-              )}
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-2 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#107C41]"></span>
                 <span>BALANCE PENDIENTE DE COBRO</span>

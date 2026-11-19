@@ -5,8 +5,9 @@ import { NavigationTabs } from '../shared/ui/NavigationTabs'
 import OperatorSwitchModal from '../features/auth/components/OperatorSwitchModal'
 import { Lock, LogOut, RefreshCw } from '../shared/icons/Icons'
 import { canAccessTab } from '../shared/lib/permissions'
+import { ExchangeRateIndicator } from '../shared/ui/ExchangeRateIndicator'
 import logoBanner from '@resources/logobanner.png'
-import type { User } from '@shared/contracts'
+import type { UsdVesExchangeRate, User } from '@shared/contracts'
 
 interface DashboardLayoutProps {
   children?: React.ReactNode
@@ -17,6 +18,10 @@ interface DashboardLayoutProps {
   /** Indica si el turno de caja está abierto para pintar el estado real. */
   cashShiftOpen?: boolean
   isLoggingOut?: boolean
+  exchangeRate?: UsdVesExchangeRate | null
+  exchangeRateLoading?: boolean
+  exchangeRateError?: string | null
+  onRefreshExchangeRate?: () => void
 }
 
 const DEMO_USER: User = {
@@ -41,7 +46,11 @@ export function DashboardLayout({
   onLogout,
   onOperatorSwitch,
   cashShiftOpen = false,
-  isLoggingOut = false
+  isLoggingOut = false,
+  exchangeRate = null,
+  exchangeRateLoading = false,
+  exchangeRateError = null,
+  onRefreshExchangeRate
 }: DashboardLayoutProps): React.JSX.Element {
   const { activeTab, setActiveTab } = useRouter()
   const [isLockModalOpen, setIsLockModalOpen] = useState(false)
@@ -109,6 +118,15 @@ export function DashboardLayout({
               {cashShiftOpen ? 'TURNO ACTIVO' : 'SIN TURNO'}
             </span>
           </button>
+
+          {onRefreshExchangeRate && (
+            <ExchangeRateIndicator
+              rate={exchangeRate}
+              isLoading={exchangeRateLoading}
+              error={exchangeRateError}
+              onRefresh={onRefreshExchangeRate}
+            />
+          )}
 
           <button
             type="button"

@@ -21,9 +21,6 @@ export interface POSViewProps {
   onResumeSale: (sale: SuspendedSale) => Promise<boolean>
   onDeleteSuspendedSale: (id: string) => Promise<void>
   exchangeRate: UsdVesExchangeRate | null
-  exchangeRateLoading: boolean
-  exchangeRateError: string | null
-  onRefreshExchangeRate: () => void
   cashierName: string
   cashShiftOpen: boolean
   canOverrideNoStock: boolean

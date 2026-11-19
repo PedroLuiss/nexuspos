@@ -504,6 +504,10 @@ function AppContent(): React.JSX.Element {
       onOperatorSwitch={handleOperatorSwitch}
       cashShiftOpen={Boolean(cashRegister.activeShiftId)}
       isLoggingOut={isLoggingOut}
+      exchangeRate={usdVesRate}
+      exchangeRateLoading={isExchangeRateLoading}
+      exchangeRateError={exchangeRateError}
+      onRefreshExchangeRate={() => void refreshExchangeRate()}
     >
       {/* Toast Alert Feedback */}
       {toast && <ToastAlert key={toast.id} toast={toast} onDismiss={dismissToast} />}
@@ -532,9 +536,6 @@ function AppContent(): React.JSX.Element {
           onResumeSale={handleResumeSale}
           onDeleteSuspendedSale={handleDeleteSuspendedSale}
           exchangeRate={usdVesRate}
-          exchangeRateLoading={isExchangeRateLoading}
-          exchangeRateError={exchangeRateError}
-          onRefreshExchangeRate={() => void refreshExchangeRate()}
           cashierName={currentUser.name}
           cashShiftOpen={Boolean(cashRegister.activeShiftId)}
           canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}

@@ -12,7 +12,7 @@ El módulo POS es el núcleo transaccional de atención rápida:
 - Búsqueda reactiva SQLite por nombre, código o código de barras; el buscador trae páginas de 50 productos y permite cargar más. Un campo vacío oculta resultados; el botón Lista abre el primer lote.
 - Carrito conectado al catálogo SQLite; descuentos requieren `CAN_APPLY_DISCOUNT` y `CAN_OVERRIDE_NO_STOCK` permite sobreventa solo si hay stock positivo.
 - La cantidad depende de la unidad del producto: kilogramo y litro admiten decimales (hasta 3 posiciones); pieza, unidad, caja y paquete requieren enteros. Esta regla se valida en el POS y nuevamente al registrar la venta.
-- Los importes se manejan en USD. Bajo el total se muestra la conversión informativa a bolívares con tasa oficial BCV.
+- Los importes del ticket se manejan en USD. El encabezado global, junto al indicador de caja/estación, muestra la tasa BCV oficial, su estado/hora y la acción para refrescarla. El resumen principal conserva subtotal, descuentos, impuestos y total en USD, además de mostrar debajo la conversión a bolívares como referencia informativa que no altera el cobro.
 - Modal de Cobro Estándar (`[F12]`): Métodos de pago en Efectivo, Tarjeta, Mixto y Crédito.
 - Cobro Rápido en Efectivo (`[ALT + Q]`): Liquidación inmediata con un solo toque.
 - Pago mixto (`[F8]`): Distribución exacta entre efectivo y tarjeta.
@@ -100,6 +100,7 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 - Cada movimiento POS incluye como referencia el número de ticket; el costo unitario queda como snapshot en USD. Para combos, el costo se registra por componente y por lote consumido cuando hay FEFO.
 - Las ventas en espera se guardan por cajero y requieren caja abierta para listar, pausar o recuperar. Reanudar requiere carrito vacío; los registros históricos sin cajero asignado no se exponen como ventas de espera del usuario.
 - La tasa USD/VES se consulta desde `https://ve.dolarapi.com/v1/dolares/oficial`, se refresca al iniciar el POS y cada 30 minutos, y se almacena localmente. Si el proveedor falla, se usa la última tasa cacheada con indicador de desactualización; sin caché se informa el error sin bloquear ventas USD.
+- La cotización se muestra en el encabezado global junto al estado de caja. El indicador presenta la tasa disponible, fecha/hora de actualización, estado desactualizado y permite refrescar manualmente; los errores de actualización se muestran sin ocultar una tasa cacheada. La conversión informativa del total a bolívares se presenta en el resumen y modales del POS, sin cambiar los importes persistidos o cobrados en USD.
 - El pago con tarjeta se confirma manualmente por el cajero; no existe conexión con pinpad o procesador de pagos. La opción de impresión automática del modal de cobro aún no está conectada.
 - La consulta y devolución de tickets se realiza desde el contexto de Caja. La devolución disponible es total, no parcial, y está restringida al turno abierto que generó la factura.
 
