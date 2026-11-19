@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DatabaseBackupSummary, DatabaseStatusSummary } from '@shared/contracts'
 import { X } from '../../../shared/icons/Icons'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import { DatabaseBackupHistory, DatabaseStatusPanel } from './DatabaseBackupPanels'
 
 interface DatabaseBackupModalProps {
@@ -19,6 +20,7 @@ export function DatabaseBackupModal({
   const [isLoading, setIsLoading] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirmDialog()
 
   const refresh = useCallback(async (): Promise<void> => {
     setIsLoading(true)
@@ -106,13 +108,13 @@ export function DatabaseBackupModal({
   }
 
   const optimize = async (): Promise<void> => {
-    if (
-      !window.confirm(
-        'Antes de optimizar se creará un respaldo local automático. ¿Desea continuar?'
-      )
-    ) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Optimizar base de datos',
+      message: 'Antes de optimizar se creará un respaldo local automático. ¿Desea continuar?',
+      confirmLabel: 'Optimizar',
+      intent: 'primary'
+    })
+    if (!confirmed) return
     await runAction(
       'optimize',
       () => window.api.database.optimize(),
@@ -226,6 +228,7 @@ export function DatabaseBackupModal({
           </button>
         </footer>
       </section>
+      {dialog}
     </div>
   )
 }

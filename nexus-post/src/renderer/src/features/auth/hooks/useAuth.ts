@@ -45,11 +45,12 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false)
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false)
   const [authStep, setAuthStep] = useState<AuthStep>('LOGIN')
-  const [resetEmail, setResetEmail] = useState('cajero.central@nexuspos.pe')
+  const [resetEmail, setResetEmail] = useState('')
   const [resetCode, setResetCode] = useState('')
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(
-    null
-  )
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'info' | 'error'
+  } | null>(null)
 
   const showToast = useCallback(
     (message: string, type: 'success' | 'info' | 'error' = 'success'): void => {
@@ -198,7 +199,10 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
     }
   }
 
-  const handleResetPassword = async (newPassword: string, logoutOthers: boolean): Promise<boolean> => {
+  const handleResetPassword = async (
+    newPassword: string,
+    logoutOthers: boolean
+  ): Promise<boolean> => {
     setIsLoading(true)
     try {
       const res = await resetPasswordApi({

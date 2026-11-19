@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import {
-  ShieldCheck,
-  Key,
-  ArrowLeft,
-  Timer,
-  CheckCircle2,
-  AlertCircle,
-  ArrowRight
-} from '../../../shared/icons/Icons'
+import { Key, ArrowLeft, Timer, AlertCircle, ArrowRight } from '../../../shared/icons/Icons'
 
 interface VerifyOtpViewProps {
   email: string
@@ -113,7 +105,7 @@ export const VerifyOtpView: React.FC<VerifyOtpViewProps> = ({
           </button>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8F5E9] text-[#107C41] font-mono text-[11px] font-semibold border border-[#C8E6C9]">
             <span className="w-2 h-2 rounded-full bg-[#107C41] animate-pulse" />
-            <span>CANAL CIFRADO RSA-4096</span>
+            <span>VERIFICACIÓN OTP</span>
           </div>
         </div>
 
@@ -227,7 +219,6 @@ export const VerifyOtpView: React.FC<VerifyOtpViewProps> = ({
       {/* Card Footer */}
       <div className="px-6 py-2.5 bg-[#F8F9FA] border-t border-[#E5E5E5] flex items-center justify-between text-[11px] text-[#717783] select-none font-mono">
         <span>Active Directory Security • NexusPOS</span>
-        <span>Código demo: 849215</span>
       </div>
     </div>
   )

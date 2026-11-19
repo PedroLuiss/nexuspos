@@ -8,6 +8,7 @@ import type {
 } from '@shared/contracts'
 import { ROLE_DEFAULT_PERMISSIONS } from '@shared/contracts'
 import type { UserRepository, UserWithSecret } from '../../ports/user.repository'
+import type { PasswordHasher } from '../../ports/password-hasher.port'
 import type { RemoteAuthPort } from '../../ports/remote-auth.port'
 
 /**
@@ -22,10 +23,10 @@ function toSessionUser(source: UserWithSecret): User {
 
 export class AuthService {
   private currentUser: User | null = null
-  private readonly otps = new Map<string, { code: string; expiresAt: number }>()
 
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
     private readonly remoteAuth?: RemoteAuthPort
   ) {}
 
@@ -46,8 +47,21 @@ export class AuthService {
     const localUserWithSecret = this.userRepository.findByEmailOrUsername(input.emailOrUsername)
 
     if (localUserWithSecret) {
-      if (localUserWithSecret.passwordHash !== input.password) {
+      if (!this.passwordHasher.verify(input.password, localUserWithSecret.passwordHash)) {
         return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' }
+      }
+      if (this.passwordHasher.needsRehash(localUserWithSecret.passwordHash)) {
+        try {
+          this.userRepository.updatePassword(
+            localUserWithSecret.id,
+            this.passwordHasher.hash(input.password)
+          )
+        } catch {
+          return {
+            success: false,
+            error: 'No se pudo proteger la contraseña local. Intente nuevamente.'
+          }
+        }
       }
 
       const user = toSessionUser(localUserWithSecret)
@@ -82,7 +96,7 @@ export class AuthService {
               username,
               email,
               name: remoteRes.user.name || 'Administrador',
-              password: input.password,
+              password: this.passwordHasher.hash(input.password),
               pin: remoteRes.user.pin || '9999',
               role: 'ADMIN',
               permissions: [...ROLE_DEFAULT_PERMISSIONS.ADMIN],
@@ -208,105 +222,89 @@ export class AuthService {
   async sendOtp(email: string): Promise<{ success: boolean; error?: string }> {
     const cleanEmail = email.trim().toLowerCase()
 
-    if (this.remoteAuth) {
-      const res = await this.remoteAuth.sendOtp(cleanEmail).catch(() => null)
-      if (res && res.success) return { success: true }
-      if (res && res.error && !res.error.includes('No se pudo conectar')) {
-        return res
+    if (!this.remoteAuth) {
+      return {
+        success: false,
+        error: 'La recuperación por correo requiere conexión con el servicio de autenticación.'
       }
     }
 
-    // Fallback local: verificar si existe en SQLite
-    const userWithSecret = this.userRepository.findByEmailOrUsername(cleanEmail)
-    if (!userWithSecret) {
-      return { success: false, error: 'No se encontró un usuario registrado con este correo.' }
+    try {
+      return await this.remoteAuth.sendOtp(cleanEmail)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error de red'
+      return { success: false, error: `No se pudo enviar el código de recuperación: ${message}` }
     }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const expiresAt = Date.now() + 10 * 60 * 1000
-    this.otps.set(cleanEmail, { code, expiresAt })
-
-    return { success: true }
   }
 
   async verifyOtp(input: VerifyOtpInput): Promise<{ success: boolean; error?: string }> {
-    const cleanEmail = input.email.trim().toLowerCase()
-
-    if (this.remoteAuth) {
-      const res = await this.remoteAuth.verifyOtp(input).catch(() => null)
-      if (res && res.success) return { success: true }
-      if (res && res.error && !res.error.includes('No se pudo conectar')) {
-        return res
-      }
-    }
-
-    // Permitir código maestro '849215' (de la maqueta de Stitch) o el generado en memoria
-    if (input.code === '849215') {
-      return { success: true }
-    }
-
-    const stored = this.otps.get(cleanEmail)
-    if (!stored) {
+    if (!this.remoteAuth) {
       return {
         success: false,
-        error: 'No hay un código pendiente de verificación para este correo.'
+        error: 'La verificación del código requiere conexión con el servicio de autenticación.'
       }
     }
 
-    if (Date.now() > stored.expiresAt) {
-      this.otps.delete(cleanEmail)
-      return { success: false, error: 'El código OTP ha expirado. Solicite uno nuevo.' }
+    try {
+      return await this.remoteAuth.verifyOtp({
+        ...input,
+        email: input.email.trim().toLowerCase(),
+        code: input.code.trim()
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error de red'
+      return { success: false, error: `No se pudo verificar el código: ${message}` }
     }
-
-    if (stored.code !== input.code.trim()) {
-      return { success: false, error: 'El código de 6 dígitos ingresado es incorrecto.' }
-    }
-
-    return { success: true }
   }
 
   async resetPassword(input: ResetPasswordInput): Promise<AuthResponse> {
     const cleanEmail = input.email.trim().toLowerCase()
-
-    if (this.remoteAuth) {
-      const res = await this.remoteAuth.resetPassword(input).catch(() => null)
-      if (res && res.success && res.user) {
-        this.currentUser = res.user
-        return res
-      }
-      if (res && res.error && !res.error.includes('No se pudo conectar')) {
-        return res
-      }
-    }
-
-    // Fallback local
-    const verify = await this.verifyOtp({ email: cleanEmail, code: input.code })
-    if (!verify.success) {
-      return { success: false, error: verify.error }
-    }
-
-    const userWithSecret = this.userRepository.findByEmailOrUsername(cleanEmail)
-    if (!userWithSecret) {
-      return { success: false, error: 'Usuario no encontrado.' }
-    }
-
     if (!input.newPassword || input.newPassword.length < 8) {
       return { success: false, error: 'La contraseña debe tener al menos 8 caracteres.' }
     }
 
-    this.userRepository.updatePassword(userWithSecret.id, input.newPassword)
-    this.otps.delete(cleanEmail)
-
-    const user = toSessionUser(userWithSecret)
-    const sessionUser: User = {
-      ...user,
-      station: 'CAJA-01'
+    if (!this.remoteAuth) {
+      return {
+        success: false,
+        error: 'La recuperación de contraseña requiere conexión con el servicio de autenticación.'
+      }
     }
 
-    this.currentUser = sessionUser
-    return {
-      success: true,
-      user: sessionUser
+    let remoteResponse: AuthResponse
+    try {
+      remoteResponse = await this.remoteAuth.resetPassword({
+        ...input,
+        email: cleanEmail
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error de red'
+      return { success: false, error: `No se pudo restablecer la contraseña: ${message}` }
     }
+
+    if (remoteResponse.success && remoteResponse.user) {
+      const localUser = this.userRepository.findByEmailOrUsername(cleanEmail)
+      if (localUser) {
+        try {
+          this.userRepository.updatePassword(
+            localUser.id,
+            this.passwordHasher.hash(input.newPassword)
+          )
+        } catch {
+          return {
+            success: false,
+            error: 'La contraseña remota se actualizó, pero no se pudo sincronizar en este equipo.'
+          }
+        }
+      }
+      this.currentUser = remoteResponse.user
+      return remoteResponse
+    }
+
+    return remoteResponse.success
+      ? {
+          success: false,
+          error: 'El servicio de autenticación respondió sin los datos de sesión esperados.'
+        }
+      : remoteResponse
   }
 }

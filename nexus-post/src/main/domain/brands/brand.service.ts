@@ -1,11 +1,15 @@
 import type { Brand, BrandInput, BrandFilter } from '@shared/contracts'
 import type { BrandRepository } from '../../ports/brand.repository'
+import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeBrandInput, validateBrandInput } from './brand.entity'
 
 /** Servicio de dominio de marcas. Puro: solo depende de puertos y entidades. */
 export class BrandService {
-  constructor(private readonly brands: BrandRepository) {}
+  constructor(
+    private readonly brands: BrandRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: BrandFilter): Brand[] {
     return this.brands.findAll(filter)
@@ -16,6 +20,7 @@ export class BrandService {
   }
 
   create(input: BrandInput): Brand {
+    this.requireAdmin()
     const errors = validateBrandInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -34,6 +39,7 @@ export class BrandService {
   }
 
   update(brand: Brand): Brand {
+    this.requireAdmin()
     const existing = this.brands.findById(brand.id)
     if (!existing) throw new NotFoundError('Marca no encontrada')
 
@@ -50,12 +56,22 @@ export class BrandService {
   }
 
   softDelete(id: string): void {
+    this.requireAdmin()
     if (!this.brands.findById(id)) throw new NotFoundError('Marca no encontrada')
     this.brands.softDelete(id)
   }
 
   toggleStatus(id: string): Brand {
+    this.requireAdmin()
     if (!this.brands.findById(id)) throw new NotFoundError('Marca no encontrada')
     return this.brands.toggleStatus(id)
+  }
+
+  private requireAdmin(): void {
+    const user = this.auth.getSessionUser()
+    if (!user) throw new ValidationError('Debe iniciar sesión para administrar catálogos.')
+    if (user.role !== 'ADMIN') {
+      throw new ValidationError('Solo el Administrador puede modificar el catálogo de marcas.')
+    }
   }
 }

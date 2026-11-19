@@ -1,11 +1,15 @@
 import type { Supplier, SupplierInput, SupplierFilter } from '@shared/contracts'
 import type { SupplierRepository } from '../../ports/supplier.repository'
+import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeSupplierInput, validateSupplierInput } from './supplier.entity'
 
 /** Servicio de dominio de proveedores. Puro: solo depende de puertos y entidades. */
 export class SupplierService {
-  constructor(private readonly suppliers: SupplierRepository) {}
+  constructor(
+    private readonly suppliers: SupplierRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: SupplierFilter): Supplier[] {
     return this.suppliers.findAll(filter)
@@ -16,6 +20,7 @@ export class SupplierService {
   }
 
   create(input: SupplierInput): Supplier {
+    this.requireAdmin()
     const errors = validateSupplierInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -34,6 +39,7 @@ export class SupplierService {
   }
 
   update(supplier: Supplier): Supplier {
+    this.requireAdmin()
     const existing = this.suppliers.findById(supplier.id)
     if (!existing) throw new NotFoundError('Proveedor no encontrado')
 
@@ -50,12 +56,22 @@ export class SupplierService {
   }
 
   softDelete(id: string): void {
+    this.requireAdmin()
     if (!this.suppliers.findById(id)) throw new NotFoundError('Proveedor no encontrado')
     this.suppliers.softDelete(id)
   }
 
   toggleStatus(id: string): Supplier {
+    this.requireAdmin()
     if (!this.suppliers.findById(id)) throw new NotFoundError('Proveedor no encontrado')
     return this.suppliers.toggleStatus(id)
+  }
+
+  private requireAdmin(): void {
+    const user = this.auth.getSessionUser()
+    if (!user) throw new ValidationError('Debe iniciar sesión para administrar catálogos.')
+    if (user.role !== 'ADMIN') {
+      throw new ValidationError('Solo el Administrador puede modificar el catálogo de proveedores.')
+    }
   }
 }

@@ -1,6 +1,7 @@
 import type { CreateUserInput, UpdateUserInput, User, UserRole } from '@shared/contracts'
 import { ROLE_DEFAULT_PERMISSIONS, sanitizePermissionKeys } from '@shared/contracts'
 import type { UserRepository } from '../../ports/user.repository'
+import type { PasswordHasher } from '../../ports/password-hasher.port'
 import type { AuthService } from '../auth/auth.service'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -20,7 +21,8 @@ const MIN_PASSWORD_LENGTH = 8
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
+    private readonly passwordHasher: PasswordHasher
   ) {}
 
   private requireAdminSession(): User {
@@ -94,7 +96,7 @@ export class UserService {
     if (!VALID_ROLES.includes(role)) {
       throw new Error('El rol seleccionado no es válido.')
     }
-    if (!input.password || input.password.length < MIN_PASSWORD_LENGTH) {
+    if (!input.password?.trim() || input.password.length < MIN_PASSWORD_LENGTH) {
       throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
     }
     if (pin && !PIN_RE.test(pin)) {
@@ -106,6 +108,7 @@ export class UserService {
     const permissions = sanitizePermissionKeys(input.permissions)
     return this.userRepository.create({
       ...input,
+      password: this.passwordHasher.hash(input.password),
       username,
       email,
       name,
@@ -150,7 +153,7 @@ export class UserService {
 
     if (
       input.password !== undefined &&
-      input.password.length > 0 &&
+      input.password.trim().length > 0 &&
       input.password.length < MIN_PASSWORD_LENGTH
     ) {
       throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
@@ -167,8 +170,14 @@ export class UserService {
       permissions = [...ROLE_DEFAULT_PERMISSIONS[input.role]]
     }
 
+    const password =
+      input.password && input.password.trim().length > 0
+        ? this.passwordHasher.hash(input.password)
+        : input.password
+
     return this.userRepository.update({
       ...input,
+      password,
       username,
       email,
       permissions

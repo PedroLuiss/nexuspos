@@ -24,6 +24,7 @@ import { SqliteCashRepository } from '../adapters/persistence/sqlite/cash.sqlite
 import { SqliteReportsRepository } from '../adapters/persistence/sqlite/reports.sqlite'
 import { SqliteDatabaseMaintenanceRepository } from '../adapters/persistence/sqlite/database-maintenance.sqlite'
 import { SqliteScaleRepository } from '../adapters/hardware/scale.sqlite'
+import { ScryptPasswordHasher } from '../adapters/security/scrypt-password-hasher'
 import { SqliteTransactionRunner } from '../adapters/persistence/sqlite/transaction.sqlite'
 import { SerialScaleAdapter } from '../adapters/hardware/scale.serial'
 import { BarcodeLabelPrinter } from '../adapters/hardware/barcode-label-printer'
@@ -111,15 +112,13 @@ export function registerIpcHandlers(): void {
     productTypeRepository,
     productBatchRepository
   )
-  const brandService = new BrandService(brandRepository)
-  const supplierService = new SupplierService(supplierRepository)
-  const productTypeService = new ProductTypeService(productTypeRepository)
   const productBarcodeService = new ProductBarcodeService(productBarcodeRepository)
   const productPriceTierService = new ProductPriceTierService(productPriceTierRepository)
   const comboItemService = new ComboItemService(comboItemRepository, productRepository)
   const productBatchService = new ProductBatchService(productBatchRepository, productRepository)
   const authAdapter = new LaravelAuthAdapter()
-  const authService = new AuthService(userRepository, authAdapter)
+  const passwordHasher = new ScryptPasswordHasher()
+  const authService = new AuthService(userRepository, passwordHasher, authAdapter)
   const inventoryService = new InventoryService(
     productRepository,
     stockMovementRepository,
@@ -129,7 +128,10 @@ export function registerIpcHandlers(): void {
   )
   const categoryService = new CategoryService(categoryRepository)
   const taxService = new TaxService(taxRepository, authService)
-  const userService = new UserService(userRepository, authService)
+  const brandService = new BrandService(brandRepository, authService)
+  const supplierService = new SupplierService(supplierRepository, authService)
+  const productTypeService = new ProductTypeService(productTypeRepository, authService)
+  const userService = new UserService(userRepository, authService, passwordHasher)
   const settingsService = new SettingsService(settingsRepository, authService)
   const scaleService = new ScaleService(scaleRepository, authService)
   const customerRepository = new SqliteCustomerRepository(db)

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { BusinessConfig, BusinessConfigInput } from '@shared/contracts'
 import { formatTaxLabel, formatTaxRate } from '@shared/lib/tax'
 import { useTaxes } from '../../../shared/hooks/useTaxes'
@@ -39,6 +39,16 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
   const [pricesIncludeTax, setPricesIncludeTax] = useState(config.pricesIncludeTax)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const timerId = window.setTimeout(() => {
+      setEnabled(config.taxEnabled)
+      setPricesIncludeTax(config.pricesIncludeTax)
+      setErrorMsg(null)
+    }, 0)
+    return () => window.clearTimeout(timerId)
+  }, [isOpen, config.taxEnabled, config.pricesIncludeTax])
 
   if (!isOpen) return null
 

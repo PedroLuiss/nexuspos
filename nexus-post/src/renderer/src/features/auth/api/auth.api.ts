@@ -92,7 +92,10 @@ export async function sendOtpApi(email: string): Promise<{ success: boolean; err
   if (window.api?.auth?.sendOtp) {
     return window.api.auth.sendOtp(email)
   }
-  return { success: true }
+  return {
+    success: false,
+    error: 'La recuperación por correo requiere conexión con el servicio de autenticación.'
+  }
 }
 
 export async function verifyOtpApi(
@@ -101,10 +104,10 @@ export async function verifyOtpApi(
   if (window.api?.auth?.verifyOtp) {
     return window.api.auth.verifyOtp(input)
   }
-  if (input.code === '849215') {
-    return { success: true }
+  return {
+    success: false,
+    error: 'La verificación del código requiere conexión con el servicio de autenticación.'
   }
-  return { success: true }
 }
 
 export async function resetPasswordApi(input: ResetPasswordInput): Promise<AuthResponse> {
@@ -112,15 +115,7 @@ export async function resetPasswordApi(input: ResetPasswordInput): Promise<AuthR
     return window.api.auth.resetPassword(input)
   }
   return {
-    success: true,
-    user: {
-      id: 'usr-cajero-01',
-      username: 'cajero.central',
-      email: input.email,
-      name: 'Carlos Morales',
-      role: 'CASHIER',
-      active: true,
-      station: 'CAJA-01'
-    }
+    success: false,
+    error: 'El cambio de contraseña requiere conexión con el servicio de autenticación.'
   }
 }

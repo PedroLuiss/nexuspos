@@ -32,7 +32,7 @@ LoginInput (emailOrUsername + password)
       │     └─ No existe → Paso 2
       │
       └─ Paso 2: remoteAuth.login(input)  (Laravel)
-            ├─ success → userRepository.create({ role: 'ADMIN', ... })
+            ├─ success → userRepository.create({ role: 'ADMIN', password: scrypt(...), ... })
             │             └─ Si colisiona (ya existe por usuario/correo) se reutiliza el registro
             │                activo en lugar de bloquear el acceso
             └─ fail / sin red → error de credenciales o de conexión
@@ -165,14 +165,12 @@ VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 - Credenciales de demostración sembradas en SQLite:
   - **Admin:** `admin@nexuspos.pe` / `Admin#2026` / PIN `9999`
   - **Cajero:** `cajero.central@nexuspos.pe` / `SecurityKey#2026` / PIN `1234`
-  - **Código OTP Demo:** `849215`
 - Esto permite desarrollar y operar el escritorio sin la API levantada.
 
 ---
 
 ## 7. Tareas Pendientes / Deuda Técnica
 
-- ⚠️ **Hash de contraseñas:** `users.password_hash` guarda texto plano; migrar a `scrypt`/`argon2`.
 - ⚠️ **Tokens persistentes:** el Bearer de Laravel vive solo en memoria del proceso `main`; falta almacenamiento seguro (`safeStorage`).
 - ⚠️ **Multi-caja LAN:** cuando exista Caja Maestra, la sesión deberá validarse contra el servidor maestro reutilizando estos mismos contratos.
 
@@ -181,7 +179,8 @@ VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 - El login consulta primero SQLite local; las credenciales se comparan contra el registro local y la sesión queda en memoria en `AuthService`.
 - Si no se encuentra el identificador local, el adaptador Laravel puede realizar el bootstrap remoto. El PIN también resuelve primero contra los usuarios locales.
 - La gestión de usuarios y la autorización por rol/permisos se documentan junto con Ajustes en [`08-SETTINGS-HARDWARE.md`](./08-SETTINGS-HARDWARE.md).
-- El inicio de sesión no requiere red para usuarios ya materializados localmente. Recuperación OTP y bootstrap remoto sí requieren el servicio externo.
+- Las contraseñas nuevas se guardan como hashes `scrypt`; contraseñas históricas en texto plano se convierten al primer inicio de sesión válido. El cambio desde Ajustes y el bootstrap remoto también guardan hashes.
+- El inicio de sesión no requiere red para usuarios ya materializados localmente. La recuperación OTP requiere el servicio remoto; si no está disponible, se informa el fallo y no se acepta ningún código local o maestro.
 - Las limitaciones de almacenamiento de credenciales/token siguen pendientes; la presencia de controles UI no sustituye las guardias de autorización en main.
 
 ### 8.1 Candado de estación (LOCK) y cierre de sesión desde el header

@@ -1,16 +1,12 @@
 import type { BusinessConfig } from '@shared/contracts'
-import { Building2, Database, Percent, Scale, Truck, Users, Package } from '../../../shared/icons/Icons'
+import { Building2, Database, Percent, Users, Package } from '../../../shared/icons/Icons'
 import { getCurrencySymbol } from '../../../shared/lib/businessConfig'
 import SettingsCard from './SettingsCard'
+import { ScaleSettingsCard, type ScaleConfigView } from './ScaleSettingsCard'
+
+export type { ScaleConfigView } from './ScaleSettingsCard'
 
 export type SettingsModalAction = 'users' | 'business' | 'tax' | 'catalogs' | 'database' | 'scale'
-
-export interface ScaleConfigView {
-  comPort: string
-  baudRate: number
-  isEnabled: boolean
-  isConnected: boolean
-}
 
 interface SettingsCardsProps {
   isAdmin: boolean
@@ -19,7 +15,9 @@ interface SettingsCardsProps {
   activeAdmins: number
   business: BusinessConfig
   isConfigLoading: boolean
+  businessConfigError: string | null
   scaleConfig: ScaleConfigView
+  scaleError: string | null
   onOpenModal: (modal: SettingsModalAction) => void
 }
 
@@ -30,18 +28,30 @@ export function SettingsCards({
   activeAdmins,
   business,
   isConfigLoading,
+  businessConfigError,
   scaleConfig,
+  scaleError,
   onOpenModal
 }: SettingsCardsProps): React.JSX.Element {
   const currencySymbol = getCurrencySymbol(business.currency)
-  const fiscalId =
-    business.taxIdType === 'NONE'
+  const businessUnavailable = isConfigLoading || Boolean(businessConfigError)
+  const fiscalId = businessUnavailable
+    ? '—'
+    : business.taxIdType === 'NONE'
       ? 'Sin identificación fiscal'
       : `${business.taxIdType}: ${business.taxId || '—'}`
   const adminBadge = isAdmin
     ? { label: 'Administrador', className: 'bg-[#0067C0]/10 text-[#0067C0] border-[#0067C0]/20' }
     : { label: 'Solo Admin', className: 'bg-slate-100 text-slate-500 border-slate-200' }
   const restrictedHint = isAdmin ? undefined : 'Solo Administrador'
+  const canEditBusiness = isAdmin && !isConfigLoading && !businessConfigError
+  const businessDisabledHint = !isAdmin
+    ? 'Solo Administrador'
+    : isConfigLoading
+      ? 'Espere a que cargue la configuración'
+      : businessConfigError
+        ? 'No se pudo leer la configuración guardada'
+        : undefined
 
   return (
     <div className="grid flex-1 grid-cols-1 gap-2.5 md:grid-cols-2">
@@ -78,30 +88,45 @@ export function SettingsCards({
         subtitle="Identidad fiscal, propietario y comprobante"
         accent="green"
         badge={{
-          label: isConfigLoading ? 'Cargando…' : business.taxIdType,
-          className: 'bg-emerald-50 text-[#107C41] border-emerald-200'
+          label: isConfigLoading
+            ? 'Cargando…'
+            : businessConfigError
+              ? 'No disponible'
+              : business.taxIdType,
+          className: businessConfigError
+            ? 'bg-red-50 text-red-700 border-red-200'
+            : 'bg-emerald-50 text-[#107C41] border-emerald-200'
         }}
         description="Razón social, identificación fiscal, propietario, contacto, domicilio, moneda y plantilla del ticket térmico de 80mm."
         facts={[
           {
             label: 'Razón Social:',
-            value: business.legalName || '—',
+            value: businessUnavailable ? '—' : business.legalName || '—',
             valueClassName: 'font-mono max-w-[200px]'
           },
-          { label: 'Propietario:', value: business.ownerName || '—' },
+          {
+            label: 'Propietario:',
+            value: businessUnavailable ? '—' : business.ownerName || '—'
+          },
           { label: 'ID Fiscal:', value: fiscalId, valueClassName: 'font-mono' },
           {
             label: 'Moneda:',
-            value: `${business.currency} (${currencySymbol})`,
+            value: businessUnavailable ? '—' : `${business.currency} (${currencySymbol})`,
             valueClassName: 'font-mono'
           }
         ]}
-        footerNote={isAdmin ? 'Configuración guardada' : 'Solo lectura'}
+        footerNote={
+          businessConfigError
+            ? 'Error de lectura'
+            : isAdmin
+              ? 'Configuración guardada'
+              : 'Solo lectura'
+        }
         actionLabel="Editar Datos"
         actionHotkey="ALT+A"
         onAction={() => onOpenModal('business')}
-        disabled={!isAdmin}
-        disabledHint={restrictedHint}
+        disabled={!canEditBusiness}
+        disabledHint={businessDisabledHint}
       />
 
       <SettingsCard
@@ -110,37 +135,58 @@ export function SettingsCards({
         subtitle="Catálogo de alícuotas por producto"
         accent="amber"
         badge={
-          business.taxEnabled
+          businessUnavailable
             ? {
-                label: `${business.taxName} ${business.taxRate}% · predeterminada`,
-                className: 'bg-amber-50 text-amber-700 border-amber-200'
+                label: isConfigLoading ? 'Cargando…' : 'No disponible',
+                className: businessConfigError
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-slate-100 text-slate-500 border-slate-200'
               }
-            : { label: 'Desactivado', className: 'bg-slate-100 text-slate-500 border-slate-200' }
+            : business.taxEnabled
+              ? {
+                  label: `${business.taxName} ${business.taxRate}% · predeterminada`,
+                  className: 'bg-amber-50 text-amber-700 border-amber-200'
+                }
+              : { label: 'Desactivado', className: 'bg-slate-100 text-slate-500 border-slate-200' }
         }
         description="Administre el catálogo de alícuotas (Exento, IVA General, reducido y personalizadas). Cada producto traslada su propia tasa y el ticket muestra el desglose."
         facts={[
           {
             label: 'Estado del impuesto:',
-            value: business.taxEnabled ? 'Activo' : 'Desactivado',
-            valueClassName: business.taxEnabled ? 'text-[#107C41]' : 'text-slate-500'
+            value: businessUnavailable ? '—' : business.taxEnabled ? 'Activo' : 'Desactivado',
+            valueClassName:
+              businessUnavailable || !business.taxEnabled ? 'text-slate-500' : 'text-[#107C41]'
           },
           {
             label: 'Tasa predeterminada:',
-            value: business.taxEnabled ? `${business.taxName} ${business.taxRate}%` : '—',
+            value:
+              businessUnavailable || !business.taxEnabled
+                ? '—'
+                : `${business.taxName} ${business.taxRate}%`,
             valueClassName: 'font-mono'
           },
           {
             label: 'Tratamiento del precio:',
-            value: business.pricesIncludeTax ? 'Impuesto incluido' : 'Se suma al subtotal',
+            value: businessUnavailable
+              ? '—'
+              : business.pricesIncludeTax
+                ? 'Impuesto incluido'
+                : 'Se suma al subtotal',
             valueClassName: 'font-mono'
           }
         ]}
-        footerNote={isAdmin ? 'Configuración tributaria' : 'Solo lectura'}
+        footerNote={
+          businessConfigError
+            ? 'Error de lectura'
+            : isAdmin
+              ? 'Configuración tributaria'
+              : 'Solo lectura'
+        }
         actionLabel="Configurar Impuestos"
         actionHotkey="ALT+T"
         onAction={() => onOpenModal('tax')}
-        disabled={!isAdmin}
-        disabledHint={restrictedHint}
+        disabled={!canEditBusiness}
+        disabledHint={businessDisabledHint}
       />
 
       <SettingsCard
@@ -189,38 +235,11 @@ export function SettingsCards({
         disabledHint={restrictedHint}
       />
 
-      <SettingsCard
-        icon={<Scale size={22} />}
-        title="Báscula y Puerto Serial (RS-232)"
-        subtitle="Comunicación COM por hardware"
-        accent="amber"
-        badge={{
-          label: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
-          className: scaleConfig.isConnected
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : 'bg-slate-100 text-slate-500 border-slate-200'
-        }}
-        description="Conexión para balanzas de peso comercial (Torrey, Rhino, Dibal) mediante puerto serial. Transmite el peso al POS."
-        facts={[
-          { label: 'Puerto COM:', value: scaleConfig.comPort, valueClassName: 'font-mono' },
-          {
-            label: 'Baud Rate:',
-            value: `${scaleConfig.baudRate} bps`,
-            valueClassName: 'font-mono'
-          },
-          {
-            label: 'Estado de Enlace:',
-            value: scaleConfig.isConnected ? 'Conectado' : 'Desconectado',
-            valueClassName: scaleConfig.isConnected
-              ? 'text-[#107C41] font-mono'
-              : 'text-slate-500 font-mono'
-          }
-        ]}
-        footerNote={scaleConfig.isEnabled ? 'Habilitada en POS' : 'Deshabilitada'}
-        actionLabel="Configurar Puerto Serial"
-        onAction={() => onOpenModal('scale')}
-        disabled={!isAdmin}
-        disabledHint={restrictedHint}
+      <ScaleSettingsCard
+        isAdmin={isAdmin}
+        config={scaleConfig}
+        error={scaleError}
+        onOpen={() => onOpenModal('scale')}
       />
     </div>
   )

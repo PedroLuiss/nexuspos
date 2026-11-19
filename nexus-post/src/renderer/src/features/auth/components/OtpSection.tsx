@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Check, CheckCircle2, Timer, Info } from '../../../shared/icons/Icons'
+import { Check, Timer, Info } from '../../../shared/icons/Icons'
 
 interface OtpSectionProps {
-  initialCode?: string
   onCodeChange?: (code: string) => void
 }
 
-export const OtpSection: React.FC<OtpSectionProps> = ({
-  initialCode = '849215',
-  onCodeChange
-}) => {
-  const [digits, setDigits] = useState<string[]>(
-    initialCode.split('').concat(Array(6).fill('')).slice(0, 6)
-  )
+export const OtpSection: React.FC<OtpSectionProps> = ({ onCodeChange }) => {
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(''))
   const [timeLeft, setTimeLeft] = useState(525) // 08:45 min
   const [resendCooldown, setResendCooldown] = useState(45)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -64,7 +58,8 @@ export const OtpSection: React.FC<OtpSectionProps> = ({
         </div>
 
         <p className="text-xs text-[#5C5C5C] leading-relaxed">
-          Ingrese los 6 dígitos numéricos recibidos en su correo corporativo para validar la sesión de recuperación.
+          Ingrese los 6 dígitos numéricos recibidos en su correo corporativo para validar la sesión
+          de recuperación.
         </p>
 
         {/* 6-Digit Fluent Boxes */}
@@ -97,10 +92,12 @@ export const OtpSection: React.FC<OtpSectionProps> = ({
           </div>
           <div className="flex flex-col text-xs leading-tight">
             <span className="font-bold">
-              {isComplete ? 'Código verificado correctamente' : 'Esperando ingreso de 6 dígitos'}
+              {isComplete
+                ? 'Código completo; pendiente de validar'
+                : 'Esperando ingreso de 6 dígitos'}
             </span>
             <span className="text-[10px] opacity-80">
-              Token firmado por Active Directory RSA-4096
+              El código debe validarse con el servicio de autenticación
             </span>
           </div>
         </div>
@@ -140,7 +137,8 @@ export const OtpSection: React.FC<OtpSectionProps> = ({
       <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#F3F3F3] text-[#5C5C5C] text-xs">
         <Info size={16} className="text-[#0067C0] shrink-0 mt-0.5" />
         <p className="text-[11px] leading-relaxed">
-          Los tokens OTP son de uso único e intransferible. Si usted no solicitó este cambio, notifique al Administrador de Tienda o Seguridad TI.
+          Los tokens OTP son de uso único e intransferible. Si usted no solicitó este cambio,
+          notifique al Administrador de Tienda o Seguridad TI.
         </p>
       </div>
     </div>

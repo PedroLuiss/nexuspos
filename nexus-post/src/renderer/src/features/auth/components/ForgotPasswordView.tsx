@@ -1,9 +1,18 @@
 import React, { useState } from 'react'
-import { ArrowLeft, ArrowRight, Mail, Key, Timer, ShieldCheck, Headphones, Info } from '../../../shared/icons/Icons'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Mail,
+  Key,
+  Timer,
+  ShieldCheck,
+  Headphones,
+  Info
+} from '../../../shared/icons/Icons'
 
 interface ForgotPasswordViewProps {
   onBackToLogin: () => void
-  onCodeSent: (email: string) => void
+  onCodeSent: (email: string) => Promise<boolean>
   isLoading?: boolean
 }
 
@@ -12,14 +21,23 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
   onCodeSent,
   isLoading = false
 }) => {
-  const [email, setEmail] = useState('cajero.central@nexuspos.pe')
+  const [email, setEmail] = useState('')
   const [codeSent, setCodeSent] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!email.trim()) return
-    setCodeSent(true)
-    onCodeSent(email.trim())
+    setErrorMessage(null)
+    try {
+      const sent = await onCodeSent(email.trim())
+      setCodeSent(sent)
+      if (!sent)
+        setErrorMessage('No se pudo enviar el código. Revise la conexión e intente nuevamente.')
+    } catch (error) {
+      setCodeSent(false)
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo enviar el código.')
+    }
   }
 
   return (
@@ -40,11 +58,15 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             onClick={onBackToLogin}
             className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F3F3F3] hover:bg-[#E8E8E8] transition-all text-[#1B1B1B] cursor-pointer"
           >
-            <ArrowLeft size={16} className="text-[#0067C0] group-hover:-translate-x-0.5 transition-transform" />
+            <ArrowLeft
+              size={16}
+              className="text-[#0067C0] group-hover:-translate-x-0.5 transition-transform"
+            />
             <span className="text-xs font-semibold">Volver al Inicio de Sesión</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#717783] ml-1">ESC</span>
+            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#717783] ml-1">
+              ESC
+            </span>
           </button>
-
         </div>
 
         {/* Core Content */}
@@ -62,16 +84,19 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
               Recuperar Contraseña de Acceso
             </h1>
             <p className="text-sm text-[#5C5C5C] max-w-[460px]">
-              Ingrese el correo electrónico corporativo asociado a su cuenta. Le enviaremos un
-              código de seguridad de 6 dígitos para restablecer sus credenciales.
+              Ingrese el correo asociado a su cuenta. El servicio de autenticación enviará un código
+              de 6 dígitos si la recuperación está disponible.
             </p>
           </div>
 
           {/* Email Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="corpEmailFull" className="text-sm font-semibold text-[#1B1B1B] flex items-center gap-1">
+                <label
+                  htmlFor="corpEmailFull"
+                  className="text-sm font-semibold text-[#1B1B1B] flex items-center gap-1"
+                >
                   Correo Electrónico Registrado
                   <span className="text-[#C42B1C]">*</span>
                 </label>
@@ -88,7 +113,12 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   required
                   autoFocus
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    setCodeSent(false)
+                    setErrorMessage(null)
+                  }}
                   placeholder="nexuspos@gmail.com"
                   className="w-full h-11 pl-10 rounded-lg bg-[#F3F3F3] text-sm text-[#1B1B1B] placeholder:text-[#A0A0A0] focus:bg-white focus:outline-none shadow-sm transition-all"
                 />
@@ -105,22 +135,32 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
               <div className="flex items-start gap-2.5">
                 <ShieldCheck size={18} className="text-[#107C41] mt-0.5 flex-shrink-0" />
                 <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-[#1B1B1B]">Protocolo de Entrega Cifrado</span>
+                  <span className="text-xs font-semibold text-[#1B1B1B]">
+                    Protocolo de Entrega Cifrado
+                  </span>
                   <span className="text-[11px] text-[#5C5C5C] mt-0.5">
-                    Protegido por cifrado de extremo a extremo RSA-4096 y token de un solo uso (OTP).
+                    La recuperación usa un código de un solo uso validado por el servicio de
+                    autenticación.
                   </span>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-[#E9ECEF]">
                 <span className="text-[11px] text-[#5C5C5C] flex items-center gap-1.5">
                   <Timer size={14} className="text-[#C42B1C]" />
-                  El código OTP expira en 10 minutos.
+                  El código puede expirar según la política del servicio.
                 </span>
-                <span className="font-mono text-[10px] text-[#107C41] font-semibold">
-                  DISPENSADOR LISTO
-                </span>
+                <span className="font-mono text-[10px] text-slate-500 font-semibold">OTP</span>
               </div>
             </div>
+
+            {errorMessage && (
+              <div
+                role="alert"
+                className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+              >
+                {errorMessage}
+              </div>
+            )}
 
             {/* Success Toast (after sending) */}
             {codeSent && (
@@ -130,7 +170,9 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold">Código de autorización emitido</span>
-                  <span className="text-[11px] opacity-80">Revise su bandeja de entrada corporativa.</span>
+                  <span className="text-[11px] opacity-80">
+                    Revise su bandeja de entrada corporativa.
+                  </span>
                 </div>
               </div>
             )}
@@ -142,7 +184,9 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 onClick={onBackToLogin}
                 className="h-10 px-4 rounded-lg bg-[#F3F3F3] hover:bg-[#E8E8E8] text-[#1B1B1B] text-sm font-semibold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
-                <span className="font-mono text-[10px] bg-[#E8E8E8] text-[#5C5C5C] px-1.5 py-0.5 rounded">ESC</span>
+                <span className="font-mono text-[10px] bg-[#E8E8E8] text-[#5C5C5C] px-1.5 py-0.5 rounded">
+                  ESC
+                </span>
                 Cancelar
               </button>
               <button
@@ -150,7 +194,9 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 disabled={isLoading || !email.trim()}
                 className="h-10 px-5 rounded-lg bg-[#0067C0] hover:bg-[#0078D4] active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md disabled:opacity-50 cursor-pointer"
               >
-                <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded">ENTER</span>
+                <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded">
+                  ENTER
+                </span>
                 <span>{isLoading ? 'Enviando...' : 'Enviar Código de Verificación'}</span>
                 <ArrowRight size={16} />
               </button>
@@ -168,12 +214,10 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             </p>
           </div>
           <div className="flex items-center justify-between text-[#717783] pt-0.5">
-            <span className="font-mono text-[10px]">
-              NexusPOS Enterprise v4.8.2 | Módulo de Seguridad
-            </span>
+            <span className="font-mono text-[10px]">NexusPOS | Recuperación de acceso</span>
             <span className="font-mono text-[10px] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#107C41]" />
-              ACTIVE DIRECTORY SYNCED
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              SERVICIO EXTERNO
             </span>
           </div>
         </div>

@@ -2,7 +2,9 @@ import React, { useState } from 'react'
 import type { TaxInput, TaxRate } from '@shared/contracts'
 import { formatTaxLabel, formatTaxRate } from '@shared/lib/tax'
 import type { UseTaxesResult } from '../../../shared/hooks/useTaxes'
-import { Check, Edit3, Plus, Star, Trash2, X, AlertCircle } from '../../../shared/icons/Icons'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
+import { Edit3, Plus, Star, Trash2, AlertCircle } from '../../../shared/icons/Icons'
+import { TaxDraftForm, type DraftTax } from './TaxDraftForm'
 
 type Catalog = Pick<UseTaxesResult, 'createTax' | 'updateTax' | 'deleteTax' | 'setDefaultTax'>
 
@@ -10,17 +12,6 @@ interface TaxCatalogEditorProps extends Catalog {
   taxes: TaxRate[]
   canEdit: boolean
   error: string | null
-}
-
-const inputClass =
-  'w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0] disabled:bg-slate-50 disabled:text-slate-500'
-
-interface DraftTax {
-  id?: string
-  name: string
-  rate: number
-  code: string
-  active: boolean
 }
 
 const EMPTY_DRAFT: DraftTax = { name: '', rate: 16, code: '', active: true }
@@ -38,6 +29,7 @@ export const TaxCatalogEditor: React.FC<TaxCatalogEditorProps> = ({
   const [draft, setDraft] = useState<DraftTax | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirmDialog()
 
   const startCreate = (): void => {
     setFormError(null)
@@ -95,13 +87,12 @@ export const TaxCatalogEditor: React.FC<TaxCatalogEditorProps> = ({
 
   const handleDelete = async (tax: TaxRate): Promise<void> => {
     if (!canEdit) return
-    if (
-      !window.confirm(
-        `¿Eliminar la tasa "${tax.name}"? Los productos deben tener otra tasa asignada.`
-      )
-    ) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Eliminar tasa',
+      message: `¿Eliminar la tasa "${tax.name}"? Los productos deben tener otra tasa asignada.`,
+      confirmLabel: 'Eliminar'
+    })
+    if (!confirmed) return
     setFormError(null)
     try {
       await deleteTax(tax.id)
@@ -232,93 +223,17 @@ export const TaxCatalogEditor: React.FC<TaxCatalogEditorProps> = ({
       </div>
 
       {draft && (
-        <div className="p-2.5 border border-[#0067C0]/40 bg-blue-50/40 rounded-[4px] space-y-2">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
-                Nombre
-              </label>
-              <input
-                type="text"
-                value={draft.name}
-                maxLength={32}
-                disabled={!canEdit || isSaving}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="IVA General"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
-                Tasa (%)
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={0.01}
-                value={draft.rate}
-                disabled={!canEdit || isSaving}
-                onChange={(e) => setDraft({ ...draft, rate: Number(e.target.value) })}
-                className={`${inputClass} font-mono text-right`}
-              />
-            </div>
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="w-24">
-              <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
-                Código
-              </label>
-              <input
-                type="text"
-                value={draft.code}
-                maxLength={4}
-                disabled={!canEdit || isSaving}
-                onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })}
-                placeholder="G"
-                className={`${inputClass} font-mono`}
-              />
-            </div>
-            <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-700 pb-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draft.active}
-                disabled={!canEdit || isSaving}
-                onChange={(e) => setDraft({ ...draft, active: e.target.checked })}
-                className="rounded border-slate-300 text-[#0067C0]"
-              />
-              Activa
-            </label>
-            <div className="ml-auto flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={() => setDraft(null)}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-slate-700 bg-white border border-slate-300 rounded-[4px] hover:bg-slate-50 cursor-pointer"
-              >
-                <X size={12} />
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!canEdit || isSaving}
-                onClick={() => void handleSave()}
-                className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-white bg-[#0067C0] hover:bg-[#0078D4] rounded-[4px] disabled:opacity-50 cursor-pointer"
-              >
-                <Check size={12} />
-                {isSaving ? 'Guardando…' : draft.id ? 'Guardar tasa' : 'Crear tasa'}
-              </button>
-            </div>
-          </div>
-          {draft.id && (
-            <p className="text-[10px] text-slate-500">
-              Cambiar la tasa afecta a los{' '}
-              {taxes.find((tax) => tax.id === draft.id)?.productCount ?? 0} producto(s) que la usan
-              y se aplicará a las ventas nuevas.
-            </p>
-          )}
-        </div>
+        <TaxDraftForm
+          draft={draft}
+          assignedProductCount={taxes.find((tax) => tax.id === draft.id)?.productCount ?? 0}
+          isSaving={isSaving}
+          canEdit={canEdit}
+          onChange={setDraft}
+          onCancel={() => setDraft(null)}
+          onSave={() => void handleSave()}
+        />
       )}
+      {dialog}
     </div>
   )
 }

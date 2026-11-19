@@ -11,7 +11,6 @@ import {
   X,
   ShieldAlert,
   AlertCircle,
-  Info,
   Building2,
   Truck,
   Package
@@ -143,7 +142,7 @@ export const ProductCatalogsSettingsModal: React.FC<ProductCatalogsSettingsModal
               items={brands}
               canEdit={canEdit && !isLoading}
               error={brandsError}
-              createItem={(input: BrandInput) => createBrand(input)}
+              createItem={(input: Pick<BrandInput, 'name' | 'active'>) => createBrand(input)}
               updateItem={(item: Brand) => updateBrand(item)}
               deleteItem={(id: string) => deleteBrand(id)}
               itemLabel={(item: Brand) => String(item.name)}
@@ -157,7 +156,7 @@ export const ProductCatalogsSettingsModal: React.FC<ProductCatalogsSettingsModal
               items={suppliers}
               canEdit={canEdit && !isLoading}
               error={suppliersError}
-              createItem={(input: SupplierInput) => createSupplier(input)}
+              createItem={(input: Pick<SupplierInput, 'name' | 'active'>) => createSupplier(input)}
               updateItem={(item: Supplier) => updateSupplier(item)}
               deleteItem={(id: string) => deleteSupplier(id)}
               itemLabel={(item: Supplier) => String(item.name)}
@@ -173,7 +172,9 @@ export const ProductCatalogsSettingsModal: React.FC<ProductCatalogsSettingsModal
               items={types}
               canEdit={canEdit && !isLoading}
               error={typesError}
-              createItem={(input: ProductTypeInput) => createProductType(input)}
+              createItem={(input: Pick<ProductTypeInput, 'name' | 'active'>) =>
+                createProductType({ ...input, kind: 'simple', trackStock: true })
+              }
               updateItem={(item: ProductType) => updateProductType(item)}
               deleteItem={(id: string) => deleteProductType(id)}
               itemLabel={(item: ProductType) => String(item.name)}

@@ -26,6 +26,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     handleLogin,
     handlePinLogin,
     handleSendOtp,
+    handleVerifyOtp,
     handleResetPassword,
     showToast
   } = useAuth(onLoginSuccess)
@@ -104,17 +105,23 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               <span className="font-mono">NexusPOS</span>
               <div className="flex items-center gap-2 font-mono text-[10px]">
                 <span className="text-[#1B1B1B]">
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">ENTER</span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
+                    ENTER
+                  </span>{' '}
                   Acceder
                 </span>
                 <span>•</span>
                 <span>
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">ESC</span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
+                    ESC
+                  </span>{' '}
                   Salir
                 </span>
                 <span>•</span>
                 <span>
-                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">F1</span>{' '}
+                  <span className="px-1 py-0.5 rounded bg-white border border-[#D1D5DB] shadow-2xs">
+                    F1
+                  </span>{' '}
                   Recuperar
                 </span>
               </div>
@@ -127,9 +134,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           <ForgotPasswordView
             isLoading={isLoading}
             onBackToLogin={() => setAuthStep('LOGIN')}
-            onCodeSent={async (email) => {
-              await handleSendOtp(email)
-            }}
+            onCodeSent={handleSendOtp}
           />
         )}
 
@@ -138,8 +143,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           <div className="w-full flex items-center justify-center p-4">
             <VerifyCodeResetPasswordView
               email={resetEmail}
+              otpVerified={authStep === 'RESET_PASSWORD'}
               isLoading={isLoading}
               onBackToLogin={() => setAuthStep('LOGIN')}
+              onVerifyOtp={handleVerifyOtp}
+              onResendOtp={() => handleSendOtp(resetEmail)}
               onCompleteReset={handleResetPassword}
             />
           </div>

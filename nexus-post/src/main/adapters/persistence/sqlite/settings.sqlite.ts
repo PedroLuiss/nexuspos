@@ -226,32 +226,24 @@ export class SqliteSettingsRepository implements SettingsRepository {
   /**
    * Verifica que la tabla tenga todas las columnas esperadas.
    * Si faltan columnas, las agrega con ALTER TABLE (idempotente y seguro).
-   * Envuelto en try-catch para no romper el POS si algo falla.
    */
   private ensureColumns(): void {
-    try {
-      const tableExists = this.db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'business_settings'"
-        )
-        .get() as { name: string } | undefined
+    const tableExists = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'business_settings'")
+      .get() as { name: string } | undefined
 
-      if (!tableExists) return
+    if (!tableExists) return
 
-      const existingColumns = new Set(
-        (this.db.prepare('PRAGMA table_info(business_settings)').all() as { name: string }[]).map(
-          (c) => c.name
-        )
+    const existingColumns = new Set(
+      (this.db.prepare('PRAGMA table_info(business_settings)').all() as { name: string }[]).map(
+        (column) => column.name
       )
+    )
 
-      for (const col of EXPECTED_COLUMNS) {
-        if (!existingColumns.has(col.name)) {
-          this.db.exec(col.ddl)
-        }
+    for (const column of EXPECTED_COLUMNS) {
+      if (!existingColumns.has(column.name)) {
+        this.db.exec(column.ddl)
       }
-    } catch {
-      // Si algo falla, dejamos que la consulta original falle con su error nativo
-      // para no ocultar problemas reales.
     }
   }
 
@@ -270,10 +262,11 @@ export class SqliteSettingsRepository implements SettingsRepository {
 
   updateBusiness(input: BusinessConfigInput, updatedBy?: string): BusinessConfig {
     this.ensureColumns()
+    this.getBusiness()
 
     const now = new Date().toISOString()
 
-    this.db
+    const result = this.db
       .prepare(
         `UPDATE business_settings SET
           legal_name = ?, trade_name = ?, tax_id_type = ?, tax_id = ?, tax_regime = ?,
@@ -321,6 +314,9 @@ export class SqliteSettingsRepository implements SettingsRepository {
         updatedBy ?? '',
         SETTINGS_ID
       )
+    if (result.changes !== 1) {
+      throw new Error('No se pudo actualizar la configuración del negocio en la base de datos.')
+    }
 
     return this.getBusiness()
   }

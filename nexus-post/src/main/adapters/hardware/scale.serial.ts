@@ -21,19 +21,14 @@ export class SerialScaleAdapter implements HardwarePort {
   private lastReading: ScaleReading | null = null
 
   async listPorts(): Promise<SerialPortInfo[]> {
-    try {
-      const ports = await SerialPortClass.list()
-      return ports.map((p) => ({
-        path: p.path,
-        manufacturer: p.manufacturer ?? undefined,
-        serialNumber: p.serialNumber ?? undefined,
-        vendorId: p.vendorId ?? undefined,
-        productId: p.productId ?? undefined
-      }))
-    } catch (err) {
-      console.error('[SerialScaleAdapter] Error listando puertos:', err)
-      return []
-    }
+    const ports = await SerialPortClass.list()
+    return ports.map((port) => ({
+      path: port.path,
+      manufacturer: port.manufacturer ?? undefined,
+      serialNumber: port.serialNumber ?? undefined,
+      vendorId: port.vendorId ?? undefined,
+      productId: port.productId ?? undefined
+    }))
   }
 
   async openPort(comPort: string, baudRate: BaudRate): Promise<void> {
@@ -42,8 +37,10 @@ export class SerialScaleAdapter implements HardwarePort {
     }
 
     return new Promise((resolve, reject) => {
+      let settled = false
+      let openingPort: SerialPort
       try {
-        this.port = new SerialPortClass({
+        openingPort = new SerialPortClass({
           path: comPort,
           baudRate,
           dataBits: 8,
@@ -51,34 +48,42 @@ export class SerialScaleAdapter implements HardwarePort {
           parity: 'none',
           autoOpen: false
         })
-
-        this.port.open((err) => {
-          if (err) {
-            this.isOpen = false
-            this.port = null
-            reject(new Error(`No se pudo abrir el puerto ${comPort}: ${err.message}`))
-            return
-          }
-          this.isOpen = true
-          this.lastReading = null
-          resolve()
-        })
-
-        // Timeout de seguridad para la apertura
-        setTimeout(() => {
-          if (!this.isOpen) {
-            reject(new Error(`Tiempo de espera agotado abriendo ${comPort}`))
-          }
-        }, DEFAULT_READ_TIMEOUT_MS)
       } catch (err) {
-        this.isOpen = false
-        this.port = null
         reject(
           err instanceof Error
             ? new Error(`Error abriendo puerto ${comPort}: ${err.message}`)
             : new Error(`Error desconocido abriendo puerto ${comPort}`)
         )
+        return
       }
+
+      this.port = openingPort
+      const openTimeout = setTimeout(() => {
+        if (settled) return
+        settled = true
+        this.isOpen = false
+        if (this.port === openingPort) this.port = null
+        if (openingPort.isOpen) openingPort.close(() => undefined)
+        reject(new Error(`Tiempo de espera agotado abriendo ${comPort}`))
+      }, DEFAULT_READ_TIMEOUT_MS)
+
+      openingPort.open((err) => {
+        if (settled) {
+          if (!err && openingPort.isOpen) openingPort.close(() => undefined)
+          return
+        }
+        settled = true
+        clearTimeout(openTimeout)
+        if (err) {
+          this.isOpen = false
+          if (this.port === openingPort) this.port = null
+          reject(new Error(`No se pudo abrir el puerto ${comPort}: ${err.message}`))
+          return
+        }
+        this.isOpen = true
+        this.lastReading = null
+        resolve()
+      })
     })
   }
 
@@ -89,10 +94,14 @@ export class SerialScaleAdapter implements HardwarePort {
       return
     }
 
-    return new Promise((resolve) => {
-      this.port!.close((err) => {
+    const port = this.port
+    return new Promise((resolve, reject) => {
+      port.close((err) => {
+        this.isOpen = port.isOpen
+        if (!port.isOpen && this.port === port) this.port = null
         if (err) {
-          console.error('[SerialScaleAdapter] Error cerrando puerto:', err)
+          reject(new Error(`No se pudo cerrar el puerto serial: ${err.message}`))
+          return
         }
         this.isOpen = false
         this.port = null
@@ -112,16 +121,13 @@ export class SerialScaleAdapter implements HardwarePort {
       }
     }
 
+    const port = this.port
     return new Promise((resolve) => {
       const readings: number[] = []
-      const startTime = Date.now()
       let buffer = ''
-      const timeout = setTimeout(() => {
-        this.port!.removeListener('data', onData)
-        resolve(this.buildReadingFromBuffer(readings, buffer, 'Lectura por timeout'))
-      }, DEFAULT_READ_TIMEOUT_MS)
+      let settled = false
 
-      const onData = (data: Buffer) => {
+      const onData = (data: Buffer): void => {
         buffer += data.toString('ascii')
         const parsed = this.parseWeightFromBuffer(buffer)
         if (parsed !== null) {
@@ -130,28 +136,40 @@ export class SerialScaleAdapter implements HardwarePort {
         }
 
         if (readings.length >= STABLE_READINGS_REQUIRED && this.isStable(readings)) {
-          clearTimeout(timeout)
-          this.port!.removeListener('data', onData)
           const reading = this.buildReadingFromBuffer(readings, buffer)
           this.lastReading = reading
-          resolve(reading)
+          finish(reading)
         }
       }
 
-      this.port!.on('data', onData)
-
-      // Limpieza si se cierra el puerto mientras esperamos
-      this.port!.once('close', () => {
-        clearTimeout(timeout)
-        this.port!.removeListener('data', onData)
-        resolve({
+      const onClose = (): void => {
+        finish({
           weightKg: 0,
           isStable: false,
           unit: 'KG',
           timestamp: new Date().toISOString(),
           error: 'Puerto serial cerrado durante la lectura'
         })
-      })
+      }
+
+      const timeout = setTimeout(
+        () => finish(this.buildReadingFromBuffer(readings, buffer, 'Lectura por timeout')),
+        DEFAULT_READ_TIMEOUT_MS
+      )
+      const cleanup = (): void => {
+        clearTimeout(timeout)
+        port.removeListener('data', onData)
+        port.removeListener('close', onClose)
+      }
+      const finish = (reading: ScaleReading): void => {
+        if (settled) return
+        settled = true
+        cleanup()
+        resolve(reading)
+      }
+
+      port.on('data', onData)
+      port.once('close', onClose)
     })
   }
 

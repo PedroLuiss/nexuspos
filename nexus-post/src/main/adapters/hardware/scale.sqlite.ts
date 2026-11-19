@@ -13,13 +13,6 @@ interface ScaleConfigRow {
   updated_by: string
 }
 
-const FALLBACK_SCALE_CONFIG: ScaleConfig = {
-  id: 'default',
-  comPort: 'COM3',
-  baudRate: 9600,
-  isEnabled: false
-}
-
 function mapRow(row: ScaleConfigRow): ScaleConfig {
   return {
     id: row.id,
@@ -53,38 +46,27 @@ export class SqliteScaleRepository implements ScaleRepository {
 
     this.db
       .prepare(
-        `UPDATE scale_config SET
-          com_port = ?, baud_rate = ?, is_enabled = ?,
-          updated_at = ?, updated_by = ?
-        WHERE id = ?`
+        `INSERT INTO scale_config (
+          id, com_port, baud_rate, is_enabled, updated_at, updated_by
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          com_port = excluded.com_port,
+          baud_rate = excluded.baud_rate,
+          is_enabled = excluded.is_enabled,
+          updated_at = excluded.updated_at,
+          updated_by = excluded.updated_by`
       )
       .run(
+        SCALE_CONFIG_ID,
         input.comPort ?? 'COM3',
         input.baudRate ?? 9600,
         input.isEnabled ? 1 : 0,
         now,
-        updatedBy ?? '',
-        SCALE_CONFIG_ID
+        updatedBy ?? ''
       )
 
     const row = this.getScaleConfig()
-    if (!row) {
-      // Si no existe (debería existir por migración), insertar
-      this.db
-        .prepare(
-          `INSERT INTO scale_config (id, com_port, baud_rate, is_enabled, updated_at, updated_by)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        )
-        .run(
-          SCALE_CONFIG_ID,
-          input.comPort ?? 'COM3',
-          input.baudRate ?? 9600,
-          input.isEnabled ? 1 : 0,
-          now,
-          updatedBy ?? ''
-        )
-    }
-
-    return this.getScaleConfig() ?? FALLBACK_SCALE_CONFIG
+    if (!row) throw new Error('No se pudo leer la configuración de báscula recién guardada.')
+    return row
   }
 }

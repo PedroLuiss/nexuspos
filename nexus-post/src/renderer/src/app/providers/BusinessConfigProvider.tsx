@@ -56,12 +56,15 @@ export function BusinessConfigProvider({
   }, [])
 
   const reload = useCallback(async (): Promise<void> => {
+    setIsLoading(true)
     setError(null)
     try {
       const data = await settingsApi.getBusiness()
       if (mounted.current) setConfig(data)
     } catch (err: unknown) {
       if (mounted.current) setError(settingsErrorMessage(err))
+    } finally {
+      if (mounted.current) setIsLoading(false)
     }
   }, [])
 

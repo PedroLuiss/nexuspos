@@ -24,6 +24,9 @@ export function validateTaxInput(input: TaxInput): string[] {
   if (Number(input.rate) < 0 || Number(input.rate) > 100) {
     errors.push('La tasa debe estar entre 0 y 100%')
   }
+  if (input.isDefault && input.active === false) {
+    errors.push('La tasa predeterminada debe permanecer activa.')
+  }
   return errors
 }
 

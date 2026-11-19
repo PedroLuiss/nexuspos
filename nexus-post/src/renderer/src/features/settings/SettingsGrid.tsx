@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import type { User } from '@shared/contracts'
 import { AlertCircle, CheckCircle2, ShieldAlert } from '../../shared/icons/Icons'
 import { canManageUsers } from '../../shared/lib/permissions'
@@ -10,6 +10,7 @@ import TaxSettingsModal from './components/TaxSettingsModal'
 import ProductCatalogsSettingsModal from './components/ProductCatalogsSettingsModal'
 import DatabaseBackupModal from './components/DatabaseBackupModal'
 import ScaleSettingsModal from './components/ScaleSettingsModal'
+import { SettingsDataErrors } from './components/SettingsDataErrors'
 import {
   SettingsCards,
   type ScaleConfigView,
@@ -35,6 +36,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     isEnabled: false,
     isConnected: false
   })
+  const [scaleError, setScaleError] = useState<string | null>(null)
 
   const {
     users,
@@ -48,67 +50,91 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     clearError
   } = useUsers(isAdmin)
 
-  const { config: business, saveConfig, isLoading: isConfigLoading } = useBusinessConfig()
+  const {
+    config: business,
+    saveConfig,
+    reload: reloadBusiness,
+    isLoading: isConfigLoading,
+    error: businessConfigError
+  } = useBusinessConfig()
 
-  const showFeedback = (message: string, type: Feedback['type'] = 'success'): void => {
+  const showFeedback = useCallback((message: string, type: Feedback['type'] = 'success'): void => {
     setFeedback({ message, type })
     setTimeout(() => setFeedback(null), 3500)
-  }
-
-  const openModal = (modal: SettingsModalAction): void => {
-    if (modal === 'users' && !isAdmin) {
-      showFeedback('Acceso denegado: solo el Administrador gestiona usuarios y permisos.', 'error')
-      return
-    }
-    if ((modal === 'business' || modal === 'tax') && !isAdmin) {
-      showFeedback(
-        'Acceso denegado: solo el Administrador modifica los datos fiscales y los impuestos.',
-        'error'
-      )
-      return
-    }
-    if (modal === 'catalogs' && !isAdmin) {
-      showFeedback(
-        'Acceso denegado: solo el Administrador puede gestionar los catálogos de producto.',
-        'error'
-      )
-      return
-    }
-    if (modal === 'database' && !isAdmin) {
-      showFeedback(
-        'Acceso denegado: solo el Administrador puede administrar la base de datos.',
-        'error'
-      )
-      return
-    }
-    if (modal === 'scale' && !isAdmin) {
-      showFeedback('Acceso denegado: solo el Administrador configura la báscula serial.', 'error')
-      return
-    }
-    clearError()
-    setActiveModal(modal)
-  }
-
-  // Cargar configuración de báscula al montar
-  useEffect(() => {
-    const loadScaleConfig = async (): Promise<void> => {
-      try {
-        const config = await window.api.hardware.getScaleConfig()
-        const status = await window.api.hardware.isConnected()
-        if (config) {
-          setScaleConfig({
-            comPort: config.comPort,
-            baudRate: config.baudRate,
-            isEnabled: config.isEnabled,
-            isConnected: status.isConnected
-          })
-        }
-      } catch {
-        // Ignorar errores al cargar configuración de escala
-      }
-    }
-    loadScaleConfig()
   }, [])
+
+  const refreshScaleConfig = useCallback(async (): Promise<void> => {
+    try {
+      const [config, status] = await Promise.all([
+        window.api.hardware.getScaleConfig(),
+        window.api.hardware.isConnected()
+      ])
+      setScaleConfig({
+        comPort: config?.comPort ?? 'COM3',
+        baudRate: config?.baudRate ?? 9600,
+        isEnabled: config?.isEnabled ?? false,
+        isConnected: status.isConnected
+      })
+      setScaleError(null)
+    } catch (error) {
+      setScaleError(error instanceof Error ? error.message : 'No se pudo consultar la báscula.')
+    }
+  }, [])
+
+  const openModal = useCallback(
+    (modal: SettingsModalAction): void => {
+      if (modal === 'users' && !isAdmin) {
+        showFeedback(
+          'Acceso denegado: solo el Administrador gestiona usuarios y permisos.',
+          'error'
+        )
+        return
+      }
+      if ((modal === 'business' || modal === 'tax') && !isAdmin) {
+        showFeedback(
+          'Acceso denegado: solo el Administrador modifica los datos fiscales y los impuestos.',
+          'error'
+        )
+        return
+      }
+      if (modal === 'catalogs' && !isAdmin) {
+        showFeedback(
+          'Acceso denegado: solo el Administrador puede gestionar los catálogos de producto.',
+          'error'
+        )
+        return
+      }
+      if (modal === 'database' && !isAdmin) {
+        showFeedback(
+          'Acceso denegado: solo el Administrador puede administrar la base de datos.',
+          'error'
+        )
+        return
+      }
+      if (modal === 'scale' && !isAdmin) {
+        showFeedback('Acceso denegado: solo el Administrador configura la báscula serial.', 'error')
+        return
+      }
+      if ((modal === 'business' || modal === 'tax') && (isConfigLoading || businessConfigError)) {
+        showFeedback(
+          businessConfigError
+            ? 'No se pudo cargar la configuración. Reintente antes de editar.'
+            : 'Espere a que cargue la configuración del negocio antes de editar.',
+          'error'
+        )
+        if (businessConfigError) void reloadBusiness()
+        return
+      }
+      clearError()
+      setActiveModal(modal)
+    },
+    [businessConfigError, clearError, isAdmin, isConfigLoading, reloadBusiness, showFeedback]
+  )
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => void refreshScaleConfig(), 0)
+    return () => window.clearTimeout(timerId)
+  }, [refreshScaleConfig])
 
   // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA, [ALT+O] catálogos
   useEffect(() => {
@@ -131,8 +157,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin])
+  }, [openModal])
 
   const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active).length
   const activeUsers = users.filter((u) => u.active).length
@@ -171,8 +196,15 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
         activeAdmins={activeAdmins}
         business={business}
         isConfigLoading={isConfigLoading}
+        businessConfigError={businessConfigError}
         scaleConfig={scaleConfig}
+        scaleError={scaleError}
         onOpenModal={openModal}
+      />
+      <SettingsDataErrors
+        businessError={businessConfigError}
+        scaleError={scaleError}
+        onRetryBusiness={() => void reloadBusiness()}
       />
 
       <UserManagerModal
@@ -238,6 +270,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
         isOpen={activeModal === 'scale'}
         onClose={() => setActiveModal(null)}
         onFeedback={(msg) => showFeedback(msg)}
+        onStateChange={() => void refreshScaleConfig()}
       />
 
       {!isAdmin && (

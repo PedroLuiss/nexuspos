@@ -11,6 +11,7 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
 
 - **Usuarios, Roles y Permisos (RBAC persistido en SQLite):**
   - Submódulo real (no demostrativo) para alta, edición, activación/desactivación y baja lógica de operadores.
+  - Las claves nuevas se persisten con scrypt; las contraseñas históricas en texto plano se convierten al primer login válido. Las operaciones de alta, edición y recuperación remota escriben hashes, sin migración estructural de `users.password_hash`.
   - **Exclusivo del rol `ADMIN`**: el acceso se valida por rol en dominio (`UserService`) y se refleja en la UI (tarjeta deshabilitada, modal de "Acceso restringido" y pestaña oculta si no tiene permiso de `settings`).
   - **Permisos de módulo** (controlan qué pestañas ve el operador):
     - `pos`, `inventory`, `kardex`, `cash`, `customers`, `reports`, `settings`
@@ -39,11 +40,14 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - La matemática fiscal es única y compartida (`src/shared/lib/tax.ts`): el POS muestra el desglose por tasa y el backend recalcula la venta antes de persistirla; el desglose se guarda en `sale_taxes`.
   - Modo "impuesto incluido": el impuesto se desagrega del precio sin sumarse al total; en caso contrario se suma al subtotal.
 - **Catálogos de producto (marcas, proveedores y tipos):**
+  - Escrituras validadas como `ADMIN` en sus servicios de dominio, además de los controles visuales del renderer.
   - Los tipos muestran el conteo real de productos referenciados. No se permite su baja lógica mientras haya referencias, incluidas las de productos inactivos o dados de baja; primero se debe reasignar el tipo de esos productos.
   - La regla se valida en `ProductTypeService` y el repositorio SQLite; la UI deshabilita la acción con productos asociados y muestra el error si la baja se intenta por IPC.
 - **Conexión de Báscula por Puerto Serial (RS-232 / COM):**
   - Comunicación con balanzas de peso comercial (Torrey, Rhino, Dibal) mediante lectura de buffer serial.
-  - Parámetros: Puerto (`COM1` a `COM4`), velocidad en baudios (9600, 19200 bps), lectura en vivo de peso estabilizado.
+  - Parámetros persistidos en SQLite: puerto COM y velocidad en baudios; el guardado registra al administrador que hizo el cambio.
+  - La UI muestra errores de lectura/configuración y programa cada lectura después de terminar la anterior para evitar operaciones solapadas.
+  - La enumeración de puertos y la lectura en vivo están conectadas; la validación con básculas físicas sigue pendiente.
 - **Impresoras Térmicas y Periféricos:**
   - La impresión de etiquetas de productos usa el adaptador `main/adapters/hardware/barcode-label-printer.ts`: genera códigos SVG reales y abre el diálogo de impresión nativo de Electron/Windows, con impresora seleccionada por el usuario; permite además guardar PDF con tamaño de página configurable. El driver de Windows debe estar instalado. Este flujo está conectado por los canales `productBarcodes:previewLabel`, `productBarcodes:printLabels` y `productBarcodes:downloadLabelsPdf`, pero la impresión física aún no se ha podido probar.
   - La configuración/impresión ESC/POS, ancho de papel de tickets, corte automático y pulso de gaveta todavía no están conectados a un adaptador de hardware.
@@ -167,6 +171,9 @@ nexus-post/src/
 │   │   ├── product-type.entity.ts           # Normalización y validaciones de tipos
 │   │   └── product-type.service.ts          # CRUD de tipos de producto
 │   ├── ports/
+│   │   └── password-hasher.port.ts          # Contrato para hash/verificación de contraseñas
+│   ├── adapters/security/
+│   │   └── scrypt-password-hasher.ts        # Hash scrypt y actualización gradual de credenciales antiguas
 │   │   ├── user.repository.ts               # Puerto con búsquedas por usuario/correo (incluye soft-deleted)
 │   │   ├── tax.repository.ts                # Puerto findAll/findDefault/create/update/softDelete/countProducts
 │   │   ├── brand.repository.ts              # Puerto BrandRepository
@@ -243,7 +250,9 @@ nexus-post/src/
             ├── CatalogEditor.tsx            # Editor genérico de catálogos (marcas, proveedores, tipos)
             ├── ProductCatalogsSettingsModal.tsx  # Modal de gestión de catálogos de producto
             ├── DatabaseBackupModal.tsx      # Integridad, historial, respaldo, optimización y restauración
-            └── ScaleSettingsModal.tsx       # Calibración de báscula serial
+            ├── ScaleSettingsModal.tsx       # Conexión, persistencia y lectura serial de báscula
+            ├── ScalePortSettingsFields.tsx  # Puerto COM y baud rate
+            └── ScaleReadoutPanels.tsx       # Estado de conexión y peso en vivo
 ```
 
 ---
@@ -266,7 +275,7 @@ nexus-post/src/
 - ⚠️ **Endpoint de respaldo Laravel:** falta publicar/configurar el endpoint compatible con el multipart documentado y establecer `NEXUS_BACKUP_API_URL`; hasta entonces solo está activo el respaldo local verificado.
 - ⚠️ **Recuperación ante falla eléctrica durante restauración:** hacer prueba manual en Windows con copias reales antes de certificar el flujo como recuperación de contingencia.
 - ⚠️ **Validación con hardware físico:** el adaptador serial y el flujo IPC existen, pero la integración debe probarse con los modelos y protocolos reales de báscula soportados antes de certificarla para producción.
-- ⚠️ **Contraseñas:** se comparan en texto plano en `users.password_hash`; migrar a hash con `scrypt`/`argon2` (requiere migración de credenciales).
+- ⚠️ **Recuperación de acceso:** OTP y cambio de contraseña requieren el servicio de autenticación remoto; no hay recuperación local offline ni código maestro.
 - ✅ **Impuesto multi-alícuota por producto:** implementado con el catálogo `taxes` + `products.tax_id` + desglose `sale_taxes` (migración 015). Pendiente: reportes fiscales que agrupen por tasa y libro de ventas exportable.
 - ✅ **Catálogos de producto (marcas, proveedores, tipos):** implementado con migración 016 (`brands`, `suppliers`, `product_types` + columnas en `products`), servicios de dominio, IPC, renderer y formularios de producto.
 - ✅ **Códigos de barras múltiples y precios por mayoreo:** migraciones 017 (`product_barcodes`) y 018 (`product_price_tiers`). Se gestionan en la pestaña de edición de producto; el POS resuelve el precio por cantidad y el backend recalcula con la misma lógica (`shared/lib/product-pricing.ts` + `computeSaleTotals`).
@@ -279,9 +288,10 @@ nexus-post/src/
 
 ## 7. Estado de integración
 
-- Usuarios, roles/permisos, identidad comercial, plantilla de ticket e impuestos se leen/guardan mediante servicios e IPC conectados a SQLite; las guardias de administración se validan en `main`.
-- La configuración de báscula está persistida y expuesta por IPC. `ScaleService` controla permisos para configurar/abrir/cerrar el puerto, y `SerialScaleAdapter` implementa enumeración de puertos y lectura serial.
-- `SettingsGrid` todavía conserva parte del estado de conexión de la báscula en React para presentar el estado de UI; la configuración persistente es la fuente de parámetros.
+- Usuarios, roles/permisos, identidad comercial, plantilla de ticket e impuestos se leen/guardan mediante servicios e IPC conectados a SQLite; los cambios de catálogos y hardware validan ADMIN en `main`.
+- La carga fallida de datos fiscales no se presenta como configuración guardada: Ajustes muestra error/reintento y bloquea la edición hasta leer SQLite.
+- La configuración de báscula se persiste y se refresca tras conectar, desconectar o guardar. `ScaleService` valida ADMIN en escritura/operación y `SerialScaleAdapter` implementa enumeración y lectura serial con limpieza de listeners.
+- El estado de enlace se consulta al adaptador en cada actualización de la tarjeta; no sustituye pruebas con hardware físico.
 - El mantenimiento de DB usa los canales `database:getStatus`, `database:listBackups`, `database:createBackup`, `database:verifyIntegrity`, `database:optimize` y `database:restoreBackup`; las mutaciones y consultas administrativas requieren `ADMIN` en backend.
 - Los respaldos locales quedan en `app.getPath('userData')/backups`. La restauración guarda primero un respaldo preventivo y requiere reiniciar la aplicación para reabrir la conexión en la base recuperada.
 - El endpoint Laravel es configurable, no hardcodeado. Si `NEXUS_BACKUP_API_URL` está vacía, ninguna solicitud remota se intenta; la copia local se completa y su respuesta indica `not-configured`. Un error HTTP conserva el respaldo local e informa `failed`.

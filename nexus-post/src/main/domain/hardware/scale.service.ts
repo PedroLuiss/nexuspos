@@ -53,7 +53,10 @@ export class ScaleService implements HardwarePort {
 
   async openPort(comPort: string, baudRate: BaudRate): Promise<void> {
     this.requireAdminSession()
-    return this.getHardwarePort().openPort(comPort, baudRate)
+    const port = comPort.trim()
+    if (!port) throw new Error('Seleccione un puerto serial válido.')
+    this.validateBaudRate(baudRate)
+    return this.getHardwarePort().openPort(port, baudRate)
   }
 
   async closePort(): Promise<void> {
@@ -73,8 +76,17 @@ export class ScaleService implements HardwarePort {
     return this.repository.getScaleConfig()
   }
 
-  saveScaleConfig(input: ScaleConfigInput, updatedBy?: string): ScaleConfig {
-    this.requireAdminSession()
-    return this.repository.saveScaleConfig(input, updatedBy)
+  saveScaleConfig(input: ScaleConfigInput): ScaleConfig {
+    const user = this.requireAdminSession()
+    const comPort = input.comPort.trim()
+    if (!comPort) throw new Error('Seleccione un puerto serial válido.')
+    this.validateBaudRate(input.baudRate)
+    return this.repository.saveScaleConfig({ ...input, comPort }, user.name)
+  }
+
+  private validateBaudRate(baudRate: number): void {
+    if (![4800, 9600, 19200, 38400, 57600, 115200].includes(baudRate)) {
+      throw new Error('La velocidad de comunicación serial no está soportada.')
+    }
   }
 }

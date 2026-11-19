@@ -1,11 +1,15 @@
 import type { ProductType, ProductTypeInput, ProductTypeFilter } from '@shared/contracts'
 import type { ProductTypeRepository } from '../../ports/product-type.repository'
+import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeProductTypeInput, validateProductTypeInput } from './product-type.entity'
 
 /** Servicio de dominio de tipos de producto. Puro: solo depende de puertos y entidades. */
 export class ProductTypeService {
-  constructor(private readonly types: ProductTypeRepository) {}
+  constructor(
+    private readonly types: ProductTypeRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: ProductTypeFilter): ProductType[] {
     return this.types.findAll(filter)
@@ -16,6 +20,7 @@ export class ProductTypeService {
   }
 
   create(input: ProductTypeInput): ProductType {
+    this.requireAdmin()
     const errors = validateProductTypeInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -34,6 +39,7 @@ export class ProductTypeService {
   }
 
   update(type: ProductType): ProductType {
+    this.requireAdmin()
     const existing = this.types.findById(type.id)
     if (!existing) throw new NotFoundError('Tipo de producto no encontrado')
 
@@ -50,6 +56,7 @@ export class ProductTypeService {
   }
 
   softDelete(id: string): void {
+    this.requireAdmin()
     const existing = this.types.findById(id)
     if (!existing || existing.deleted) {
       throw new NotFoundError('Tipo de producto no encontrado')
@@ -66,7 +73,16 @@ export class ProductTypeService {
   }
 
   toggleStatus(id: string): ProductType {
+    this.requireAdmin()
     if (!this.types.findById(id)) throw new NotFoundError('Tipo de producto no encontrado')
     return this.types.toggleStatus(id)
+  }
+
+  private requireAdmin(): void {
+    const user = this.auth.getSessionUser()
+    if (!user) throw new ValidationError('Debe iniciar sesión para administrar catálogos.')
+    if (user.role !== 'ADMIN') {
+      throw new ValidationError('Solo el Administrador puede modificar los tipos de producto.')
+    }
   }
 }
