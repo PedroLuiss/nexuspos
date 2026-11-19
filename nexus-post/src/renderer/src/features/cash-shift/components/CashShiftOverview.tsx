@@ -7,6 +7,7 @@ interface CashShiftOverviewProps {
   movements: CashMovement[]
   tickets: CashTicket[]
   isOpen: boolean
+  canReturnSales: boolean
   onReturnSale: (saleId: string) => Promise<boolean>
 }
 
@@ -17,6 +18,7 @@ export function CashShiftOverview({
   movements,
   tickets,
   isOpen,
+  canReturnSales,
   onReturnSale
 }: CashShiftOverviewProps): React.JSX.Element {
   return (
@@ -131,7 +133,12 @@ export function CashShiftOverview({
         </div>
       </section>
 
-      <CashTicketsPanel tickets={tickets} shiftOpen={isOpen} onReturnSale={onReturnSale} />
+      <CashTicketsPanel
+        tickets={tickets}
+        shiftOpen={isOpen}
+        canReturnSales={canReturnSales}
+        onReturnSale={onReturnSale}
+      />
     </>
   )
 }

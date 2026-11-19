@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { CashTicket } from '@shared/contracts'
+import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import { CashTicketsPagination } from './CashTicketsPagination'
 
 const PAGE_SIZE = 10
@@ -7,6 +8,7 @@ const PAGE_SIZE = 10
 interface CashTicketsPanelProps {
   tickets: CashTicket[]
   shiftOpen: boolean
+  canReturnSales: boolean
   onReturnSale: (saleId: string) => Promise<boolean>
 }
 
@@ -19,14 +21,15 @@ function paymentLabel(ticket: CashTicket): string {
 export function CashTicketsPanel({
   tickets,
   shiftOpen,
+  canReturnSales,
   onReturnSale
 }: CashTicketsPanelProps): React.JSX.Element {
   const [selectedTicket, setSelectedTicket] = useState<CashTicket | null>(null)
-  const [confirmReturn, setConfirmReturn] = useState(false)
   const [isReturning, setIsReturning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [invoiceCode, setInvoiceCode] = useState('')
   const [page, setPage] = useState(1)
+  const confirmation = useConfirmDialog()
   const matchingTickets = tickets.filter((ticket) =>
     ticket.ticketNumber.toLocaleLowerCase().includes(invoiceCode.trim().toLocaleLowerCase())
   )
@@ -38,13 +41,25 @@ export function CashTicketsPanel({
   )
 
   const handleReturn = async (): Promise<void> => {
-    if (!selectedTicket || !confirmReturn) return
+    if (!selectedTicket) return
+    const confirmed = await confirmation.confirm({
+      title: 'Confirmar devolución de factura',
+      message: (
+        <p>
+          ¿Confirmas la devolución completa de la factura{' '}
+          <strong>{selectedTicket.ticketNumber}</strong>? Se repondrá el inventario y se registrará
+          el reintegro según el método de pago original.
+        </p>
+      ),
+      confirmLabel: 'Devolver factura'
+    })
+    if (!confirmed) return
+
     setIsReturning(true)
     setError(null)
     try {
       if (await onReturnSale(selectedTicket.id)) {
         setSelectedTicket(null)
-        setConfirmReturn(false)
       }
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -162,9 +177,9 @@ export function CashTicketsPanel({
               </div>
               <button
                 type="button"
+                disabled={isReturning}
                 onClick={() => {
                   setSelectedTicket(null)
-                  setConfirmReturn(false)
                 }}
                 aria-label="Cerrar factura"
                 className="px-2 text-lg text-[#5C5C5C]"
@@ -228,57 +243,31 @@ export function CashTicketsPanel({
                   {error}
                 </p>
               )}
-              {confirmReturn && (
-                <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-                  ¿Confirmas la devolución total? Se repondrán todos los productos y se registrará
-                  el reintegro según el método de pago original.
-                </div>
-              )}
             </div>
             <footer className="flex justify-end gap-2 border-t border-[#E5E5E5] bg-[#F9F9F9] px-4 py-3">
-              {confirmReturn ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={isReturning}
-                    onClick={() => setConfirmReturn(false)}
-                    className="rounded border border-[#D1D1D1] px-3 py-1.5 text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isReturning}
-                    onClick={() => void handleReturn()}
-                    className="rounded bg-[#C42B1C] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-                  >
-                    {isReturning ? 'Procesando…' : 'Confirmar devolución'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {shiftOpen && !selectedTicket.returnedAt && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmReturn(true)}
-                      className="rounded bg-[#C42B1C] px-3 py-1.5 text-xs font-bold text-white"
-                    >
-                      Devolver factura completa
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTicket(null)}
-                    className="rounded border border-[#D1D1D1] px-3 py-1.5 text-xs"
-                  >
-                    Cerrar
-                  </button>
-                </>
+              {shiftOpen && canReturnSales && !selectedTicket.returnedAt && (
+                <button
+                  type="button"
+                  disabled={isReturning}
+                  onClick={() => void handleReturn()}
+                  className="rounded bg-[#C42B1C] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {isReturning ? 'Procesando…' : 'Devolver factura completa'}
+                </button>
               )}
+              <button
+                type="button"
+                disabled={isReturning}
+                onClick={() => setSelectedTicket(null)}
+                className="rounded border border-[#D1D1D1] px-3 py-1.5 text-xs disabled:opacity-50"
+              >
+                Cerrar
+              </button>
             </footer>
           </div>
         </div>
       )}
+      {confirmation.dialog}
     </section>
   )
 }

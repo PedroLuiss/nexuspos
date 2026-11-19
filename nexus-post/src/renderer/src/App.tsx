@@ -87,20 +87,23 @@ function AppContent(): React.JSX.Element {
   // Alerta animada global (feedback de ventas, caja y cierre de sesión).
   const { toast, showToast, dismissToast } = useToast()
 
-  const reloadCashRegister = useCallback(async (shiftId?: string): Promise<void> => {
-    setIsCashLoading(true)
-    try {
-      const register = await cashApi.getRegister(shiftId)
-      setCashRegister(register)
-      setCashError(null)
-    } catch (error: unknown) {
-      const message = cashErrorMessage(error)
-      setCashError(message)
-      showToast(`No se pudo cargar la caja: ${message}`, 'error')
-    } finally {
-      setIsCashLoading(false)
-    }
-  }, [])
+  const reloadCashRegister = useCallback(
+    async (shiftId?: string): Promise<void> => {
+      setIsCashLoading(true)
+      try {
+        const register = await cashApi.getRegister(shiftId)
+        setCashRegister(register)
+        setCashError(null)
+      } catch (error: unknown) {
+        const message = cashErrorMessage(error)
+        setCashError(message)
+        showToast(`No se pudo cargar la caja: ${message}`, 'error')
+      } finally {
+        setIsCashLoading(false)
+      }
+    },
+    [showToast]
+  )
 
   useEffect(() => {
     if (!currentUser || !cashRegister.activeShiftId) return
@@ -122,7 +125,7 @@ function AppContent(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [currentUser, cashRegister.activeShiftId])
+  }, [currentUser, cashRegister.activeShiftId, showToast])
 
   // Cart operations
   const handleAddToCart = (product: Product, quantity = 1): void => {
@@ -473,6 +476,10 @@ function AppContent(): React.JSX.Element {
   // Cambio de operador validado por PIN desde el candado del header (LOCK).
   const handleOperatorSwitch = (nextUser: User): void => {
     setCurrentUser(nextUser)
+    setCashRegister({ shift: null, shiftOptions: [], movements: [], tickets: [] })
+    setSuspendedSales([])
+    setCashError(null)
+    void reloadCashRegister()
     showToast(`Operador activo: ${nextUser.name}.`, 'success')
   }
 
@@ -558,6 +565,7 @@ function AppContent(): React.JSX.Element {
           isLoading={isCashLoading}
           error={cashError}
           isAdmin={currentUser.role === 'ADMIN'}
+          canReturnSales={currentUser.role === 'ADMIN' || currentUser.role === 'CASHIER'}
           canManageMovements={
             currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
           }

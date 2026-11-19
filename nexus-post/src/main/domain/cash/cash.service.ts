@@ -209,7 +209,7 @@ export class CashService {
         .filter((c) => c.active && !c.deleted)
       for (const component of components) {
         const componentProduct = this.products.findById(component.componentId)
-        if (!componentProduct) continue
+        if (!componentProduct || componentProduct.trackStock === false) continue
         const saleUnitCost = this.movements.findSaleUnitCost(ticketNumber, componentProduct.id)
         this.restockProduct(
           componentProduct,

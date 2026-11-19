@@ -15,6 +15,7 @@ interface CashShiftViewProps {
   isLoading: boolean
   error: string | null
   canManageMovements: boolean
+  canReturnSales: boolean
   isAdmin: boolean
   onRefresh: () => void
   onSelectShift: (shiftId: string) => void
@@ -31,6 +32,7 @@ export function CashShiftView({
   isLoading,
   error,
   canManageMovements,
+  canReturnSales,
   isAdmin,
   onRefresh,
   onSelectShift,
@@ -148,6 +150,7 @@ export function CashShiftView({
           movements={movements}
           tickets={tickets}
           isOpen={isOpen}
+          canReturnSales={canReturnSales}
           onReturnSale={onReturnSale}
         />
       )}
@@ -168,6 +171,7 @@ export function CashShiftView({
           selectedShiftId={shift?.id}
           disabled={isLoading}
           onSelect={onSelectShift}
+          onRefresh={onRefresh}
           onClose={() => setShowHistory(false)}
         />
       )}
