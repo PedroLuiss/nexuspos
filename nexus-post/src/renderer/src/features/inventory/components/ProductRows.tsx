@@ -3,8 +3,11 @@ import type { Product } from '@shared/contracts'
 import { Package, Power, Edit3, Trash2 } from '../../../shared/icons/Icons'
 import ProductAvatar from '../../../shared/ui/ProductAvatar'
 import { formatTaxRate } from '@shared/lib/tax'
+import type { User } from '@shared/contracts'
+import { hasPermission } from '../../../shared/lib/permissions'
 
 interface ProductRowsProps {
+  user: User
   products: Product[]
   selectedProductId: string | null
   isLoading: boolean
@@ -16,6 +19,7 @@ interface ProductRowsProps {
 }
 
 export const ProductRows: React.FC<ProductRowsProps> = ({
+  user,
   products,
   selectedProductId,
   isLoading,
@@ -25,6 +29,8 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
   onEdit,
   onDelete
 }) => {
+  const canEditProduct = hasPermission(user, 'CAN_EDIT_PRODUCT')
+  const canDeleteProduct = hasPermission(user, 'CAN_DELETE_PRODUCT')
   return (
     <div className="flex-1 overflow-auto">
       <table className="w-full text-left text-xs border-collapse">
@@ -169,37 +175,43 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
 
                   <td className="py-2 px-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onToggleStatus(p.id)
-                        }}
-                        title={p.active ? 'Desactivar producto' : 'Activar producto'}
-                        className="p-1 rounded text-[#717783] hover:text-amber-600 hover:bg-amber-50 cursor-pointer"
-                      >
-                        <Power size={13} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onEdit(p)
-                        }}
-                        title="Editar ficha"
-                        className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        disabled={isDeleting}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDelete(p)
-                        }}
-                        title={isDeleting ? 'Dando de baja...' : 'Eliminar producto'}
-                        className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 disabled:opacity-50 disabled:cursor-wait cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {canDeleteProduct && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleStatus(p.id)
+                          }}
+                          title={p.active ? 'Desactivar producto' : 'Activar producto'}
+                          className="p-1 rounded text-[#717783] hover:text-amber-600 hover:bg-amber-50 cursor-pointer"
+                        >
+                          <Power size={13} />
+                        </button>
+                      )}
+                      {canEditProduct && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onEdit(p)
+                          }}
+                          title="Editar ficha"
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                      )}
+                      {canDeleteProduct && (
+                        <button
+                          disabled={isDeleting}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDelete(p)
+                          }}
+                          title={isDeleting ? 'Dando de baja...' : 'Eliminar producto'}
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 disabled:opacity-50 disabled:cursor-wait cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

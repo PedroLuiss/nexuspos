@@ -13,6 +13,10 @@ interface ProductPricingFieldsProps {
   setSalePrice: (sale: number) => void
   marginDollar: number
   marginPercent: string
+  isEditing: boolean
+  canModifyPrice: boolean
+  canAdjustStock: boolean
+  canDeleteProduct: boolean
 }
 
 const PRESET_MARGINS = [10, 15, 20, 25, 30, 50]
@@ -23,9 +27,14 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
   setCostPrice,
   setProfitMarginPercent,
   setSalePrice,
-  marginDollar
+  marginDollar,
+  isEditing,
+  canModifyPrice,
+  canAdjustStock,
+  canDeleteProduct
 }) => {
   const quantityStep = getProductQuantityStep(values.unit)
+  const pricingDisabled = isEditing && !canModifyPrice
 
   return (
     <div className="space-y-4">
@@ -50,6 +59,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               required
               value={values.costPrice}
               onValueChange={setCostPrice}
+              disabled={pricingDisabled}
               className="w-full pl-6 pr-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
             />
           </div>
@@ -68,6 +78,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               step="0.5"
               value={values.profitMarginPercent ?? 10}
               onChange={(e) => setProfitMarginPercent(parseFloat(e.target.value) || 0)}
+              disabled={pricingDisabled}
               className="w-full pl-3 pr-7 py-1.5 text-xs font-mono font-bold text-[#107C41] bg-emerald-50/40 border border-emerald-300 rounded-[4px] focus:border-[#107C41] focus:ring-1 focus:ring-[#107C41]"
             />
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#107C41]">
@@ -94,7 +105,8 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
                 key={pct}
                 type="button"
                 onClick={() => setProfitMarginPercent(pct)}
-                className={`px-2.5 py-0.5 text-[11px] font-semibold rounded-[4px] border transition-colors cursor-pointer ${
+                disabled={pricingDisabled}
+                className={`px-2.5 py-0.5 text-[11px] font-semibold rounded-[4px] border transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                   isSelected
                     ? 'bg-[#107C41] text-white border-[#107C41] shadow-2xs'
                     : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-300'
@@ -139,6 +151,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               min="0"
               value={values.salePrice}
               onValueChange={setSalePrice}
+              disabled={pricingDisabled}
               title="Permite ajustar el precio de venta final manualmente si es necesario"
               className="w-20 px-1.5 py-0.5 text-xs font-mono text-right bg-white border border-slate-300 rounded focus:border-[#0067C0]"
             />
@@ -156,6 +169,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
             step={quantityStep}
             value={values.stock}
             onChange={(e) => update('stock', Number(e.target.value))}
+            disabled={!canAdjustStock}
             className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0] focus:ring-1 focus:ring-[#0067C0]"
           />
         </div>
@@ -190,7 +204,8 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
         <button
           type="button"
           onClick={() => update('active', !values.active)}
-          className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+          disabled={!canDeleteProduct}
+          className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 ${
             values.active ? 'bg-[#0067C0]' : 'bg-slate-300'
           }`}
         >

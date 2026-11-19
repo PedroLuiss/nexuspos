@@ -26,10 +26,11 @@ export class InventoryService {
   ) {}
 
   adjustStock(input: AdjustStockInput): AdjustStockResult {
-    const user = this.auth.getSessionUser()
-    if (!user) {
-      throw new ValidationError('Debe iniciar sesión para ajustar el inventario.')
-    }
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    const user = this.auth.requirePermission(
+      'CAN_ADJUST_STOCK',
+      'El usuario no tiene permiso para ajustar el inventario.'
+    )
 
     const product = this.products.findById(input.productId)
     if (!product) throw new NotFoundError('Producto no encontrado')

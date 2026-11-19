@@ -10,6 +10,7 @@ import type { BatchIssueResult } from '@shared/lib/product-batches'
 import { issueFromBatches } from '@shared/lib/product-batches'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeProductBatchInput, validateProductBatchInput } from './product-batch.entity'
+import type { AuthService } from '../auth/auth.service'
 
 /**
  * Servicio de dominio de lotes. Puro: solo depende de puertos y utilidades compartidas.
@@ -18,7 +19,8 @@ import { normalizeProductBatchInput, validateProductBatchInput } from './product
 export class ProductBatchService {
   constructor(
     private readonly batches: ProductBatchRepository,
-    private readonly products: ProductRepository
+    private readonly products: ProductRepository,
+    private readonly auth: AuthService
   ) {}
 
   list(filter?: ProductBatchFilter): ProductBatch[] {
@@ -39,6 +41,7 @@ export class ProductBatchService {
 
   /** Registra una entrada de lote y suma su cantidad al stock del producto. */
   receive(input: ProductBatchInput): ProductBatch {
+    this.requireStockPermission()
     const errors = validateProductBatchInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
     const normalized = normalizeProductBatchInput(input)
@@ -68,6 +71,7 @@ export class ProductBatchService {
   }
 
   update(batch: ProductBatch): ProductBatch {
+    this.requireStockPermission()
     const existing = this.batches.findById(batch.id)
     if (!existing) throw new NotFoundError('Lote no encontrado')
 
@@ -79,8 +83,17 @@ export class ProductBatchService {
   }
 
   softDelete(id: string): void {
+    this.requireStockPermission()
     if (!this.batches.findById(id)) throw new NotFoundError('Lote no encontrado')
     this.batches.softDelete(id)
+  }
+
+  private requireStockPermission(): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(
+      'CAN_ADJUST_STOCK',
+      'El usuario no tiene permiso para modificar lotes o existencias.'
+    )
   }
 
   /**

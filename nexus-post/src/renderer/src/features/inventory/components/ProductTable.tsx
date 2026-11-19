@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Product, ProductInput, KardexMovementType, KardexReason } from '@shared/contracts'
+import type {
+  Product,
+  ProductInput,
+  KardexMovementType,
+  KardexReason,
+  User
+} from '@shared/contracts'
+import { hasPermission } from '../../../shared/lib/permissions'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
 import { useProductFilters } from '../hooks/useProductFilters'
@@ -21,7 +28,7 @@ import ProductStatusBar from './ProductStatusBar'
 import TablePagination from './TablePagination'
 import type { ProductImportBatchResult } from './ProductImportTab'
 
-export const ProductTable: React.FC = () => {
+export const ProductTable: React.FC<{ user: User }> = ({ user }) => {
   const categoryManager = useCategories()
   const categoryNames = useMemo(
     () => categoryManager.categories.filter((category) => !category.deleted).map((c) => c.name),
@@ -75,14 +82,14 @@ export const ProductTable: React.FC = () => {
       if (anyModalOpen || !e.altKey) return
 
       const key = e.key.toLowerCase()
-      if (key === 'n') {
+      if (key === 'n' && hasPermission(user, 'CAN_CREATE_PRODUCT')) {
         e.preventDefault()
         setEditingProduct(null)
         setIsModalOpen(true)
-      } else if (key === 'e') {
+      } else if (key === 'e' && hasPermission(user, 'CAN_ADJUST_STOCK')) {
         e.preventDefault()
         setAdjustmentMode('IN')
-      } else if (key === 's') {
+      } else if (key === 's' && hasPermission(user, 'CAN_ADJUST_STOCK')) {
         e.preventDefault()
         setAdjustmentMode('OUT')
       } else if (key === 'b') {
@@ -93,7 +100,7 @@ export const ProductTable: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [anyModalOpen])
+  }, [anyModalOpen, user])
 
   const handleEdit = (product: Product): void => {
     setEditingProduct(product)
@@ -186,6 +193,7 @@ export const ProductTable: React.FC = () => {
       )}
 
       <ProductToolbar
+        user={user}
         onAdd={() => {
           setEditingProduct(null)
           setIsModalOpen(true)
@@ -224,6 +232,7 @@ export const ProductTable: React.FC = () => {
 
       <div className="flex-1 overflow-hidden bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] flex flex-col">
         <ProductRows
+          user={user}
           products={products}
           selectedProductId={selectedProductId}
           isLoading={isLoading}
@@ -247,6 +256,7 @@ export const ProductTable: React.FC = () => {
 
       {isModalOpen && (
         <AddProductModal
+          user={user}
           isOpen={isModalOpen}
           initialProduct={editingProduct}
           categories={categoryNames}

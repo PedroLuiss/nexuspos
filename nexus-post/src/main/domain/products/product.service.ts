@@ -16,6 +16,7 @@ import type { BrandRepository } from '../../ports/brand.repository'
 import type { SupplierRepository } from '../../ports/supplier.repository'
 import type { ProductTypeRepository } from '../../ports/product-type.repository'
 import type { ProductBatchRepository } from '../../ports/product-batch.repository'
+import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeProductInput, validateProductInput } from './product.entity'
 
@@ -27,7 +28,8 @@ export class ProductService {
     private readonly brands: BrandRepository,
     private readonly suppliers: SupplierRepository,
     private readonly productTypes: ProductTypeRepository,
-    private readonly batches: ProductBatchRepository
+    private readonly batches: ProductBatchRepository,
+    private readonly auth: AuthService
   ) {}
 
   list(filter?: ProductFilter): Product[] {
@@ -49,6 +51,7 @@ export class ProductService {
   }
 
   create(input: ProductInput): Product {
+    this.requireInventoryPermission('CAN_CREATE_PRODUCT', 'crear productos')
     const errors = validateProductInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -65,6 +68,12 @@ export class ProductService {
       taxId: tax?.id,
       hasTax: tax ? tax.rate > 0 : false
     })
+    if (normalized.stock > 0) {
+      this.auth.requirePermission(
+        'CAN_ADJUST_STOCK',
+        'El usuario no tiene permiso para asignar existencias iniciales.'
+      )
+    }
     if (this.products.findByCode(normalized.code)) {
       throw new ValidationError(`El código "${normalized.code}" ya está registrado`)
     }
@@ -81,8 +90,28 @@ export class ProductService {
   }
 
   update(product: Product): Product {
+    this.requireInventoryPermission('CAN_EDIT_PRODUCT', 'editar productos')
     const existing = this.products.findById(product.id)
     if (!existing) throw new NotFoundError('Producto no encontrado')
+
+    if (product.costPrice !== existing.costPrice || product.salePrice !== existing.salePrice) {
+      this.auth.requirePermission(
+        'CAN_MODIFY_PRICE',
+        'El usuario no tiene permiso para modificar costos o precios.'
+      )
+    }
+    if (product.stock !== existing.stock) {
+      this.auth.requirePermission(
+        'CAN_ADJUST_STOCK',
+        'El usuario no tiene permiso para modificar las existencias.'
+      )
+    }
+    if (product.active !== existing.active) {
+      this.auth.requirePermission(
+        'CAN_DELETE_PRODUCT',
+        'El usuario no tiene permiso para activar o desactivar productos.'
+      )
+    }
 
     const errors = validateProductInput(product)
     if (errors.length > 0) throw new ValidationError(errors.join('; '))
@@ -127,14 +156,24 @@ export class ProductService {
   }
 
   softDelete(id: string): ProductCatalogStatsDelta {
+    this.requireInventoryPermission('CAN_DELETE_PRODUCT', 'dar de baja productos')
     const statsDelta = this.products.softDeleteCascade(id)
     if (!statsDelta) throw new NotFoundError('Producto no encontrado')
     return statsDelta
   }
 
   toggleStatus(id: string): Product {
+    this.requireInventoryPermission('CAN_DELETE_PRODUCT', 'activar o desactivar productos')
     if (!this.products.findById(id)) throw new NotFoundError('Producto no encontrado')
     return this.products.toggleStatus(id)
+  }
+
+  private requireInventoryPermission(
+    permission: 'CAN_CREATE_PRODUCT' | 'CAN_EDIT_PRODUCT' | 'CAN_DELETE_PRODUCT',
+    action: string
+  ): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(permission, `El usuario no tiene permiso para ${action}.`)
   }
 
   /**

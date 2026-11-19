@@ -1,18 +1,15 @@
-import type {
-  ProductBarcode,
-  ProductBarcodeInput,
-  ProductBarcodeFilter
-} from '@shared/contracts'
+import type { ProductBarcode, ProductBarcodeInput, ProductBarcodeFilter } from '@shared/contracts'
 import type { ProductBarcodeRepository } from '../../ports/product-barcode.repository'
 import { NotFoundError, ValidationError } from '../shared/errors'
-import {
-  normalizeProductBarcodeInput,
-  validateProductBarcodeInput
-} from './product-barcode.entity'
+import { normalizeProductBarcodeInput, validateProductBarcodeInput } from './product-barcode.entity'
+import type { AuthService } from '../auth/auth.service'
 
 /** Servicio de dominio de códigos de barras de producto. Puro: solo depende de puertos y entidades. */
 export class ProductBarcodeService {
-  constructor(private readonly barcodes: ProductBarcodeRepository) {}
+  constructor(
+    private readonly barcodes: ProductBarcodeRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: ProductBarcodeFilter): ProductBarcode[] {
     return this.barcodes.findAll(filter)
@@ -31,6 +28,7 @@ export class ProductBarcodeService {
   }
 
   create(input: ProductBarcodeInput): ProductBarcode {
+    this.requireEditPermission()
     const errors = validateProductBarcodeInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -39,9 +37,7 @@ export class ProductBarcodeService {
     // El código de barras debe ser único entre los no eliminados
     const existing = this.barcodes.findByBarcode(normalized.barcode)
     if (existing && !existing.deleted) {
-      throw new ValidationError(
-        `El código de barras "${normalized.barcode}" ya está registrado`
-      )
+      throw new ValidationError(`El código de barras "${normalized.barcode}" ya está registrado`)
     }
 
     // Si se marca como primario, quitar la primariedad de los demás del mismo producto
@@ -58,6 +54,7 @@ export class ProductBarcodeService {
   }
 
   update(barcode: ProductBarcode): ProductBarcode {
+    this.requireEditPermission()
     const existing = this.barcodes.findById(barcode.id)
     if (!existing) throw new NotFoundError('Código de barras no encontrado')
 
@@ -76,12 +73,22 @@ export class ProductBarcodeService {
   }
 
   softDelete(id: string): void {
+    this.requireEditPermission()
     if (!this.barcodes.findById(id)) throw new NotFoundError('Código de barras no encontrado')
     this.barcodes.softDelete(id)
   }
 
   toggleStatus(id: string): ProductBarcode {
+    this.requireEditPermission()
     if (!this.barcodes.findById(id)) throw new NotFoundError('Código de barras no encontrado')
     return this.barcodes.toggleStatus(id)
+  }
+
+  private requireEditPermission(): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(
+      'CAN_EDIT_PRODUCT',
+      'El usuario no tiene permiso para editar los datos del producto.'
+    )
   }
 }

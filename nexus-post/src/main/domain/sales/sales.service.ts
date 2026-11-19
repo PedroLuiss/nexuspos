@@ -36,7 +36,7 @@ export class SalesService {
 
   complete(input: CreateSaleInput): SaleResult {
     const user = this.auth.getSessionUser()
-    if (!user || !user.permissions?.includes('pos')) {
+    if (!user || !this.auth.hasPermission('pos')) {
       throw new Error('El usuario no tiene permiso para registrar ventas.')
     }
     if (!input.ticketNumber?.trim() || !input.items.length) {
@@ -57,7 +57,7 @@ export class SalesService {
       if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
         throw new ValidationError('El descuento debe estar entre 0 y 100%.')
       }
-      if (discountPercent > 0 && !user.permissions?.includes('CAN_APPLY_DISCOUNT')) {
+      if (discountPercent > 0 && !this.auth.hasPermission('CAN_APPLY_DISCOUNT')) {
         throw new ValidationError('El usuario no tiene permiso para aplicar descuentos.')
       }
       if (seenProducts.has(line.productId)) {
@@ -78,7 +78,7 @@ export class SalesService {
             `"${product.name}" no tiene existencias y no se puede facturar.`
           )
         }
-        if (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
+        if (!this.auth.hasPermission('CAN_OVERRIDE_NO_STOCK') && quantity > product.stock) {
           throw new ValidationError(`Stock insuficiente para "${product.name}".`)
         }
       }
@@ -174,8 +174,7 @@ export class SalesService {
           !isValidProductQuantity(item.quantity, product.unit) ||
           (product.trackStock !== false &&
             (product.stock <= 0 ||
-              (!user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
-                item.quantity > product.stock)))
+              (!this.auth.hasPermission('CAN_OVERRIDE_NO_STOCK') && item.quantity > product.stock)))
         ) {
           throw new ValidationError(`Stock o disponibilidad cambió para "${item.productName}".`)
         }
@@ -206,7 +205,7 @@ export class SalesService {
                 )
               }
               if (
-                !user.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+                !this.auth.hasPermission('CAN_OVERRIDE_NO_STOCK') &&
                 consumptionQty > componentProduct.stock
               ) {
                 throw new ValidationError(
@@ -451,7 +450,7 @@ export class SalesService {
 
   private requirePosSession(): NonNullable<ReturnType<AuthService['getSessionUser']>> {
     const user = this.auth.getSessionUser()
-    if (!user || !user.permissions?.includes('pos')) {
+    if (!user || !this.auth.hasPermission('pos')) {
       throw new Error('Se requiere una sesión con permiso para acceder a las ventas.')
     }
     return user

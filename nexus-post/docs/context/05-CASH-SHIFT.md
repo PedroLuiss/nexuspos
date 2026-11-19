@@ -18,7 +18,7 @@
 - Abrir turno requiere sesión de cajero o administrador y un fondo inicial no negativo.
 - Cobrar, pausar ventas y registrar abonos requiere un turno abierto asociado al usuario autenticado.
 - Los ingresos de ventas en efectivo (incluida la parte en efectivo del pago mixto), abonos, ingresos manuales, egresos y reintegros en efectivo actualizan el mismo libro.
-- Los gastos manuales requieren permiso `CAN_MANUAL_CASH_MOVEMENTS`, concepto y efectivo disponible suficiente.
+- Los gastos manuales requieren permiso efectivo `CAN_MANUAL_CASH_MOVEMENTS` (validado por `AuthService.hasPermission()` en backend), concepto y efectivo disponible suficiente.
 - Arqueo: `efectivo esperado = fondo inicial + suma(cash_effect)`. El cierre persiste el efectivo contado y la diferencia.
 - Los montos de apertura, cierre e ingresos/egresos manuales se redondean a centavos; el campo muestra dos decimales al perder el foco y admite coma o punto decimal.
 - El modal de cierre muestra el esperado de gaveta, el desglose de fondo inicial, efectivo de ventas, abonos, ingresos manuales, gastos y devoluciones en efectivo, además del número de tickets. Instruye excluir tarjeta/crédito del conteo y calcula sobrante/faltante en vivo al escribir el total contado; antes de ingresar el monto no muestra una diferencia engañosa.

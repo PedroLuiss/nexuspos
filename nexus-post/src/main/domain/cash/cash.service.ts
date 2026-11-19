@@ -78,7 +78,7 @@ export class CashService {
 
   addMovement(input: CreateCashMovementInput): CashRegisterData {
     const user = this.requireCashUser()
-    if (!user.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS')) {
+    if (!this.auth.hasPermission('CAN_MANUAL_CASH_MOVEMENTS')) {
       throw new Error('El usuario no tiene permiso para registrar movimientos manuales de caja.')
     }
     if (!['INGRESO', 'EGRESO'].includes(input.type)) {
@@ -417,7 +417,7 @@ export class CashService {
 
   private requireCashUser(): NonNullable<ReturnType<AuthService['getSessionUser']>> {
     const user = this.auth.getSessionUser()
-    if (!user || !user.permissions?.includes('cash')) {
+    if (!user || !this.auth.hasPermission('cash')) {
       throw new Error('Se requiere una sesión con permiso para acceder a la caja.')
     }
     return user

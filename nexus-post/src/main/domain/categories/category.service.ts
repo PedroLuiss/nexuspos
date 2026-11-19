@@ -2,16 +2,21 @@ import type { Category, CategoryInput, CategoryFilter } from '@shared/contracts'
 import type { CategoryRepository } from '../../ports/category.repository'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeCategoryInput, validateCategoryInput } from './category.entity'
+import type { AuthService } from '../auth/auth.service'
 
 /** Servicio de dominio de categorías. Puro: solo depende de puertos y entidades. */
 export class CategoryService {
-  constructor(private readonly categories: CategoryRepository) {}
+  constructor(
+    private readonly categories: CategoryRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: CategoryFilter): Category[] {
     return this.categories.findAll(filter)
   }
 
   create(input: CategoryInput): Category {
+    this.requireEditPermission()
     const errors = validateCategoryInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('; '))
 
@@ -31,6 +36,7 @@ export class CategoryService {
   }
 
   update(category: Category): Category {
+    this.requireEditPermission()
     const existing = this.categories.findById(category.id)
     if (!existing) throw new NotFoundError('Categoría no encontrada')
 
@@ -47,12 +53,22 @@ export class CategoryService {
   }
 
   softDelete(id: string): void {
+    this.requireEditPermission()
     if (!this.categories.findById(id)) throw new NotFoundError('Categoría no encontrada')
     this.categories.softDelete(id)
   }
 
   toggleStatus(id: string): Category {
+    this.requireEditPermission()
     if (!this.categories.findById(id)) throw new NotFoundError('Categoría no encontrada')
     return this.categories.toggleStatus(id)
+  }
+
+  private requireEditPermission(): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(
+      'CAN_EDIT_PRODUCT',
+      'El usuario no tiene permiso para administrar categorías.'
+    )
   }
 }

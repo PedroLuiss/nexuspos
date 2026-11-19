@@ -1,13 +1,9 @@
-import type {
-  ComboItem,
-  ComboItemInput,
-  ComboItemFilter,
-  Product
-} from '@shared/contracts'
+import type { ComboItem, ComboItemInput, ComboItemFilter, Product } from '@shared/contracts'
 import type { ComboItemRepository } from '../../ports/combo-item.repository'
 import type { ProductRepository } from '../../ports/product.repository'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { normalizeComboItemInput, validateComboItemInput } from './combo-item.entity'
+import type { AuthService } from '../auth/auth.service'
 
 /**
  * Servicio de dominio de componentes de combo. Puro: solo depende de puertos y entidades.
@@ -16,7 +12,8 @@ import { normalizeComboItemInput, validateComboItemInput } from './combo-item.en
 export class ComboItemService {
   constructor(
     private readonly combos: ComboItemRepository,
-    private readonly products: ProductRepository
+    private readonly products: ProductRepository,
+    private readonly auth: AuthService
   ) {}
 
   list(filter?: ComboItemFilter): ComboItem[] {
@@ -32,6 +29,7 @@ export class ComboItemService {
   }
 
   create(input: ComboItemInput): ComboItem {
+    this.requireEditPermission()
     const errors = validateComboItemInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
@@ -55,6 +53,7 @@ export class ComboItemService {
   }
 
   update(item: ComboItem): ComboItem {
+    this.requireEditPermission()
     const existing = this.combos.findById(item.id)
     if (!existing) throw new NotFoundError('Componente de combo no encontrado')
 
@@ -66,12 +65,7 @@ export class ComboItemService {
 
     const duplicate = this.combos
       .findByComboId(normalized.comboId)
-      .filter(
-        (i) =>
-          !i.deleted &&
-          i.id !== item.id &&
-          i.componentId === normalized.componentId
-      )
+      .filter((i) => !i.deleted && i.id !== item.id && i.componentId === normalized.componentId)
     if (duplicate.length > 0) {
       throw new ValidationError('Ese producto ya es un componente de este combo')
     }
@@ -80,13 +74,23 @@ export class ComboItemService {
   }
 
   softDelete(id: string): void {
+    this.requireEditPermission()
     if (!this.combos.findById(id)) throw new NotFoundError('Componente de combo no encontrado')
     this.combos.softDelete(id)
   }
 
   toggleStatus(id: string): ComboItem {
+    this.requireEditPermission()
     if (!this.combos.findById(id)) throw new NotFoundError('Componente de combo no encontrado')
     return this.combos.toggleStatus(id)
+  }
+
+  private requireEditPermission(): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(
+      'CAN_EDIT_PRODUCT',
+      'El usuario no tiene permiso para editar los productos del combo.'
+    )
   }
 
   /** Verifica que el combo y el componente existan y que el componente no sea otro combo. */

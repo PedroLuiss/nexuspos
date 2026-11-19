@@ -106,6 +106,9 @@ export function registerIpcHandlers(): void {
   const cashRepository = new SqliteCashRepository(db)
   const reportsRepository = new SqliteReportsRepository(db)
   const transactionRunner = new SqliteTransactionRunner(db)
+  const authAdapter = new LaravelAuthAdapter()
+  const passwordHasher = new ScryptPasswordHasher()
+  const authService = new AuthService(userRepository, passwordHasher, authAdapter)
 
   const productService = new ProductService(
     productRepository,
@@ -113,15 +116,20 @@ export function registerIpcHandlers(): void {
     brandRepository,
     supplierRepository,
     productTypeRepository,
-    productBatchRepository
+    productBatchRepository,
+    authService
   )
-  const productBarcodeService = new ProductBarcodeService(productBarcodeRepository)
-  const productPriceTierService = new ProductPriceTierService(productPriceTierRepository)
-  const comboItemService = new ComboItemService(comboItemRepository, productRepository)
-  const productBatchService = new ProductBatchService(productBatchRepository, productRepository)
-  const authAdapter = new LaravelAuthAdapter()
-  const passwordHasher = new ScryptPasswordHasher()
-  const authService = new AuthService(userRepository, passwordHasher, authAdapter)
+  const productBarcodeService = new ProductBarcodeService(productBarcodeRepository, authService)
+  const productPriceTierService = new ProductPriceTierService(
+    productPriceTierRepository,
+    authService
+  )
+  const comboItemService = new ComboItemService(comboItemRepository, productRepository, authService)
+  const productBatchService = new ProductBatchService(
+    productBatchRepository,
+    productRepository,
+    authService
+  )
   const issueReportService = new IssueReportService(new LaravelIssueReportAdapter(), authService)
   const inventoryService = new InventoryService(
     productRepository,
@@ -130,7 +138,7 @@ export function registerIpcHandlers(): void {
     authService,
     transactionRunner
   )
-  const categoryService = new CategoryService(categoryRepository)
+  const categoryService = new CategoryService(categoryRepository, authService)
   const taxService = new TaxService(taxRepository, authService)
   const brandService = new BrandService(brandRepository, authService)
   const supplierService = new SupplierService(supplierRepository, authService)

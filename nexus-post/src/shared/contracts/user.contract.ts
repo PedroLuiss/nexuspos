@@ -4,8 +4,11 @@ export type ModulePermission =
   'pos' | 'inventory' | 'kardex' | 'cash' | 'customers' | 'reports' | 'settings'
 
 export type ActionPermission =
+  | 'CAN_CREATE_PRODUCT'
+  | 'CAN_EDIT_PRODUCT'
   | 'CAN_DELETE_PRODUCT'
   | 'CAN_MODIFY_PRICE'
+  | 'CAN_ADJUST_STOCK'
   | 'CAN_APPLY_DISCOUNT'
   | 'CAN_MANUAL_CASH_MOVEMENTS'
   | 'CAN_OVERRIDE_NO_STOCK'
@@ -47,14 +50,29 @@ export const ALL_MODULE_PERMISSIONS: PermissionDescriptor<ModulePermission>[] = 
 
 export const ALL_ACTION_PERMISSIONS: PermissionDescriptor<ActionPermission>[] = [
   {
+    key: 'CAN_CREATE_PRODUCT',
+    label: 'Crear Productos',
+    description: 'Registrar productos e importar artículos al catálogo'
+  },
+  {
+    key: 'CAN_EDIT_PRODUCT',
+    label: 'Editar Productos',
+    description: 'Modificar fichas, códigos, variantes y componentes de combos'
+  },
+  {
     key: 'CAN_DELETE_PRODUCT',
-    label: 'Eliminar Productos',
-    description: 'Dar de baja artículos del catálogo'
+    label: 'Dar de baja Productos',
+    description: 'Desactivar o eliminar lógicamente artículos del catálogo'
   },
   {
     key: 'CAN_MODIFY_PRICE',
     label: 'Modificar Precios',
-    description: 'Cambiar precio al vuelo en terminal'
+    description: 'Cambiar costos, precios de venta y tarifas por mayoreo'
+  },
+  {
+    key: 'CAN_ADJUST_STOCK',
+    label: 'Ajustar Inventario',
+    description: 'Registrar entradas, salidas, lotes y cambios de existencias'
   },
   {
     key: 'CAN_APPLY_DISCOUNT',
@@ -96,8 +114,11 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     'kardex',
     'cash',
     'customers',
+    'CAN_CREATE_PRODUCT',
+    'CAN_EDIT_PRODUCT',
     'CAN_APPLY_DISCOUNT',
     'CAN_MODIFY_PRICE',
+    'CAN_ADJUST_STOCK',
     'CAN_MANUAL_CASH_MOVEMENTS',
     'CAN_OVERRIDE_NO_STOCK'
   ],

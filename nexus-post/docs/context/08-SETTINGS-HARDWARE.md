@@ -16,9 +16,12 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - **Permisos de módulo** (controlan qué pestañas ve el operador):
     - `pos`, `inventory`, `kardex`, `cash`, `customers`, `reports`, `settings`
   - **Permisos de acción** (operaciones sensibles):
-    - `CAN_DELETE_PRODUCT`, `CAN_MODIFY_PRICE`, `CAN_APPLY_DISCOUNT`,
+    - `CAN_CREATE_PRODUCT`, `CAN_EDIT_PRODUCT`, `CAN_DELETE_PRODUCT`,
+      `CAN_MODIFY_PRICE`, `CAN_ADJUST_STOCK`, `CAN_APPLY_DISCOUNT`,
       `CAN_MANUAL_CASH_MOVEMENTS`, `CAN_OVERRIDE_NO_STOCK`, `MANAGE_USERS`.
     - `MANAGE_USERS` se muestra bloqueado y **solo lo posee el rol `ADMIN`**.
+    - Las acciones de inventario se comprueban en el backend contra la sesión autenticada; ocultar botones en renderer no sustituye esta validación. `CAN_CREATE_PRODUCT` cubre altas e importación, `CAN_EDIT_PRODUCT` ficha y subrecursos, `CAN_DELETE_PRODUCT` baja/estado, `CAN_MODIFY_PRICE` precios existentes y mayoristas, y `CAN_ADJUST_STOCK` cambios de existencias/lotes.
+    - Los permisos nuevos no se agregan automáticamente a matrices explícitas ya guardadas: un administrador debe asignarlos en el selector. El preset actualizado de Supervisor sí incluye creación, edición y ajuste de stock, pero no baja lógica de productos.
     - `CAN_OVERRIDE_NO_STOCK` solo permite sobreventa si el producto todavía tiene existencias; nunca permite facturar productos con stock cero.
   - **Presets por rol** (`ROLE_DEFAULT_PERMISSIONS` en `@shared/contracts`): se aplican al crear un usuario o al cambiar de rol sin enviar permisos explícitos.
   - El Administrador siempre obtiene el catálogo completo (`ADMIN_PERMISSION_KEYS`), independientemente de la matriz guardada.

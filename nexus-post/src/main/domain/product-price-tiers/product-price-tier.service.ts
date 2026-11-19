@@ -9,10 +9,14 @@ import {
   normalizeProductPriceTierInput,
   validateProductPriceTierInput
 } from './product-price-tier.entity'
+import type { AuthService } from '../auth/auth.service'
 
 /** Servicio de dominio de precios por mayoreo. Puro: solo depende de puertos y entidades. */
 export class ProductPriceTierService {
-  constructor(private readonly tiers: ProductPriceTierRepository) {}
+  constructor(
+    private readonly tiers: ProductPriceTierRepository,
+    private readonly auth: AuthService
+  ) {}
 
   list(filter?: ProductPriceTierFilter): ProductPriceTier[] {
     return this.tiers.findAll(filter)
@@ -31,10 +35,13 @@ export class ProductPriceTierService {
    * Busca el tier activo cuya rango [minQuantity, maxQuantity] contenga la cantidad.
    * Si hay varios, elige el de mayor minQuantity (más específico). Si no hay match, devuelve null.
    */
-  resolvePrice(productId: string, quantity: number): { tier: ProductPriceTier; price: number } | null {
-    const tiers = this.tiers.findByProductId(productId).filter(
-      (t) => !t.deleted && t.active && t.minQuantity <= quantity
-    )
+  resolvePrice(
+    productId: string,
+    quantity: number
+  ): { tier: ProductPriceTier; price: number } | null {
+    const tiers = this.tiers
+      .findByProductId(productId)
+      .filter((t) => !t.deleted && t.active && t.minQuantity <= quantity)
 
     const applicable = tiers.filter(
       (t) => t.maxQuantity === undefined || t.maxQuantity === null || quantity <= t.maxQuantity
@@ -49,15 +56,16 @@ export class ProductPriceTierService {
   }
 
   create(input: ProductPriceTierInput): ProductPriceTier {
+    this.requirePricePermission()
     const errors = validateProductPriceTierInput(input)
     if (errors.length > 0) throw new ValidationError(errors.join('. '))
 
     const normalized = normalizeProductPriceTierInput(input)
 
     // Validar solapamiento con otros tiers activos del mismo producto
-    const existing = this.tiers.findByProductId(normalized.productId).filter(
-      (t) => !t.deleted && t.active
-    )
+    const existing = this.tiers
+      .findByProductId(normalized.productId)
+      .filter((t) => !t.deleted && t.active)
     for (const t of existing) {
       const aMin = normalized.minQuantity
       const aMax = normalized.maxQuantity ?? Infinity
@@ -80,6 +88,7 @@ export class ProductPriceTierService {
   }
 
   update(tier: ProductPriceTier): ProductPriceTier {
+    this.requirePricePermission()
     const existing = this.tiers.findById(tier.id)
     if (!existing) throw new NotFoundError('Precio por mayoreo no encontrado')
 
@@ -108,12 +117,22 @@ export class ProductPriceTierService {
   }
 
   softDelete(id: string): void {
+    this.requirePricePermission()
     if (!this.tiers.findById(id)) throw new NotFoundError('Precio por mayoreo no encontrado')
     this.tiers.softDelete(id)
   }
 
   toggleStatus(id: string): ProductPriceTier {
+    this.requirePricePermission()
     if (!this.tiers.findById(id)) throw new NotFoundError('Precio por mayoreo no encontrado')
     return this.tiers.toggleStatus(id)
+  }
+
+  private requirePricePermission(): void {
+    this.auth.requirePermission('inventory', 'El usuario no tiene acceso al módulo de inventario.')
+    this.auth.requirePermission(
+      'CAN_MODIFY_PRICE',
+      'El usuario no tiene permiso para modificar precios por mayoreo.'
+    )
   }
 }

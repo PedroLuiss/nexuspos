@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Product, ProductInput } from '@shared/contracts'
+import type { Product, ProductInput, User } from '@shared/contracts'
 import { Package, X, Check } from '../../../shared/icons/Icons'
 import ProductBasicFields from './ProductBasicFields'
 import ProductPricingFields from './ProductPricingFields'
@@ -11,8 +11,10 @@ import BatchEditor from './BatchEditor'
 import { useProductForm, PRODUCT_UNITS } from '../hooks/useProductForm'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { toErrorMessage } from '../api/products.api'
+import { hasPermission } from '../../../shared/lib/permissions'
 
 interface AddProductModalProps {
+  user: User
   isOpen: boolean
   onClose: () => void
   onSubmit: (input: ProductInput, productId?: string) => Promise<Product>
@@ -22,6 +24,7 @@ interface AddProductModalProps {
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({
+  user,
   isOpen,
   onClose,
   onSubmit,
@@ -48,6 +51,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const persistedTypeKind =
     types.find((type) => type.id === product?.typeId)?.kind ?? product?.typeKind
   const isCombo = persistedTypeKind === 'combo'
+  const canEditProduct = hasPermission(user, 'CAN_EDIT_PRODUCT')
+  const canModifyPrice = hasPermission(user, 'CAN_MODIFY_PRICE')
+  const canAdjustStock = hasPermission(user, 'CAN_ADJUST_STOCK')
+  const canDeleteProduct = hasPermission(user, 'CAN_DELETE_PRODUCT')
 
   if (!isOpen) return null
 
@@ -130,22 +137,30 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 setSalePrice={setSalePrice}
                 marginDollar={marginDollar}
                 marginPercent={marginPercent}
+                isEditing={Boolean(product)}
+                canModifyPrice={canModifyPrice}
+                canAdjustStock={canAdjustStock}
+                canDeleteProduct={canDeleteProduct}
               />
             </div>
 
             {product && (
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ProductBarcodesEditor productId={product.id} />
-                <ProductPriceTiersEditor productId={product.id} salePrice={values.salePrice} />
-                {isCombo && <ComboItemsEditor comboId={product.id} products={products} />}
-                {!isCombo && !product.parentId && (
+                {canEditProduct && <ProductBarcodesEditor productId={product.id} />}
+                {canModifyPrice && (
+                  <ProductPriceTiersEditor productId={product.id} salePrice={values.salePrice} />
+                )}
+                {canEditProduct && isCombo && (
+                  <ComboItemsEditor comboId={product.id} products={products} />
+                )}
+                {canEditProduct && !isCombo && !product.parentId && (
                   <VariantEditor
                     parent={product}
                     variantAttrs={values.variantAttrs}
                     onVariantAttrsChange={(json) => update('variantAttrs', json)}
                   />
                 )}
-                {!product.parentId && (
+                {canAdjustStock && !product.parentId && (
                   <BatchEditor
                     productId={product.id}
                     productName={product.name}

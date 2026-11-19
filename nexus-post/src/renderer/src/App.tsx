@@ -22,7 +22,7 @@ import type {
 } from '@shared/contracts'
 import { LoginView } from './features/auth'
 import { logoutApi } from './features/auth/api/auth.api'
-import { canAccessTab } from './shared/lib/permissions'
+import { canAccessTab, hasPermission } from './shared/lib/permissions'
 import { useBusinessConfig } from './shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from './shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
@@ -148,7 +148,7 @@ function AppContent(): React.JSX.Element {
     }
     if (
       catalogProduct.trackStock !== false &&
-      !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+      !hasPermission(currentUser, 'CAN_OVERRIDE_NO_STOCK') &&
       alreadyInCart + quantity > catalogProduct.stock
     ) {
       showToast(`Stock insuficiente para "${catalogProduct.name}".`, 'error')
@@ -218,7 +218,7 @@ function AppContent(): React.JSX.Element {
         return
       }
       if (
-        !currentUser?.permissions?.includes('CAN_OVERRIDE_NO_STOCK') &&
+        !hasPermission(currentUser, 'CAN_OVERRIDE_NO_STOCK') &&
         quantity > currentItem.product.stock
       ) {
         showToast(`Stock insuficiente para "${currentItem.product.name}".`, 'error')
@@ -538,13 +538,15 @@ function AppContent(): React.JSX.Element {
           exchangeRate={usdVesRate}
           cashierName={currentUser.name}
           cashShiftOpen={Boolean(cashRegister.activeShiftId)}
-          canOverrideNoStock={currentUser.permissions?.includes('CAN_OVERRIDE_NO_STOCK') ?? false}
-          canApplyDiscount={currentUser.permissions?.includes('CAN_APPLY_DISCOUNT') ?? false}
+          canOverrideNoStock={hasPermission(currentUser, 'CAN_OVERRIDE_NO_STOCK')}
+          canApplyDiscount={hasPermission(currentUser, 'CAN_APPLY_DISCOUNT')}
         />
       )}
 
       {/* 2. MÓDULO DE INVENTARIO Y PRODUCTOS */}
-      {activeTab === 'products' && canAccessTab(currentUser, 'products') && <ProductTable />}
+      {activeTab === 'products' && canAccessTab(currentUser, 'products') && (
+        <ProductTable user={currentUser} />
+      )}
 
       {/* 3. MÓDULO DE KARDEX (AUDITORÍA INMUTABLE) */}
       {activeTab === 'kardex' && canAccessTab(currentUser, 'kardex') && (
@@ -567,9 +569,7 @@ function AppContent(): React.JSX.Element {
           error={cashError}
           isAdmin={currentUser.role === 'ADMIN'}
           canReturnSales={currentUser.role === 'ADMIN'}
-          canManageMovements={
-            currentUser.permissions?.includes('CAN_MANUAL_CASH_MOVEMENTS') ?? false
-          }
+          canManageMovements={hasPermission(currentUser, 'CAN_MANUAL_CASH_MOVEMENTS')}
           onRefresh={() => void reloadCashRegister(cashRegister.shift?.id)}
           onSelectShift={(shiftId) => void reloadCashRegister(shiftId)}
           onOpenShift={handleOpenCashShift}

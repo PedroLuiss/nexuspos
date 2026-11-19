@@ -4,9 +4,10 @@ import type {
   PinLoginInput,
   AuthResponse,
   VerifyOtpInput,
-  ResetPasswordInput
+  ResetPasswordInput,
+  PermissionKey
 } from '@shared/contracts'
-import { ROLE_DEFAULT_PERMISSIONS } from '@shared/contracts'
+import { ROLE_DEFAULT_PERMISSIONS, sanitizePermissionKeys } from '@shared/contracts'
 import type { UserRepository, UserWithSecret } from '../../ports/user.repository'
 import type { PasswordHasher } from '../../ports/password-hasher.port'
 import type { RemoteAuthPort } from '../../ports/remote-auth.port'
@@ -196,6 +197,23 @@ export class AuthService {
   /** Sesión en memoria actual (acceso sincrónico para guardias de permisos en IPC). */
   getSessionUser(): User | null {
     return this.currentUser
+  }
+
+  hasPermission(key: PermissionKey): boolean {
+    const user = this.currentUser
+    if (!user) return false
+    if (user.role === 'ADMIN') return true
+    const permissions = Array.isArray(user.permissions)
+      ? sanitizePermissionKeys(user.permissions)
+      : ROLE_DEFAULT_PERMISSIONS[user.role]
+    return permissions.includes(key)
+  }
+
+  requirePermission(key: PermissionKey, message: string): User {
+    const user = this.currentUser
+    if (!user) throw new Error('Debe iniciar sesión para realizar esta acción.')
+    if (!this.hasPermission(key)) throw new Error(message)
+    return user
   }
 
   async logout(): Promise<void> {
