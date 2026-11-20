@@ -6,6 +6,7 @@
 ## Persistencia y contratos
 
 - `cash_shifts` representa un turno y pertenece a un usuario. Un índice único parcial permite como máximo un turno abierto por cajero.
+- La migración 027 agrega `station_name` como snapshot del nombre de caja asignado al cajero al abrir el turno; los turnos previos se completan desde `users.station` y usan `CAJA-01` como compatibilidad si no hay asignación.
 - `cash_movements` es el libro de movimientos de efectivo. `cash_effect` tiene signo y define el impacto en la gaveta.
 - La migración 026 agrega `currency` a turnos y movimientos. Los turnos guardan la moneda vigente al abrir y sus importes históricos no cambian al actualizar la moneda del negocio.
 - `sale_refunds` registra devoluciones completas y evita duplicar la devolución de una factura.
@@ -26,6 +27,7 @@
 - El historial administrativo de cajas cerradas solo se muestra a usuarios `ADMIN`. La tabla incluye turnos de todos los cajeros, duración, fondo inicial, efectivo esperado/contado y estado de desviación; ofrece indicadores de cuadres, faltantes y sobrantes, filtros por cajero y fecha de cierre y actualización manual. `Ver detalle` abre el turno para consultar balance, pagos, movimientos y facturas.
 - Los importes se presentan en la moneda snapshot de cada turno/ticket/movimiento. Los totales de historial y monitoreo se agrupan por moneda para no sumar montos incompatibles de turnos de distintas épocas.
 - `ADMIN` también dispone del selector **Cajas abiertas de cajeros**, que lista solo turnos abiertos cuyo usuario tiene rol `CASHIER`; el panel presenta ventas netas, tickets vigentes, fondo inicial, efectivo esperado, hora de apertura y tiempo en turno, con búsqueda y actualización manual. Los totales de ventas excluyen tickets devueltos. Al seleccionar un cajero se consulta el balance, movimientos y ventas; la vista del selector aclara que no habilita acciones de modificación o cierre. Si un administrador no tiene una caja propia abierta, el registro carga inicialmente la caja de cajero abierta más reciente. El backend sigue limitando a cada usuario no administrador a sus propios turnos, también cuando se manipula el IPC.
+- El nombre asignado a la caja queda fijo por turno: el encabezado, monitoreo/historial, detalle de movimientos y facturas lo muestran junto al cajero. Los abonos a clientes exponen la caja desde su turno vinculado, por lo que un cambio futuro del nombre del usuario no altera la trazabilidad histórica. Usuarios CASHIER deben tener una asignación no vacía, validada tanto en el formulario de Ajustes como en `UserService`.
 - Al cambiar de operador con PIN se limpia de inmediato el registro de caja y las ventas suspendidas del usuario anterior, y se consulta el turno del nuevo operador; la sesión del proceso principal determina la autorización y el turno consultado.
 - En el renderer, el historial administrativo se implementa en `CashShiftHistoryPanel.tsx` y las cajas abiertas en `CashierOpenShiftsPanel.tsx`. Apertura, cierre y movimientos manuales solo afectan la caja abierta del usuario autenticado; consultar una caja abierta ajena no habilita esas acciones.
 - La tabla de facturas permite filtrar por coincidencia parcial del código/número de factura y paginar los resultados en bloques de 10. El filtro y la paginación operan en el renderer sobre las facturas del turno seleccionado; el IPC actualmente carga todos los movimientos, tickets y artículos del turno para calcular y mostrar el registro completo.
@@ -55,6 +57,7 @@ src/
 ├── main/adapters/persistence/sqlite/cash.sqlite.ts
 ├── main/adapters/persistence/sqlite/migrations/013_cash_register.ts
 ├── main/adapters/persistence/sqlite/migrations/014_cash_sale_movement_source.ts
+├── main/adapters/persistence/sqlite/migrations/027_cash_station.ts
 ├── main/ipc/cash.ipc.ts
 ├── preload/index.ts
 ├── shared/contracts/cash.contract.ts

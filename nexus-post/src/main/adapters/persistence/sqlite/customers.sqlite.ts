@@ -47,6 +47,7 @@ interface CustomerPaymentRow {
   amount: number
   concept: string
   cashier_name: string
+  station_name: string | null
   created_at: string
   currency: CustomerPayment['currency']
 }
@@ -92,6 +93,7 @@ function mapPaymentRow(row: CustomerPaymentRow): CustomerPayment {
     amount: row.amount,
     concept: row.concept,
     cashierName: row.cashier_name,
+    stationName: row.station_name ?? undefined,
     createdAt: row.created_at,
     currency: row.currency
   }
@@ -301,6 +303,13 @@ export class SqliteCustomerRepository implements CustomerRepository {
         amount,
         concept,
         cashierName,
+        stationName: (
+          this.db
+            .prepare<[string], { station_name: string }>(
+              'SELECT station_name FROM cash_shifts WHERE id = ?'
+            )
+            .get(cashShiftId) as { station_name: string } | undefined
+        )?.station_name,
         cashShiftId,
         createdAt: now,
         currency: customer.currency
@@ -320,7 +329,10 @@ export class SqliteCustomerRepository implements CustomerRepository {
   listPayments(customerId: string): CustomerPayment[] {
     const rows = this.db
       .prepare<[string], CustomerPaymentRow>(
-        'SELECT * FROM customer_payments WHERE customer_id = ? ORDER BY date DESC'
+        `SELECT customer_payments.*, cash_shifts.station_name
+         FROM customer_payments
+         LEFT JOIN cash_shifts ON cash_shifts.id = customer_payments.cash_shift_id
+         WHERE customer_payments.customer_id = ? ORDER BY customer_payments.date DESC`
       )
       .all(customerId)
     return rows.map(mapPaymentRow)

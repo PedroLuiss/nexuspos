@@ -75,6 +75,7 @@ SettingsGrid (ALT+7)
             ├─ UserTable (editar / activar-desactivar / eliminar soft delete)
             └─ UserFormModal
                  ├─ credenciales: nombre, usuario, correo, contraseña, PIN 4 dígitos
+                 ├─ CASHIER: nombre de caja obligatorio (persistido en `users.station`)
                  ├─ selector de rol (preset automático de permisos)
                  └─ UserPermissionsPicker (módulos + acciones críticas)
 
@@ -92,6 +93,8 @@ useUsers(enabled)  →  users.api.ts  →  window.api.users.*  →  IPC  →  Us
 | `users:update`       | Edita datos, rol, permisos y estado          | Sesión `ADMIN` |
 | `users:delete`       | Baja lógica (`active = 0`)                   | Sesión `ADMIN` |
 | `users:toggleStatus` | Activa / desactiva la cuenta                 | Sesión `ADMIN` |
+
+- `UserService` valida que todo usuario con rol CASHIER tenga un nombre de caja no vacío (máximo 80 caracteres), también cuando se edita o cambia el rol. El cajero inicia sesión con esa asignación; cada turno guarda su propio snapshot para identificar caja de origen en operaciones históricas.
 
 ### Gating de módulos en el renderer
 

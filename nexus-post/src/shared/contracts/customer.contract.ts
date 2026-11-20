@@ -28,14 +28,7 @@ export interface Customer {
 /** Datos de entrada para crear un cliente. */
 export type CustomerInput = Omit<
   Customer,
-  | 'id'
-  | 'currentDebt'
-  | 'currency'
-  | 'currency'
-  | 'active'
-  | 'deleted'
-  | 'createdAt'
-  | 'updatedAt'
+  'id' | 'currentDebt' | 'currency' | 'currency' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'
 >
 
 /** Datos de entrada para actualizar un cliente. */
@@ -69,6 +62,7 @@ export interface CustomerPayment {
   amount: number
   concept: string
   cashierName: string
+  stationName?: string
   cashShiftId?: string
   createdAt: string
   currency: CurrencyCode

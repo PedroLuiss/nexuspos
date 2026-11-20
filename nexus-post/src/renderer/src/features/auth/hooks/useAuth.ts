@@ -136,7 +136,7 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const res = await loginPinApi({ pin, station: 'CAJA-01' })
+      const res = await loginPinApi({ pin })
       if (res.success && res.user) {
         resetSessionAutoRestoreBlock()
         setIsPinModalOpen(false)

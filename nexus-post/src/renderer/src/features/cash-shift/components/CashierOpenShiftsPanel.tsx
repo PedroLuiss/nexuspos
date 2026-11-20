@@ -57,7 +57,9 @@ export function CashierOpenShiftsPanel({
   const filteredShifts = useMemo(
     () =>
       shifts.filter((shift) =>
-        shift.cashierName.toLocaleLowerCase().includes(cashierFilter.trim().toLocaleLowerCase())
+        `${shift.cashierName} ${shift.stationName}`
+          .toLocaleLowerCase()
+          .includes(cashierFilter.trim().toLocaleLowerCase())
       ),
     [cashierFilter, shifts]
   )
@@ -93,7 +95,7 @@ export function CashierOpenShiftsPanel({
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                Supervisión de turnos, ventas y efectivo esperado por cajero.
+                Supervisión de turnos, ventas y efectivo esperado por cajero y caja.
               </p>
             </div>
           </div>
@@ -204,7 +206,9 @@ export function CashierOpenShiftsPanel({
                             <h5 className="truncate text-sm font-bold text-slate-900">
                               {shift.cashierName}
                             </h5>
-                            <p className="mt-0.5 text-[11px] text-slate-500">Turno de cajero</p>
+                            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#0067C0]">
+                              {shift.stationName}
+                            </p>
                           </div>
                         </div>
                         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800">

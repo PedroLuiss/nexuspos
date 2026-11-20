@@ -153,7 +153,9 @@ export function DashboardLayout({
                 cashShiftOpen ? 'bg-[#107C41] animate-pulse' : 'bg-[#C42B1C]'
               }`}
             />
-            <span className="font-semibold text-[#1B1B1B]">{user.station ?? 'CAJA-01'}</span>
+            <span className="font-semibold text-[#1B1B1B]">
+              {user.role === 'CASHIER' ? (user.station ?? 'CAJA SIN ASIGNAR') : 'CAJA ADMIN'}
+            </span>
             <span className="text-[#717783]">•</span>
             <span className="font-mono text-[10px] text-[#5C5C5C]">
               {cashShiftOpen ? 'TURNO ACTIVO' : 'SIN TURNO'}

@@ -69,7 +69,7 @@ export class AuthService {
       const sessionUser: User = {
         ...user,
         branch: input.branch ?? user.branch,
-        station: input.station ?? user.station
+        station: user.station ?? input.station
       }
 
       this.currentUser = sessionUser
@@ -120,7 +120,7 @@ export class AuthService {
               this.currentUser = {
                 ...user,
                 branch: input.branch ?? user.branch,
-                station: input.station ?? user.station
+                station: user.station ?? input.station
               }
               return { success: true, user: this.currentUser }
             }
@@ -165,7 +165,7 @@ export class AuthService {
     if (localUser) {
       const sessionUser: User = {
         ...localUser,
-        station: input.station ?? localUser.station ?? 'CAJA-01'
+        station: localUser.station ?? input.station ?? 'CAJA-01'
       }
       this.currentUser = sessionUser
       return { success: true, user: sessionUser }

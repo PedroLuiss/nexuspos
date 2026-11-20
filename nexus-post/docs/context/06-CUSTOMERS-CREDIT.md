@@ -78,6 +78,7 @@ nexus-post/src/
 - El POS carga los clientes registrados, permite crear un cliente persistente y asociarlo al ticket.
 - El método **Crédito** del modal de cobro requiere cliente seleccionado. Al confirmar, crea una deuda con el folio del ticket y valida en centavos que la venta no exceda el crédito disponible; el error informa crédito disponible, monto de la venta, límite, deuda actual y moneda. Un rechazo deja la venta sin completar.
 - Los abonos se registran en una transacción SQLite, se aplican primero a las deudas más antiguas y reducen el saldo del cliente. Tras confirmarse, el POS agrega el importe a los ingresos del turno/caja.
+- El historial de abonos muestra el cajero y el nombre de caja snapshot del turno asociado; la caja no se duplica en la tabla de pagos.
 - El listado y el estado de cuenta se cargan desde SQLite; los datos de clientes que antes vivían únicamente en el estado de React fueron retirados de `App.tsx`.
 - Las ventas regulares (efectivo/tarjeta/mixto/crédito) y facturas se persisten en SQLite por el módulo POS/Ventas; el cliente seleccionado queda asociado a la venta. No hay que recrear ventas desde Clientes.
 - El listado principal muestra solo clientes activos. El botón **Clientes desactivados** carga desde SQLite y muestra en una vista separada los clientes inactivos; estos no se ofrecen para asociar a ventas en el POS.

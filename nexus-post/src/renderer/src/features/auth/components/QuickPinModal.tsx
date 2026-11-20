@@ -137,7 +137,7 @@ export const QuickPinModal: React.FC<QuickPinModalProps> = ({
         </div>
 
         <div className="text-center font-mono text-[11px] text-[#717783] pt-1">
-          Operador por defecto: <span className="font-semibold text-[#1B1B1B]">CAJA-01</span>
+          Validación segura del operador registrado
         </div>
       </div>
     </div>

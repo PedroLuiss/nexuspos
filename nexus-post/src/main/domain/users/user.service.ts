@@ -8,6 +8,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const PIN_RE = /^\d{4}$/
 const VALID_ROLES: UserRole[] = ['ADMIN', 'SUPERVISOR', 'CASHIER']
 const MIN_PASSWORD_LENGTH = 8
+const MAX_STATION_LENGTH = 80
 
 /**
  * Servicio de dominio para la gestión de usuarios y permisos (RBAC).
@@ -86,6 +87,7 @@ export class UserService {
     const name = (input.name ?? '').trim()
     const role = input.role
     const pin = input.pin?.trim() ?? ''
+    const station = input.station?.trim() ?? ''
 
     if (!username || !email || !name) {
       throw new Error('Nombre, usuario y correo electrónico son obligatorios.')
@@ -95,6 +97,12 @@ export class UserService {
     }
     if (!VALID_ROLES.includes(role)) {
       throw new Error('El rol seleccionado no es válido.')
+    }
+    if (role === 'CASHIER' && !station) {
+      throw new Error('Debe asignar un nombre a la caja del usuario cajero.')
+    }
+    if (station.length > MAX_STATION_LENGTH) {
+      throw new Error(`El nombre de la caja no puede superar ${MAX_STATION_LENGTH} caracteres.`)
     }
     if (!input.password?.trim() || input.password.length < MIN_PASSWORD_LENGTH) {
       throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
@@ -112,6 +120,7 @@ export class UserService {
       username,
       email,
       name,
+      station: station || undefined,
       pin: pin || undefined,
       permissions: permissions.length > 0 ? permissions : [...ROLE_DEFAULT_PERMISSIONS[role]]
     })
@@ -126,10 +135,18 @@ export class UserService {
 
     const nextRole = input.role ?? current.role
     const nextActive = input.active ?? current.active
+    const station =
+      input.station !== undefined ? input.station.trim() : (current.station?.trim() ?? '')
     const isSelf = session.id === current.id
 
     if (!VALID_ROLES.includes(nextRole)) {
       throw new Error('El rol seleccionado no es válido.')
+    }
+    if (nextRole === 'CASHIER' && !station) {
+      throw new Error('Debe asignar un nombre a la caja del usuario cajero.')
+    }
+    if (station.length > MAX_STATION_LENGTH) {
+      throw new Error(`El nombre de la caja no puede superar ${MAX_STATION_LENGTH} caracteres.`)
     }
     if (isSelf && nextRole !== current.role) {
       throw new Error('No puede cambiar su propio rol de Administrador.')
@@ -180,7 +197,8 @@ export class UserService {
       password,
       username,
       email,
-      permissions
+      permissions,
+      station: input.station !== undefined ? station : undefined
     })
   }
 

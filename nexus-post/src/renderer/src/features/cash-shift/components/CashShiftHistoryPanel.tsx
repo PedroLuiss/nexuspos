@@ -57,7 +57,9 @@ export function CashShiftHistoryPanel({
   const closedShifts = useMemo(() => options.filter((option) => option.closedAt), [options])
   const filteredShifts = closedShifts.filter(
     (option) =>
-      option.cashierName.toLocaleLowerCase().includes(cashierFilter.trim().toLocaleLowerCase()) &&
+      `${option.cashierName} ${option.stationName}`
+        .toLocaleLowerCase()
+        .includes(cashierFilter.trim().toLocaleLowerCase()) &&
       isWithinDateRange(option.closedAt, dateRange)
   )
   const balancedCount = filteredShifts.filter((shift) => shift.difference === 0).length
@@ -90,7 +92,7 @@ export function CashShiftHistoryPanel({
                 type="search"
                 value={cashierFilter}
                 onChange={(event) => setCashierFilter(event.target.value)}
-                placeholder="Nombre del cajero"
+                placeholder="Nombre del cajero o caja"
                 className="rounded border border-[#D1D1D1] bg-white px-2 py-1.5 font-normal text-[#1B1B1B]"
               />
             </label>
@@ -172,8 +174,11 @@ export function CashShiftHistoryPanel({
                       shift.id === selectedShiftId ? 'bg-[#0067C0]/5' : 'hover:bg-[#F9F9F9]'
                     }
                   >
-                    <td className="whitespace-nowrap px-3 py-2 font-semibold">
-                      {shift.cashierName}
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <strong className="block font-semibold">{shift.cashierName}</strong>
+                      <span className="text-[10px] font-semibold text-[#0067C0]">
+                        {shift.stationName}
+                      </span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">{formatDate(shift.openedAt)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{formatDate(shift.closedAt)}</td>

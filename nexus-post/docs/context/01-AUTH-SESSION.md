@@ -47,6 +47,7 @@ LoginInput (emailOrUsername + password)
 ### 2.3 Sesión en memoria
 
 - `AuthService.currentUser` guarda la sesión activa y se expone a través de `getSessionUser()`.
+- La estación/caja de los usuarios locales se toma del campo `users.station`; los valores enviados por la pantalla de login o por el operador anterior no pueden sobrescribir la asignación guardada. El cambio de operador por PIN carga la caja del usuario autenticado.
 - `UserService` usa esa sesión para autorizar todas las operaciones de usuarios (`role === 'ADMIN'`).
 - `logout()` limpia la sesión local y revoca el token remoto si existe; **nunca lanza excepción** al renderer.
 

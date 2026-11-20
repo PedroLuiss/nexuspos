@@ -6,6 +6,7 @@ export interface OpenCashShiftRecord {
   id: string
   cashierId: string
   cashierName: string
+  stationName: string
   openedAt: string
   openingAmount: number
   currency: CurrencyCode
@@ -17,6 +18,7 @@ export interface CashRepository {
   openShift(
     cashierId: string,
     cashierName: string,
+    stationName: string,
     openingAmount: number,
     currency: CurrencyCode
   ): void
@@ -27,7 +29,7 @@ export interface CashRepository {
     countedCash: number,
     difference: number
   ): void
-  insertMovement(movement: Omit<CashMovement, 'id' | 'createdAt'>): void
+  insertMovement(movement: Omit<CashMovement, 'id' | 'createdAt' | 'stationName'>): void
   insertRefund(
     saleId: string,
     shiftId: string,

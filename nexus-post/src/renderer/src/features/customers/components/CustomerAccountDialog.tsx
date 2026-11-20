@@ -175,7 +175,7 @@ export function CustomerAccountDialog({
                       <th className="px-3 py-2.5">Fecha</th>
                       <th className="px-3 py-2.5 text-right">Monto</th>
                       <th className="px-3 py-2.5">Concepto</th>
-                      <th className="px-3 py-2.5">Cajero</th>
+                      <th className="px-3 py-2.5">Cajero / Caja</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EEEEEE]">
@@ -188,7 +188,14 @@ export function CustomerAccountDialog({
                           {formatCurrency(payment.amount, payment.currency)}
                         </td>
                         <td className="max-w-[260px] truncate px-3 py-2">{payment.concept}</td>
-                        <td className="px-3 py-2 text-[#5C5C5C]">{payment.cashierName}</td>
+                        <td className="px-3 py-2 text-[#5C5C5C]">
+                          <span className="block">{payment.cashierName}</span>
+                          {payment.stationName && (
+                            <span className="block text-[10px] font-semibold text-[#0067C0]">
+                              {payment.stationName}
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -12,6 +12,7 @@ interface TicketRow {
   ticket_number: string
   sold_at: string
   cashier_name: string
+  station_name: string | null
   customer_id: string | null
   customer_name: string | null
   subtotal: number
@@ -137,8 +138,10 @@ export class SqliteSalesRepository implements SalesRepository {
     const row = this.db
       .prepare(
         `
-      SELECT s.*, c.name AS customer_name
-      FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+      SELECT s.*, c.name AS customer_name, cash_shifts.station_name
+      FROM sales s
+      LEFT JOIN customers c ON c.id = s.customer_id
+      LEFT JOIN cash_shifts ON cash_shifts.id = s.cash_shift_id
       WHERE s.id = ?
     `
       )
@@ -167,6 +170,7 @@ export class SqliteSalesRepository implements SalesRepository {
       ticketNumber: row.ticket_number,
       soldAt: row.sold_at,
       cashierName: row.cashier_name,
+      stationName: row.station_name ?? 'CAJA-01',
       customerId: row.customer_id ?? undefined,
       customerName: row.customer_name ?? undefined,
       subtotal: row.subtotal,

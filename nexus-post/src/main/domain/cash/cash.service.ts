@@ -54,6 +54,7 @@ export class CashService {
       this.cash.openShift(
         user.id,
         user.name,
+        user.station?.trim() || 'CAJA-01',
         money(input.openingAmount),
         this.settings.getBusiness().currency
       )

@@ -105,7 +105,7 @@ export function CashShiftView({
             </h2>
             <p className="mt-1 text-xs text-[#5C5C5C]">
               {shift
-                ? `${shift.cashierName} · ${isSelectedShiftOpen ? 'Abierta' : 'Turno cerrado'} · ${formatDate(shift.openedAt)}`
+                ? `${shift.cashierName} · ${shift.stationName} · ${isSelectedShiftOpen ? 'Abierta' : 'Turno cerrado'} · ${formatDate(shift.openedAt)}`
                 : 'No hay turnos registrados para este usuario.'}
             </p>
           </div>

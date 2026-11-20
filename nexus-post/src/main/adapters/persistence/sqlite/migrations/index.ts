@@ -32,6 +32,7 @@ import { migration023ProductListIndexes } from './023_product_list_indexes'
 import { migration024FixSeedBarcodeFormat } from './024_fix_seed_barcode_format'
 import { migration025KardexMetadata } from './025_kardex_metadata'
 import { migration026OperatingCurrency } from './026_operating_currency'
+import { migration027CashStation } from './027_cash_station'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -59,7 +60,8 @@ const MIGRATIONS: Migration[] = [
   migration023ProductListIndexes,
   migration024FixSeedBarcodeFormat,
   migration025KardexMetadata,
-  migration026OperatingCurrency
+  migration026OperatingCurrency,
+  migration027CashStation
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

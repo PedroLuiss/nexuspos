@@ -1,8 +1,16 @@
 import React, { useState } from 'react'
-import type { User, UserRole, CreateUserInput, UpdateUserInput, PermissionKey } from '@shared/contracts'
+import type {
+  User,
+  UserRole,
+  CreateUserInput,
+  UpdateUserInput,
+  PermissionKey
+} from '@shared/contracts'
 import { ADMIN_PERMISSION_KEYS, ROLE_DEFAULT_PERMISSIONS } from '@shared/contracts'
 import { X, Check, User as UserIcon, Lock, Key } from '../../../shared/icons/Icons'
 import UserPermissionsPicker from './UserPermissionsPicker'
+import { UserStationField } from './UserStationField'
+import { UserRoleSelector } from './UserRoleSelector'
 
 interface UserFormModalProps {
   isOpen: boolean
@@ -13,18 +21,6 @@ interface UserFormModalProps {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MIN_PASSWORD = 8
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  ADMIN: 'Administrador',
-  SUPERVISOR: 'Supervisor',
-  CASHIER: 'Cajero'
-}
-
-const ROLE_HELP: Record<UserRole, string> = {
-  ADMIN: 'Control total y gestión de usuarios',
-  SUPERVISOR: 'Operación comercial y cancelaciones',
-  CASHIER: 'Cobro rápido y corte de caja'
-}
 
 export const UserFormModal: React.FC<UserFormModalProps> = ({
   isOpen,
@@ -37,6 +33,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const [email, setEmail] = useState(initialUser?.email ?? '')
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState(initialUser?.pin ?? '')
+  const [station, setStation] = useState(initialUser?.station ?? '')
   const [role, setRole] = useState<UserRole>(initialUser?.role ?? 'CASHIER')
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(() => {
     if (!initialUser) return [...ROLE_DEFAULT_PERMISSIONS.CASHIER]
@@ -68,6 +65,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
     const cleanUsername = username.trim().toLowerCase()
     const cleanEmail = email.trim().toLowerCase()
     const cleanPin = pin.trim()
+    const cleanStation = station.trim()
 
     if (!cleanName || !cleanUsername || !cleanEmail) {
       setErrorMsg('Nombre, usuario y correo son obligatorios.')
@@ -89,9 +87,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
       setErrorMsg('El PIN de caja debe tener exactamente 4 dígitos numéricos.')
       return
     }
+    if (role === 'CASHIER' && !cleanStation) {
+      setErrorMsg('Asigne un nombre a la caja del usuario cajero.')
+      return
+    }
 
     const permissions =
-      role === 'ADMIN' ? [...ADMIN_PERMISSION_KEYS] : selectedPermissions.filter((p) => p !== 'MANAGE_USERS')
+      role === 'ADMIN'
+        ? [...ADMIN_PERMISSION_KEYS]
+        : selectedPermissions.filter((p) => p !== 'MANAGE_USERS')
 
     setIsSubmitting(true)
     try {
@@ -103,6 +107,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
           email: cleanEmail,
           password: password.length > 0 ? password : undefined,
           pin: cleanPin,
+          station: role === 'CASHIER' ? cleanStation : undefined,
           role,
           permissions
         })
@@ -113,6 +118,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
           email: cleanEmail,
           password,
           pin: cleanPin || undefined,
+          station: role === 'CASHIER' ? cleanStation : undefined,
           role,
           permissions
         })
@@ -206,12 +212,19 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
                 {initialUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña *'}
               </label>
               <div className="relative">
-                <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock
+                  size={14}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={initialUser ? 'Dejar en blanco para conservar' : `Mínimo ${MIN_PASSWORD} caracteres`}
+                  placeholder={
+                    initialUser
+                      ? 'Dejar en blanco para conservar'
+                      : `Mínimo ${MIN_PASSWORD} caracteres`
+                  }
                   className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-[4px] focus:border-[#0067C0]"
                 />
               </div>
@@ -222,7 +235,10 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
                 PIN de Caja (4 dígitos)
               </label>
               <div className="relative">
-                <Key size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Key
+                  size={14}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                />
                 <input
                   type="password"
                   inputMode="numeric"
@@ -236,36 +252,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Rol Principal del Usuario
-            </label>
-            <div className="grid grid-cols-3 gap-2.5">
-              {(['CASHIER', 'SUPERVISOR', 'ADMIN'] as UserRole[]).map((r) => {
-                const isSelected = role === r
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => handleRoleChange(r)}
-                    className={`p-2.5 rounded-[6px] border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-[#0067C0] bg-blue-50/70 shadow-2xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-xs">{ROLE_LABEL[r]}</span>
-                      {isSelected && <Check size={14} className="text-[#0067C0]" />}
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{ROLE_HELP[r]}</p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <UserRoleSelector role={role} onChange={handleRoleChange} />
 
-          <UserPermissionsPicker role={role} selected={selectedPermissions} onToggle={togglePermission} />
+          {role === 'CASHIER' && <UserStationField station={station} onChange={setStation} />}
+
+          <UserPermissionsPicker
+            role={role}
+            selected={selectedPermissions}
+            onToggle={togglePermission}
+          />
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
@@ -281,7 +276,9 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#0067C0] hover:bg-[#0078D4] rounded-[4px] shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Check size={14} />
-              <span>{isSubmitting ? 'Guardando...' : initialUser ? 'Guardar Cambios' : 'Crear Usuario'}</span>
+              <span>
+                {isSubmitting ? 'Guardando...' : initialUser ? 'Guardar Cambios' : 'Crear Usuario'}
+              </span>
             </button>
           </div>
         </form>

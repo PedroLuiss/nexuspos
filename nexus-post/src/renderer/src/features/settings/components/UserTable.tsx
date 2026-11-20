@@ -71,6 +71,9 @@ export const UserTable: React.FC<UserTableProps> = ({
                     )}
                   </div>
                   <div className="text-[11px] font-mono text-slate-500">@{u.username}</div>
+                  {u.role === 'CASHIER' && u.station && (
+                    <div className="text-[10px] font-semibold text-[#0067C0]">{u.station}</div>
+                  )}
                 </td>
 
                 <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{u.email}</td>

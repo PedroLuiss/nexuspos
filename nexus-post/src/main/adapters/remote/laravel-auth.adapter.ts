@@ -211,7 +211,7 @@ export class LaravelAuthAdapter implements RemoteAuthPort {
       name: remoteUser.name,
       role: (remoteUser.role?.toUpperCase() as UserRole) ?? 'CASHIER',
       active: remoteUser.active ?? true,
-      station: input.station ?? 'CAJA-01'
+      station: remoteUser.station ?? input.station ?? 'CAJA-01'
     }
 
     return {

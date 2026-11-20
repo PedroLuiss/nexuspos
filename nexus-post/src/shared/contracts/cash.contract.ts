@@ -9,6 +9,7 @@ export interface CashShift {
   id: string
   cashierId: string
   cashierName: string
+  stationName: string
   openedAt: string
   openingAmount: number
   isOpen: boolean
@@ -41,6 +42,7 @@ export interface CashMovement {
   cashEffect: number
   concept: string
   cashierName: string
+  stationName: string
   source: CashMovementSource
   paymentMethod?: SalePayment['method']
   sourceId?: string
@@ -79,6 +81,7 @@ export interface CashTicket {
   ticketNumber: string
   soldAt: string
   cashierName: string
+  stationName: string
   customerId?: string
   customerName?: string
   subtotal: number
@@ -99,7 +102,10 @@ export interface CashRegisterData {
   shift: CashShift | null
   activeShiftId?: string
   shiftOptions: Array<
-    Pick<CashShift, 'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'openingAmount'> &
+    Pick<
+      CashShift,
+      'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'stationName' | 'openingAmount'
+    > &
       Pick<CashShift, 'currency'> &
       Pick<
         CashShift,

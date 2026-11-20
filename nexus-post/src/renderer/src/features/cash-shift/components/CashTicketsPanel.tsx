@@ -124,6 +124,9 @@ export function CashTicketsPanel({
                     <span className="text-[10px] text-[#717783]">
                       {new Date(ticket.soldAt).toLocaleString('es-VE')}
                     </span>
+                    <span className="block text-[10px] font-semibold text-[#0067C0]">
+                      {ticket.stationName}
+                    </span>
                   </td>
                   <td className="px-3 py-2">{ticket.customerName ?? 'Consumidor final'}</td>
                   <td className="px-3 py-2">{paymentLabel(ticket)}</td>
@@ -173,7 +176,7 @@ export function CashTicketsPanel({
                 <h3 className="text-sm font-bold">Factura {selectedTicket.ticketNumber}</h3>
                 <p className="text-xs text-[#5C5C5C]">
                   {new Date(selectedTicket.soldAt).toLocaleString('es-VE')} ·{' '}
-                  {selectedTicket.cashierName}
+                  {selectedTicket.cashierName} · {selectedTicket.stationName}
                 </p>
               </div>
               <button

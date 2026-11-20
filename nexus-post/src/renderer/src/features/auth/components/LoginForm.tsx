@@ -38,7 +38,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     onSubmit({
       emailOrUsername: emailOrUsername.trim(),
       password,
-      station: 'CAJA-01',
       rememberStation
     })
   }

@@ -155,6 +155,9 @@ export function CashShiftOverview({
                       <td className="p-2">
                         <strong>{movement.type}</strong>
                         <span className="block text-[10px] text-[#717783]">{movement.concept}</span>
+                        <span className="block text-[10px] font-medium text-[#0067C0]">
+                          {movement.cashierName} · {movement.stationName}
+                        </span>
                       </td>
                       <td
                         className={`whitespace-nowrap p-2 text-right font-mono font-bold ${movement.cashEffect >= 0 ? 'text-emerald-700' : 'text-[#C42B1C]'}`}
