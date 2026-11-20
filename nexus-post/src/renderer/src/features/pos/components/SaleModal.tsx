@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/types/domain'
 import type { CurrencyVesExchangeRate } from '@shared/contracts'
 import { formatCurrency, formatVesAmount } from '../../../shared/lib/currency'
@@ -73,22 +73,28 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const [mixedCash, setMixedCash] = useState<number>(Math.floor(total / 2))
   const [printReceipt, setPrintReceipt] = useState<boolean>(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Hotkey listener for F12, Escape, F6, F7, F8 inside modal
   useEffect(() => {
     if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
+      const hasNoModifiers = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+
+      if (hasNoModifiers && e.key === 'Escape') {
         e.preventDefault()
         onClose()
-      } else if (e.key === 'F6') {
+      } else if (hasNoModifiers && e.key === 'F12') {
+        e.preventDefault()
+        formRef.current?.requestSubmit()
+      } else if (hasNoModifiers && e.key === 'F6') {
         e.preventDefault()
         setMethod('cash')
-      } else if (e.key === 'F7') {
+      } else if (hasNoModifiers && e.key === 'F7') {
         e.preventDefault()
         setMethod('card')
-      } else if (e.key === 'F8') {
+      } else if (hasNoModifiers && e.key === 'F8') {
         e.preventDefault()
         setMethod('mixed')
       }
@@ -219,7 +225,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleConfirm}>
+        <form ref={formRef} onSubmit={handleConfirm}>
           <div className="p-5 space-y-4">
             {!canCompleteSale && (
               <div

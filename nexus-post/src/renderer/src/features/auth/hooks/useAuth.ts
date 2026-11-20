@@ -84,6 +84,7 @@ export function useAuth(onLoginSuccess?: (user: User) => void): UseAuthReturn {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (authStep !== 'LOGIN') return
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
 
       if (e.key === 'F10') {
         e.preventDefault()

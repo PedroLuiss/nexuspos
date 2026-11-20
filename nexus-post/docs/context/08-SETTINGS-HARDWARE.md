@@ -68,7 +68,7 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
 ## 2. Flujo del Submódulo de Usuarios (Renderer → IPC → SQLite)
 
 ```text
-SettingsGrid (F7)
+SettingsGrid (ALT+7)
   └─ [ALT+U] / botón "Gestionar Usuarios"  (solo si currentUser.role === 'ADMIN')
        └─ UserManagerModal
             ├─ búsqueda por nombre/usuario/correo + filtro por rol + recarga
@@ -105,7 +105,7 @@ useUsers(enabled)  →  users.api.ts  →  window.api.users.*  →  IPC  →  Us
 ## 3. Flujo de Datos del Negocio, Ticket e Impuestos (Renderer → IPC → SQLite)
 
 ```text
-SettingsGrid (F7)
+SettingsGrid (ALT+7)
   ├─ [ALT+A] / "Editar Datos"        → BusinessInfoModal   (tabs: Negocio y Propietario | Plantilla de Ticket)
   └─ [ALT+T] / "Impuestos"           → TaxSettingsModal
        ├─ interruptor global (taxEnabled) + precios con impuesto incluido
@@ -266,7 +266,7 @@ nexus-post/src/
 
 |    Atajo    | Acción                                                           |
 | :---------: | :--------------------------------------------------------------- |
-|   `[F7]`    | Cambiar a pestaña **Ajustes del Sistema**                        |
+| `[ALT + 7]` | Cambiar a pestaña **Ajustes del Sistema** si está autorizada     |
 | `[ALT + U]` | Abrir **Gestión de Usuarios, Roles y Permisos** (solo `ADMIN`)   |
 | `[ALT + A]` | Abrir **Datos del Negocio y Plantilla de Ticket** (solo `ADMIN`) |
 | `[ALT + T]` | Abrir **Impuestos y Facturación** (solo `ADMIN`)                 |

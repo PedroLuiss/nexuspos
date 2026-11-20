@@ -136,9 +136,6 @@ export const StockBranchTransferForm: React.FC<StockBranchTransferFormProps> = (
             <span className="kbd-badge">ESC</span> Cerrar
           </span>
           <span className="flex items-center gap-1">
-            <span className="kbd-badge">F4</span> Buscar
-          </span>
-          <span className="flex items-center gap-1">
             <span className="kbd-badge">F5</span> Refrescar
           </span>
         </div>
@@ -158,7 +155,7 @@ export const StockBranchTransferForm: React.FC<StockBranchTransferFormProps> = (
             <Check size={15} />
             <span>Confirmar Solicitud de Traslado</span>
             <span className="kbd-badge bg-white/20 text-white border-white/30 text-[10px]">
-              F10 / ENTER
+              ENTER
             </span>
           </button>
         </div>

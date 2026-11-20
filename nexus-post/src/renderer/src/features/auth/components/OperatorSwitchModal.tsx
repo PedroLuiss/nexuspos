@@ -35,11 +35,7 @@ export function OperatorSwitchModal({
   return <PinLockDialog currentUser={currentUser} onClose={onClose} onSuccess={onSuccess} />
 }
 
-function PinLockDialog({
-  currentUser,
-  onClose,
-  onSuccess
-}: PinLockDialogProps): React.JSX.Element {
+function PinLockDialog({ currentUser, onClose, onSuccess }: PinLockDialogProps): React.JSX.Element {
   const [pin, setPin] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [isValidating, setIsValidating] = useState(false)
@@ -94,17 +90,19 @@ function PinLockDialog({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      const hasNoModifiers = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+
+      if (hasNoModifiers && event.key === 'Escape') {
         event.preventDefault()
         onClose()
         return
       }
-      if (event.key === 'Backspace') {
+      if (hasNoModifiers && event.key === 'Backspace') {
         event.preventDefault()
         removeDigit()
         return
       }
-      if (event.key >= '0' && event.key <= '9') {
+      if (hasNoModifiers && event.key >= '0' && event.key <= '9') {
         event.preventDefault()
         appendDigit(event.key)
       }

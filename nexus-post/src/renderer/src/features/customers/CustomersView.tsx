@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import type {
   Customer,
@@ -17,6 +17,7 @@ import { CustomersMetrics } from './components/CustomersMetrics'
 import { CustomersTable } from './components/CustomersTable'
 import { CustomersToolbar, type CustomerStatusFilter } from './components/CustomersToolbar'
 import { useCustomers } from './hooks/useCustomers'
+import { useCustomersHotkeys } from './hooks/useCustomersHotkeys'
 import { getNextCustomerCode } from './lib/customerCode'
 
 interface CustomersViewProps {
@@ -210,10 +211,19 @@ export default function CustomersView({
     setSelectedCustomerId(null)
   }
 
-  const openNewCustomerForm = (): void => {
+  const openNewCustomerForm = useCallback((): void => {
     setFormCustomer(null)
     setIsFormOpen(true)
-  }
+  }, [])
+  useCustomersHotkeys({
+    canManageCustomers,
+    isLoading,
+    showDeactivated,
+    isFormOpen,
+    isAccountOpen,
+    isPaymentOpen,
+    onCreateCustomer: openNewCustomerForm
+  })
 
   const openEditCustomerForm = (customer: Customer): void => {
     setFormCustomer(customer)

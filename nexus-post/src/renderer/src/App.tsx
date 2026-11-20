@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Product, CartItem, PaymentDetails, SuspendedSale } from './shared/types/domain'
-import { HotkeysProvider, useRouter } from './app/providers/HotkeysProvider'
+import { HotkeysProvider } from './app/providers/HotkeysProvider'
+import { useRouter } from './app/providers/router-context'
 import DashboardLayout from './app/DashboardLayout'
 import { BusinessConfigProvider } from './app/providers/BusinessConfigProvider'
 import POSView from './features/pos/POSView'
@@ -338,9 +339,7 @@ function AppContent(): React.JSX.Element {
       return false
     }
 
-    showToast(
-      `¡Venta cobrada con éxito! (${formatCurrency(saleTotal, businessConfig.currency)})`
-    )
+    showToast(`¡Venta cobrada con éxito! (${formatCurrency(saleTotal, businessConfig.currency)})`)
     setCart([])
     return true
   }
@@ -391,9 +390,7 @@ function AppContent(): React.JSX.Element {
     }
   }
 
-  const handleAddCustomer = async (
-    customerData: CustomerInput
-  ): Promise<Customer> => {
+  const handleAddCustomer = async (customerData: CustomerInput): Promise<Customer> => {
     const newCustomer = await createCustomer(customerData)
     showToast(`Cliente "${newCustomer.name}" registrado`)
     return newCustomer

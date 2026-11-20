@@ -49,10 +49,12 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
     if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
+      const hasNoModifiers = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+
+      if (hasNoModifiers && e.key === 'Escape') {
         e.preventDefault()
         onClose()
-      } else if (e.key === 'F5') {
+      } else if (hasNoModifiers && e.key === 'F5') {
         e.preventDefault()
         setIsRefreshing(true)
         setTimeout(() => setIsRefreshing(false), 600)
@@ -116,9 +118,6 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
                 <h2 className="text-sm font-extrabold text-[#1B1B1B] tracking-tight">
                   Consulta de Stock en Sucursales &amp; Traslados
                 </h2>
-                <span className="kbd-badge text-[10px] text-[#0067C0] bg-[#EBF0F5] border-[#0067C0]/30">
-                  ALT+O
-                </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5C5C5C] mt-0.5 font-medium">
                 <span className="flex items-center gap-1 text-[#107C41] font-bold">
@@ -156,7 +155,7 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
             <div className="md:col-span-2 relative">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5C5C5C] mb-1">
-                Producto Consultado [F4]
+                Producto Consultado
               </label>
               <div className="relative">
                 <Search
@@ -173,9 +172,6 @@ export const StockBranchModal: React.FC<StockBranchModalProps> = ({
                   }
                   className="w-full pl-9 pr-16 py-2 text-xs font-bold font-mono text-[#1B1B1B] bg-white border border-[#D1D1D1] rounded-[4px] shadow-xs"
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 kbd-badge text-[10px]">
-                  F4
-                </span>
               </div>
             </div>
 

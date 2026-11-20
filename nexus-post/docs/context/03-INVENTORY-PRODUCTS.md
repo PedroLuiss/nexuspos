@@ -180,7 +180,8 @@ nexus-post/src/
 
 |    Atajo    | Acción                                             |
 | :---------: | :------------------------------------------------- |
-|   `[F2]`    | Cambiar a pestaña **Inventario & Productos**       |
+| `[ALT + 2]` | Cambiar a pestaña **Inventario & Productos**       |
+|   `[F2]`    | Enfocar la búsqueda del catálogo                   |
 | `[ALT + N]` | Abrir modal para **Nuevo Producto**                |
 | `[ALT + E]` | Abrir modal de **Entradas Masivas** de stock       |
 | `[ALT + S]` | Abrir modal de **Salidas Masivas / Mermas**        |

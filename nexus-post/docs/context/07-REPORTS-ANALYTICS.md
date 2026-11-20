@@ -65,7 +65,7 @@ main/
 
 | Atajo  | Acción                                    |
 | :----: | :---------------------------------------- |
-| `[F6]` | Cambiar a pestaña **Reportes y Métricas** |
+| `[ALT+6]` | Cambiar a pestaña **Reportes y Métricas** si está autorizada |
 
 ---
 

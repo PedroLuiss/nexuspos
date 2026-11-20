@@ -139,7 +139,17 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
   // Atajos del módulo: [ALT+U] usuarios, [ALT+A] datos de negocio, [ALT+T] IVA, [ALT+O] catálogos
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (!e.altKey) return
+      if (
+        activeModal !== null ||
+        e.repeat ||
+        !e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey ||
+        e.getModifierState('AltGraph')
+      ) {
+        return
+      }
       const key = e.key.toLowerCase()
       if (key === 'u') {
         e.preventDefault()
@@ -157,7 +167,7 @@ export const SettingsGrid: React.FC<SettingsGridProps> = ({ currentUser }) => {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [openModal])
+  }, [activeModal, openModal])
 
   const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active).length
   const activeUsers = users.filter((u) => u.active).length

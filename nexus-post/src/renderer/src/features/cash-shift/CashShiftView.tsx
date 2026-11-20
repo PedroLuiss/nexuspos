@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   CashRegisterData,
   CloseCashShiftInput,
@@ -54,7 +54,35 @@ export function CashShiftView({
     (option) => !option.closedAt && option.cashierRole === 'CASHIER'
   )
 
-  const openDialog = (next: CashShiftDialogType): void => setDialog(next)
+  const openDialog = useCallback((next: CashShiftDialogType): void => setDialog(next), [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (
+        !canManageMovements ||
+        !isOwnOpenShift ||
+        dialog !== null ||
+        showHistory ||
+        showOpenCashiers ||
+        document.querySelector('[aria-modal="true"], [role="dialog"], .fixed.inset-0') ||
+        event.repeat ||
+        !event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.getModifierState('AltGraph') ||
+        event.key.toLowerCase() !== 'g'
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      openDialog('expense')
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [canManageMovements, dialog, isOwnOpenShift, openDialog, showHistory, showOpenCashiers])
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto bg-[#F3F3F3] p-3">
@@ -144,7 +172,7 @@ export function CashShiftView({
                     onClick={() => openDialog('expense')}
                     className="flex items-center gap-1 rounded border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#C42B1C]"
                   >
-                    <Minus size={13} /> Gasto manual
+                    <Minus size={13} /> Gasto manual <span className="kbd-badge">ALT+G</span>
                   </button>
                 </>
               )}

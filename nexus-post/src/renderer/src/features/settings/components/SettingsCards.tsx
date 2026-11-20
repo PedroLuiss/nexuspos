@@ -204,6 +204,7 @@ export function SettingsCards({
         facts={[]}
         footerNote={isAdmin ? 'Configuración de catálogos' : 'Solo lectura'}
         actionLabel="Gestionar Catálogos"
+        actionHotkey="ALT+O"
         onAction={() => onOpenModal('catalogs')}
         disabled={!isAdmin}
         disabledHint={restrictedHint}

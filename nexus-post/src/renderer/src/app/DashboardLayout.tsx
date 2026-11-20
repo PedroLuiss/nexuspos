@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useRouter } from './providers/HotkeysProvider'
+import { useRouter } from './providers/router-context'
 import { TABS_CONFIG, TabId } from './router/tabs.config'
 import { NavigationTabs } from '../shared/ui/NavigationTabs'
 import OperatorSwitchModal from '../features/auth/components/OperatorSwitchModal'
@@ -60,16 +60,41 @@ export function DashboardLayout({
   const user = currentUser ?? DEMO_USER
 
   // RBAC: solo se muestran los módulos autorizados para la sesión actual.
-  const allowedTabs = useMemo(
-    () => TABS_CONFIG.filter((tab) => canAccessTab(user, tab.id)),
-    [user]
-  )
+  const allowedTabs = useMemo(() => TABS_CONFIG.filter((tab) => canAccessTab(user, tab.id)), [user])
 
   useEffect(() => {
     if (!allowedTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab((allowedTabs[0]?.id ?? 'pos') as TabId)
     }
   }, [allowedTabs, activeTab, setActiveTab])
+
+  useEffect(() => {
+    const handleTabHotkey = (event: KeyboardEvent): void => {
+      if (
+        !event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.getModifierState('AltGraph') ||
+        event.repeat
+      ) {
+        return
+      }
+
+      if (document.activeElement?.matches('input, textarea, select, [contenteditable=true]')) return
+
+      if (document.querySelector('[aria-modal="true"], [role="dialog"], .fixed.inset-0')) return
+
+      const tab = allowedTabs.find((item) => item.hotkey === `ALT+${event.key}`)
+      if (!tab) return
+
+      event.preventDefault()
+      setActiveTab(tab.id)
+    }
+
+    window.addEventListener('keydown', handleTabHotkey)
+    return () => window.removeEventListener('keydown', handleTabHotkey)
+  }, [allowedTabs, setActiveTab])
 
   const canOpenCash = canAccessTab(user, 'cash')
   const handleGoToCash = (): void => {
@@ -113,7 +138,9 @@ export function DashboardLayout({
             onClick={handleGoToCash}
             disabled={!canOpenCash}
             title={
-              canOpenCash ? 'Ver corte de caja y turno [F4]' : 'Sin permiso para el módulo de caja'
+              canOpenCash
+                ? 'Ver corte de caja y turno [ALT+4]'
+                : 'Sin permiso para el módulo de caja'
             }
             className={`flex items-center gap-2 rounded-[4px] border px-2.5 py-1 transition-colors ${
               canOpenCash
@@ -166,7 +193,11 @@ export function DashboardLayout({
               className="flex items-center gap-1.5 rounded-[4px] border border-[#F8B4B4] bg-[#FDE8E8] px-2.5 py-1 font-semibold text-[#C42B1C] transition-colors hover:bg-[#FCD3D3] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
               title="Cerrar Sesión / Salir a Login"
             >
-              {isLoggingOut ? <RefreshCw size={13} className="animate-spin" /> : <LogOut size={13} />}
+              {isLoggingOut ? (
+                <RefreshCw size={13} className="animate-spin" />
+              ) : (
+                <LogOut size={13} />
+              )}
               <span>{isLoggingOut ? 'Saliendo…' : 'Salir'}</span>
             </button>
           )}

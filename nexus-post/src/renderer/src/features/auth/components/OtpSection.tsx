@@ -19,6 +19,26 @@ export const OtpSection: React.FC<OtpSectionProps> = ({ onCodeChange }) => {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (
+        event.key !== 'F2' ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.getModifierState('AltGraph')
+      )
+        return
+
+      event.preventDefault()
+      inputRefs.current[0]?.focus()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const formatTimer = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60

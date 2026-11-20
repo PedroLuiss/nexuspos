@@ -79,7 +79,17 @@ export const ProductTable: React.FC<{ user: User }> = ({ user }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (anyModalOpen || !e.altKey) return
+      if (
+        anyModalOpen ||
+        e.repeat ||
+        !e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey ||
+        e.getModifierState('AltGraph')
+      ) {
+        return
+      }
 
       const key = e.key.toLowerCase()
       if (key === 'n' && hasPermission(user, 'CAN_CREATE_PRODUCT')) {

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Search, Filter } from '../../../shared/icons/Icons'
 import type { StockFilter, TaxFilterOption } from '../hooks/useProductFilters'
 
@@ -47,11 +47,36 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   onTypeChange,
   counts
 }) => {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (
+        event.key !== 'F2' ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.getModifierState('AltGraph') ||
+        document.querySelector('[aria-modal="true"], [role="dialog"], .fixed.inset-0')
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      searchInputRef.current?.focus()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-white border border-[#E5E5E5] rounded-[4px] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="relative flex-1 min-w-[260px] max-w-sm">
         <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#717783]" />
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Buscar por código, descripción o categoría [F2]..."
           value={searchTerm}

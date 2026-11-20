@@ -298,6 +298,25 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Global hotkeys listener for keyboard-first POS flow
   const handleGlobalKeyDown = useEffectEvent((e: KeyboardEvent): void => {
+    if (e.repeat) return
+
+    const hasNoModifiers = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+    const hasOnlyAlt =
+      e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.getModifierState('AltGraph')
+
+    if (
+      isSuspendedModalOpen &&
+      hasOnlyAlt &&
+      e.key.toLowerCase() === 'p' &&
+      cart.length > 0 &&
+      cashShiftOpen
+    ) {
+      e.preventDefault()
+      setIsSuspendedModalOpen(false)
+      void handleSuspendCurrentSale()
+      return
+    }
+
     // If modal is active, let modal handle keys
     if (
       isSaleModalOpen ||
@@ -310,14 +329,14 @@ export const POSView: React.FC<POSViewProps> = ({
     }
 
     // [F2]: Focus barcode / product search
-    if (e.key === 'F2') {
+    if (hasNoModifiers && e.key === 'F2') {
       e.preventDefault()
       productSearchRef.current?.focusSearch()
       return
     }
 
     // [F12]: Open Checkout modal
-    if (e.key === 'F12') {
+    if (hasNoModifiers && e.key === 'F12') {
       e.preventDefault()
       if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('cash')
@@ -326,8 +345,8 @@ export const POSView: React.FC<POSViewProps> = ({
       return
     }
 
-    // [F6]: Fast Cash checkout
-    if (e.key === 'F6') {
+    // [F6]: Open checkout with cash selected
+    if (hasNoModifiers && e.key === 'F6') {
       e.preventDefault()
       if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('cash')
@@ -337,7 +356,7 @@ export const POSView: React.FC<POSViewProps> = ({
     }
 
     // [F7]: Fast Card checkout
-    if (e.key === 'F7') {
+    if (hasNoModifiers && e.key === 'F7') {
       e.preventDefault()
       if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) {
         setInitialPaymentMethod('card')
@@ -347,14 +366,14 @@ export const POSView: React.FC<POSViewProps> = ({
     }
 
     // [F8]: Split payment modal
-    if (e.key === 'F8') {
+    if (hasNoModifiers && e.key === 'F8') {
       e.preventDefault()
       if (cart.length > 0 && cashShiftOpen && !cannotCompleteSale) setIsSplitModalOpen(true)
       return
     }
 
     // [ALT+K]: Toggle and focus customer cédula input
-    if (e.altKey && (e.key === 'k' || e.key === 'K')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 'k') {
       e.preventDefault()
       setAssignCustomer(true)
       setTimeout(() => {
@@ -365,21 +384,21 @@ export const POSView: React.FC<POSViewProps> = ({
     }
 
     // [ALT+Q]: Quick cash payment
-    if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 'q') {
       e.preventDefault()
       handleQuickCash()
       return
     }
 
     // [ALT+P]: Pause / suspend sale
-    if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 'p') {
       e.preventDefault()
       if (cart.length > 0 && cashShiftOpen) void handleSuspendCurrentSale()
       return
     }
 
     // [ALT+L]: Toggle search list
-    if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 'l') {
       e.preventDefault()
       productSearchRef.current?.toggleList()
       productSearchRef.current?.focusSearch()
@@ -387,21 +406,21 @@ export const POSView: React.FC<POSViewProps> = ({
     }
 
     // [ALT+E]: Open suspended sales
-    if (e.altKey && (e.key === 'e' || e.key === 'E')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 'e') {
       e.preventDefault()
       if (cashShiftOpen) setIsSuspendedModalOpen(true)
       return
     }
 
     // [ALT+T]: View ticket receipt
-    if (e.altKey && (e.key === 't' || e.key === 'T')) {
+    if (hasOnlyAlt && e.key.toLowerCase() === 't') {
       e.preventDefault()
       if (cart.length > 0) setIsPreviewModalOpen(true)
       return
     }
 
     // [Escape]: Clear cart / Close dropdowns
-    if (e.key === 'Escape') {
+    if (hasNoModifiers && e.key === 'Escape') {
       if (showSearchResults) {
         productSearchRef.current?.closeResults()
       } else if (showCustomerDropdown) {
@@ -770,7 +789,10 @@ export const POSView: React.FC<POSViewProps> = ({
                         {selectedCustomer.currentDebt > 0 ? (
                           <span className="text-[10px] font-bold text-[#C42B1C] bg-red-50 border border-red-200 px-1 py-0.2 rounded">
                             Deuda:{' '}
-                            {formatCurrency(selectedCustomer.currentDebt, selectedCustomer.currency)}
+                            {formatCurrency(
+                              selectedCustomer.currentDebt,
+                              selectedCustomer.currency
+                            )}
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-[#107C41] bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded">
@@ -978,9 +1000,7 @@ export const POSView: React.FC<POSViewProps> = ({
                     </span>
                   </>
                 ) : businessConfig.currency === 'VES' ? (
-                  <span className="text-[10px] text-[#717783]">
-                    Moneda de operación: Bolívar
-                  </span>
+                  <span className="text-[10px] text-[#717783]">Moneda de operación: Bolívar</span>
                 ) : (
                   <span className="text-[10px] text-[#717783]">
                     Referencia en bolívares no disponible

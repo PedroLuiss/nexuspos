@@ -56,8 +56,7 @@ nexus-post/src/
 
 | Atajo | Acción |
 | :---: | :--- |
-| `[F5]` | Cambiar a pestaña **Clientes & Créditos** |
-| `[F1]` | (En Stitch alternativo) Modal de Clientes Rápido |
+| `[ALT+5]` | Cambiar a pestaña **Clientes & Créditos** si está autorizada |
 | `[ALT + C]` | Registrar **Nuevo Cliente** |
 
 ---

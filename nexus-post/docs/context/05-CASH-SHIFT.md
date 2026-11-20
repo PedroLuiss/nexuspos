@@ -39,6 +39,13 @@
 - `CashService` depende ahora de `ComboItemRepository` y `ProductBatchRepository` (inyectados en `ipc/index.ts`) además de `SalesRepository`, `ProductRepository` y `StockMovementRepository`.
 - Ventas creadas antes de la migración no tienen `cash_shift_id`; no se asignan retrospectivamente a un cajero.
 
+## Atajos de teclado
+
+| Atajo | Acción |
+| :---: | :--- |
+| `[ALT+4]` | Cambiar a la pestaña **Caja** si está autorizada |
+| `[ALT+G]` | Abrir **Gasto manual** en el turno propio abierto, con permiso de movimientos y sin otro diálogo activo |
+
 ## Archivos principales
 
 ```text

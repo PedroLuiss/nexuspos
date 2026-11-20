@@ -63,10 +63,11 @@ Las llamadas de persistencia se exponen como `window.api.sales` y
 
 |    Atajo    | Acción               | Descripción                                         |
 | :---------: | :------------------- | :-------------------------------------------------- |
+| `[ALT + 1]` | Abrir POS            | Cambia a la pestaña **Venta (POS)** si está autorizada |
 |   `[F2]`    | Buscar producto      | Enfoca el campo de búsqueda/lector                  |
-|   `[F12]`   | Cobro Estándar       | Despliega el modal de pago completo                 |
-|   `[F6]`    | Cobro en efectivo    | Abre cobro con efectivo preseleccionado             |
-|   `[F7]`    | Cobro con tarjeta    | Abre cobro con tarjeta preseleccionada              |
+|   `[F12]`   | Cobro Estándar       | Abre el modal de pago; dentro de este, confirma la venta |
+|   `[F6]`    | Cobro en efectivo    | Abre el cobro con efectivo seleccionado; en el modal selecciona efectivo |
+|   `[F7]`    | Cobro con tarjeta    | Abre el cobro con tarjeta seleccionada; en el modal selecciona tarjeta  |
 |   `[F8]`    | Pago mixto           | Abre el modal para combinar efectivo y tarjeta      |
 | `[ALT + Q]` | Cobro Rápido         | Cierra la venta asumiendo pago exacto en efectivo   |
 | `[ALT + K]` | Asociar cliente      | Enfoca la búsqueda de cliente                       |

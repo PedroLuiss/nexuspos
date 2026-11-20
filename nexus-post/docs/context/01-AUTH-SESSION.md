@@ -188,4 +188,12 @@ VITE_API_BASE_URL=http://nexuspos-api.test/api/v1
 - El botón `LOCK` del header abre `OperatorSwitchModal` (`features/auth/components/OperatorSwitchModal.tsx`), que valida el PIN con `auth:loginWithPin` (SQLite local primero) y, si es válido, cambia el operador activo en `AppContent` (`currentUser`), recalculando pestañas por RBAC sin recargar la ventana.
 - El botón `Salir` ejecuta `logoutApi()` (marca `sessionAutoRestoreBlocked`), limpia carrito, ventas pausadas y estado de caja, y vuelve a `LoginView`. Durante el proceso el botón se deshabilita y muestra `Saliendo…`.
 - El cierre de sesión emite una alerta animada (`shared/hooks/useToast` + `shared/ui/ToastAlert`) que se renderiza incluso sobre la pantalla de login.
-- El chip de estación del header muestra el estado real del turno (`TURNO ACTIVO` / `SIN TURNO`) y navega al módulo Caja `[F4]` cuando la sesión tiene permiso.
+- El chip de estación del header muestra el estado real del turno (`TURNO ACTIVO` / `SIN TURNO`) y navega al módulo Caja `[ALT+4]` cuando la sesión tiene permiso.
+
+## 9. Atajos de teclado
+
+| Atajo | Acción |
+| :---: | :--- |
+| `[F1]` | Abrir recuperación de acceso desde el formulario de login |
+| `[F10]` | Abrir el acceso rápido por PIN desde el formulario de login |
+| `[F2]` | Enfocar el primer campo del código OTP durante la recuperación |

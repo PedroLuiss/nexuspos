@@ -65,8 +65,7 @@ nexus-post/src/
 
 | Atajo  | Acción                                                  |
 | :----: | :------------------------------------------------------ |
-| `[F3]` | Cambiar a pestaña **Kardex (Auditoría Inmutable)**      |
-| `[F4]` | (En Stitch alternativo) Acceso a trazabilidad inmutable |
+| `[ALT+3]` | Cambiar a pestaña **Kardex (Auditoría Inmutable)** |
 
 ---
 
