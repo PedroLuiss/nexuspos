@@ -28,13 +28,21 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - Reglas de integridad: no puede auto-desactivarse ni auto-eliminarse, y siempre debe quedar al menos un `ADMIN` activo.
   - La "eliminación" es **soft delete** (`active = 0`): el registro permanece visible como inactivo para preservar la trazabilidad de Kardex y auditoría.
 - **Identidad Comercial, Propietario y Formato de Ticket (persistido en SQLite):**
-  - Tabla de fila única `business_settings` (migración `008_business_settings.ts`) con seed demostrativo editable para Venezuela.
+  - Tabla de fila única `business_settings` (migraciones `008_business_settings.ts` y `029_ticket_and_invoice_delivery_settings.ts`) con seed demostrativo editable para Venezuela.
   - Identidad legal: razón social, nombre comercial, tipo de identificación fiscal (`RIF` o `NONE`), número de RIF (formato SENIAT: `J-00000000-0`, prefijos J/V/E/G/P) y régimen tributario.
   - Propietario / representante legal: nombre y documento (Cédula de Identidad / RIF).
   - Contacto: correo, teléfono fijo (+58), celular / WhatsApp y sitio web.
   - Domicilio fiscal: dirección, distrito / urbanización, ciudad, estado, municipio, parroquia, país (Venezuela) y código postal.
   - Operación: moneda (`VES` Bolívar Soberano, `USD` Dólar, `EUR` Euro — catálogo extensible para agregar más monedas).
-  - Plantilla de ticket 80mm: encabezado, pie, leyenda legal (ej. "Documento no fiscal. Sujeto a regulación del SENIAT") y toggles para imprimir RIF, domicilio y cajero.
+  - Plantilla de ticket y comprobantes de venta:
+    - Textos: encabezado, pie, leyenda legal obligatoria y toggles para RIF, domicilio y cajero.
+    - Formato de papel / tamaño de documento (`invoicePaperSize`):
+      - `TICKET_80MM`: Ticket térmico estándar para rollos continuos de 80mm.
+      - `TICKET_58MM`: Formato compacto para impresoras térmicas portátiles de 58mm.
+      - `LETTER_PDF`: Factura comercial en formato Hoja Carta / A4 (PDF) con membrete, tabla de renglones y firmas de conforme; ideal para negocios sin impresora de tickets térmicos (tipo ferreterías, mayoristas y repuestos).
+    - Modo de emisión al finalizar venta (`invoiceOutputMode`): `PRINT_DIRECT` (impresión inmediata) o `PREVIEW_AND_DOWNLOAD` (vista previa en pantalla con descarga en PDF).
+    - Despachos digitales (Correo SMTP y WhatsApp): Desactivados temporalmente en la interfaz operativa por políticas de cuota y límites de proveedores gratuitos. La arquitectura backend e infraestructura de contratos quedan preservadas para futura reactivación.
+    - Canales IPC: `settings:getBusiness`, `settings:updateBusiness`.
 - **Impuestos multi-alícuota gestionados desde Ajustes:**
   - **Catálogo `taxes` (migración `015_taxes.ts`):** cada tasa guarda nombre, porcentaje (0–100), código fiscal corto opcional (`G`, `R`, `E`…), estado activo y marca de predeterminada. Semillas iniciales: `Exento` 0%, `IVA General` 16% (predeterminada), `IVA Reducido` 8% e `IVA Adicional` 31%. Se pueden crear, editar, desactivar y eliminar tasas personalizadas.
   - **Reglas del catálogo:** solo puede existir una tasa predeterminada (índice único parcial); el nombre es único sin distinguir mayúsculas; la tasa predeterminada no se puede eliminar y una tasa con productos asignados tampoco (debe reasignarse primero). El borrado es lógico (`deleted = 1`).

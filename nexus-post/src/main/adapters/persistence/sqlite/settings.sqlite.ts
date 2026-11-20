@@ -37,6 +37,19 @@ interface BusinessSettingsRow {
   ticket_show_tax_id: number
   ticket_show_address: number
   ticket_show_cashier: number
+  invoice_paper_size?: string
+  invoice_output_mode?: string
+  email_invoice_enabled?: number
+  smtp_host?: string
+  smtp_port?: number
+  smtp_secure?: number
+  smtp_user?: string
+  smtp_password?: string
+  smtp_from_name?: string
+  email_subject_template?: string
+  email_body_template?: string
+  whatsapp_invoice_enabled?: number
+  whatsapp_message_template?: string
   tax_enabled: number
   tax_name: string
   tax_rate: number
@@ -76,7 +89,22 @@ const FALLBACK_CONFIG: BusinessConfig = {
   taxEnabled: true,
   taxName: 'IVA',
   taxRate: 16,
-  pricesIncludeTax: false
+  pricesIncludeTax: false,
+  invoicePaperSize: 'TICKET_80MM',
+  invoiceOutputMode: 'PRINT_DIRECT',
+  emailInvoiceEnabled: false,
+  smtpHost: 'smtp.gmail.com',
+  smtpPort: 587,
+  smtpSecure: false,
+  smtpUser: '',
+  smtpPassword: '',
+  smtpFromName: '',
+  emailSubjectTemplate: 'Factura #{numero} - {empresa}',
+  emailBodyTemplate:
+    'Estimado/a {cliente},\n\nAdjuntamos el comprobante de su compra por un total de {total}.\n\n¡Gracias por su preferencia!',
+  whatsappInvoiceEnabled: false,
+  whatsappMessageTemplate:
+    '¡Hola {cliente}! Le saludamos de {empresa}. Su factura #{numero} por un total de {total} ha sido emitida exitosamente. ¡Gracias por su compra!'
 }
 
 /** Todas las columnas esperadas en la tabla business_settings. */
@@ -124,6 +152,78 @@ const EXPECTED_COLUMNS: { name: string; ddl: string }[] = [
   {
     name: 'ticket_header',
     ddl: "ALTER TABLE business_settings ADD COLUMN ticket_header TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_footer',
+    ddl: "ALTER TABLE business_settings ADD COLUMN ticket_footer TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_legal_note',
+    ddl: "ALTER TABLE business_settings ADD COLUMN ticket_legal_note TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'ticket_show_tax_id',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_tax_id INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'ticket_show_address',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_address INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'ticket_show_cashier',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN ticket_show_cashier INTEGER NOT NULL DEFAULT 1'
+  },
+  {
+    name: 'invoice_paper_size',
+    ddl: "ALTER TABLE business_settings ADD COLUMN invoice_paper_size TEXT NOT NULL DEFAULT 'TICKET_80MM'"
+  },
+  {
+    name: 'invoice_output_mode',
+    ddl: "ALTER TABLE business_settings ADD COLUMN invoice_output_mode TEXT NOT NULL DEFAULT 'PRINT_DIRECT'"
+  },
+  {
+    name: 'email_invoice_enabled',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN email_invoice_enabled INTEGER NOT NULL DEFAULT 0'
+  },
+  {
+    name: 'smtp_host',
+    ddl: "ALTER TABLE business_settings ADD COLUMN smtp_host TEXT NOT NULL DEFAULT 'smtp.gmail.com'"
+  },
+  {
+    name: 'smtp_port',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN smtp_port INTEGER NOT NULL DEFAULT 587'
+  },
+  {
+    name: 'smtp_secure',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN smtp_secure INTEGER NOT NULL DEFAULT 0'
+  },
+  {
+    name: 'smtp_user',
+    ddl: "ALTER TABLE business_settings ADD COLUMN smtp_user TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'smtp_password',
+    ddl: "ALTER TABLE business_settings ADD COLUMN smtp_password TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'smtp_from_name',
+    ddl: "ALTER TABLE business_settings ADD COLUMN smtp_from_name TEXT NOT NULL DEFAULT ''"
+  },
+  {
+    name: 'email_subject_template',
+    ddl: "ALTER TABLE business_settings ADD COLUMN email_subject_template TEXT NOT NULL DEFAULT 'Factura #{numero} - {empresa}'"
+  },
+  {
+    name: 'email_body_template',
+    ddl: "ALTER TABLE business_settings ADD COLUMN email_body_template TEXT NOT NULL DEFAULT 'Estimado/a {cliente},\\n\\nAdjuntamos el comprobante de su compra por un total de {total}.\\n\\n¡Gracias por su preferencia!'"
+  },
+  {
+    name: 'whatsapp_invoice_enabled',
+    ddl: 'ALTER TABLE business_settings ADD COLUMN whatsapp_invoice_enabled INTEGER NOT NULL DEFAULT 0'
+  },
+  {
+    name: 'whatsapp_message_template',
+    ddl: "ALTER TABLE business_settings ADD COLUMN whatsapp_message_template TEXT NOT NULL DEFAULT '¡Hola {cliente}! Le saludamos de {empresa}. Su factura #{numero} por un total de {total} ha sido emitida exitosamente. ¡Gracias por su compra!'"
   },
   {
     name: 'ticket_footer',
@@ -203,6 +303,23 @@ function mapRow(row: BusinessSettingsRow): BusinessConfig {
     ticketShowTaxId: row.ticket_show_tax_id === 1,
     ticketShowAddress: row.ticket_show_address === 1,
     ticketShowCashier: row.ticket_show_cashier === 1,
+    invoicePaperSize: (row.invoice_paper_size as BusinessConfig['invoicePaperSize']) || 'TICKET_80MM',
+    invoiceOutputMode: (row.invoice_output_mode as BusinessConfig['invoiceOutputMode']) || 'PRINT_DIRECT',
+    emailInvoiceEnabled: row.email_invoice_enabled === 1,
+    smtpHost: row.smtp_host ?? 'smtp.gmail.com',
+    smtpPort: typeof row.smtp_port === 'number' ? row.smtp_port : 587,
+    smtpSecure: row.smtp_secure === 1,
+    smtpUser: row.smtp_user ?? '',
+    smtpPassword: row.smtp_password ?? '',
+    smtpFromName: row.smtp_from_name ?? '',
+    emailSubjectTemplate: row.email_subject_template ?? 'Factura #{numero} - {empresa}',
+    emailBodyTemplate:
+      row.email_body_template ??
+      'Estimado/a {cliente},\n\nAdjuntamos el comprobante de su compra por un total de {total}.\n\n¡Gracias por su preferencia!',
+    whatsappInvoiceEnabled: row.whatsapp_invoice_enabled === 1,
+    whatsappMessageTemplate:
+      row.whatsapp_message_template ??
+      '¡Hola {cliente}! Le saludamos de {empresa}. Su factura #{numero} por un total de {total} ha sido emitida exitosamente. ¡Gracias por su compra!',
     taxEnabled: row.tax_enabled === 1,
     taxName: row.tax_name,
     taxRate: row.tax_rate,
@@ -275,6 +392,10 @@ export class SqliteSettingsRepository implements SettingsRepository {
           country = ?, postal_code = ?,
           currency = ?, ticket_header = ?, ticket_footer = ?, ticket_legal_note = ?,
           ticket_show_tax_id = ?, ticket_show_address = ?, ticket_show_cashier = ?,
+          invoice_paper_size = ?, invoice_output_mode = ?, email_invoice_enabled = ?,
+          smtp_host = ?, smtp_port = ?, smtp_secure = ?, smtp_user = ?, smtp_password = ?,
+          smtp_from_name = ?, email_subject_template = ?, email_body_template = ?,
+          whatsapp_invoice_enabled = ?, whatsapp_message_template = ?,
           tax_enabled = ?, tax_name = ?, tax_rate = ?, prices_include_tax = ?,
           updated_at = ?, updated_by = ?
         WHERE id = ?`
@@ -306,6 +427,19 @@ export class SqliteSettingsRepository implements SettingsRepository {
         input.ticketShowTaxId ? 1 : 0,
         input.ticketShowAddress ? 1 : 0,
         input.ticketShowCashier ? 1 : 0,
+        input.invoicePaperSize || 'TICKET_80MM',
+        input.invoiceOutputMode || 'PRINT_DIRECT',
+        input.emailInvoiceEnabled ? 1 : 0,
+        input.smtpHost || 'smtp.gmail.com',
+        typeof input.smtpPort === 'number' ? input.smtpPort : 587,
+        input.smtpSecure ? 1 : 0,
+        input.smtpUser || '',
+        input.smtpPassword || '',
+        input.smtpFromName || '',
+        input.emailSubjectTemplate || 'Factura #{numero} - {empresa}',
+        input.emailBodyTemplate || '',
+        input.whatsappInvoiceEnabled ? 1 : 0,
+        input.whatsappMessageTemplate || '',
         input.taxEnabled ? 1 : 0,
         input.taxName,
         input.taxRate,
@@ -333,6 +467,10 @@ export class SqliteSettingsRepository implements SettingsRepository {
           address, district, city, state, municipality, parish, country, postal_code, currency,
           ticket_header, ticket_footer, ticket_legal_note,
           ticket_show_tax_id, ticket_show_address, ticket_show_cashier,
+          invoice_paper_size, invoice_output_mode, email_invoice_enabled,
+          smtp_host, smtp_port, smtp_secure, smtp_user, smtp_password,
+          smtp_from_name, email_subject_template, email_body_template,
+          whatsapp_invoice_enabled, whatsapp_message_template,
           tax_enabled, tax_name, tax_rate, prices_include_tax,
           created_at, updated_at
         ) VALUES (
@@ -342,6 +480,10 @@ export class SqliteSettingsRepository implements SettingsRepository {
           ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?,
+          ?, ?, ?, ?,
           ?, ?
         )`
       )
@@ -373,6 +515,19 @@ export class SqliteSettingsRepository implements SettingsRepository {
         base.ticketShowTaxId ? 1 : 0,
         base.ticketShowAddress ? 1 : 0,
         base.ticketShowCashier ? 1 : 0,
+        base.invoicePaperSize,
+        base.invoiceOutputMode,
+        base.emailInvoiceEnabled ? 1 : 0,
+        base.smtpHost,
+        base.smtpPort,
+        base.smtpSecure ? 1 : 0,
+        base.smtpUser,
+        base.smtpPassword,
+        base.smtpFromName,
+        base.emailSubjectTemplate,
+        base.emailBodyTemplate,
+        base.whatsappInvoiceEnabled ? 1 : 0,
+        base.whatsappMessageTemplate,
         base.taxEnabled ? 1 : 0,
         base.taxName,
         base.taxRate,

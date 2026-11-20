@@ -2,7 +2,9 @@ import type {
   BusinessConfig,
   BusinessConfigInput,
   CurrencyCode,
-  TaxIdType
+  TaxIdType,
+  TestSmtpInput,
+  SendInvoiceEmailInput
 } from '@shared/contracts'
 import { CURRENCY_OPTIONS, TAX_ID_TYPE_OPTIONS } from '@shared/contracts'
 import type { SettingsRepository } from '../../ports/settings.repository'
@@ -10,6 +12,7 @@ import type { CurrencyConversionRepository } from '../../ports/currency-conversi
 import type { TransactionRunner } from '../../ports/transaction'
 import type { AuthService } from '../auth/auth.service'
 import type { ExchangeRateService } from '../exchange-rate/exchange-rate.service'
+import type { MailerPort } from '../../ports/mailer.port'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_TAX_RATE = 100
@@ -41,7 +44,8 @@ export class SettingsService {
     private readonly auth: AuthService,
     private readonly exchangeRates: ExchangeRateService,
     private readonly currencyConversion: CurrencyConversionRepository,
-    private readonly transaction: TransactionRunner
+    private readonly transaction: TransactionRunner,
+    private readonly mailer?: MailerPort
   ) {}
 
   private requireAdminSession(): { name: string } {
@@ -142,6 +146,23 @@ export class SettingsService {
       ticketShowTaxId: Boolean(input.ticketShowTaxId),
       ticketShowAddress: Boolean(input.ticketShowAddress),
       ticketShowCashier: Boolean(input.ticketShowCashier),
+      invoicePaperSize: input.invoicePaperSize || 'TICKET_80MM',
+      invoiceOutputMode: input.invoiceOutputMode || 'PRINT_DIRECT',
+      emailInvoiceEnabled: Boolean(input.emailInvoiceEnabled),
+      smtpHost: clean(input.smtpHost, 120) || 'smtp.gmail.com',
+      smtpPort: Number(input.smtpPort) || 587,
+      smtpSecure: Boolean(input.smtpSecure),
+      smtpUser: clean(input.smtpUser, 120),
+      smtpPassword: typeof input.smtpPassword === 'string' ? input.smtpPassword.trim() : '',
+      smtpFromName: clean(input.smtpFromName, 120),
+      emailSubjectTemplate: clean(input.emailSubjectTemplate, 200) || 'Factura #{numero} - {empresa}',
+      emailBodyTemplate:
+        typeof input.emailBodyTemplate === 'string' ? input.emailBodyTemplate.trim().slice(0, 1000) : '',
+      whatsappInvoiceEnabled: Boolean(input.whatsappInvoiceEnabled),
+      whatsappMessageTemplate:
+        typeof input.whatsappMessageTemplate === 'string'
+          ? input.whatsappMessageTemplate.trim().slice(0, 1000)
+          : '',
       taxEnabled: Boolean(input.taxEnabled),
       taxName: taxName || 'IVA',
       taxRate,
@@ -188,5 +209,33 @@ export class SettingsService {
   ): Promise<{ rate: number; isStale: boolean }> {
     if (currency === 'VES') return { rate: 1, isStale: false }
     return this.exchangeRates.getCurrencyVes(currency)
+  }
+
+  async testSmtp(input: TestSmtpInput): Promise<{ success: boolean; message: string }> {
+    this.requireAdminSession()
+    if (!this.mailer) {
+      return {
+        success: false,
+        message: 'El servicio de envío de correos no está inicializado en la aplicación.'
+      }
+    }
+    return this.mailer.testConnection(input)
+  }
+
+  async sendInvoiceEmail(
+    input: SendInvoiceEmailInput
+  ): Promise<{ success: boolean; message: string }> {
+    const session = this.auth.getSessionUser()
+    if (!session) {
+      throw new Error('No hay una sesión activa. Inicie sesión nuevamente.')
+    }
+    if (!this.mailer) {
+      return {
+        success: false,
+        message: 'El servicio de envío de correos no está inicializado en la aplicación.'
+      }
+    }
+    const businessConfig = this.repository.getBusiness()
+    return this.mailer.sendInvoiceMail(businessConfig, input)
   }
 }

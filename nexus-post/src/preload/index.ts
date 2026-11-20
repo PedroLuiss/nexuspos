@@ -18,6 +18,8 @@ import type {
   CreateUserInput,
   UpdateUserInput,
   BusinessConfigInput,
+  TestSmtpInput,
+  SendInvoiceEmailInput,
   ScaleConfigInput,
   BaudRate,
   CustomerInput,
@@ -224,7 +226,10 @@ const api: NexusApi = {
   settings: {
     getBusiness: () => ipcRenderer.invoke(IPC_CHANNELS.settings.getBusiness),
     updateBusiness: (input: BusinessConfigInput) =>
-      ipcRenderer.invoke(IPC_CHANNELS.settings.updateBusiness, input)
+      ipcRenderer.invoke(IPC_CHANNELS.settings.updateBusiness, input),
+    testSmtp: (input: TestSmtpInput) => ipcRenderer.invoke(IPC_CHANNELS.settings.testSmtp, input),
+    sendInvoiceEmail: (input: SendInvoiceEmailInput) =>
+      ipcRenderer.invoke(IPC_CHANNELS.settings.sendInvoiceEmail, input)
   },
   hardware: {
     listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.hardware.listPorts),

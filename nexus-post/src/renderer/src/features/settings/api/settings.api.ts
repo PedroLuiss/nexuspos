@@ -1,4 +1,9 @@
-import type { BusinessConfig, BusinessConfigInput } from '@shared/contracts'
+import type {
+  BusinessConfig,
+  BusinessConfigInput,
+  TestSmtpInput,
+  SendInvoiceEmailInput
+} from '@shared/contracts'
 import { DEFAULT_BUSINESS_CONFIG } from '../../../shared/lib/businessConfig'
 
 function cleanErrorMessage(err: unknown): string {
@@ -28,6 +33,24 @@ export const settingsApi = {
       updatedAt: new Date().toISOString()
     }
     return previewConfig
+  },
+
+  testSmtp: async (input: TestSmtpInput): Promise<{ success: boolean; message: string }> => {
+    if (window.api?.settings?.testSmtp) return window.api.settings.testSmtp(input)
+    return {
+      success: true,
+      message: 'Simulación: Conexión SMTP exitosa (Modo Preview).'
+    }
+  },
+
+  sendInvoiceEmail: async (
+    input: SendInvoiceEmailInput
+  ): Promise<{ success: boolean; message: string }> => {
+    if (window.api?.settings?.sendInvoiceEmail) return window.api.settings.sendInvoiceEmail(input)
+    return {
+      success: true,
+      message: `Simulación: Factura enviada a ${input.toEmail} (Modo Preview).`
+    }
   }
 }
 

@@ -83,7 +83,7 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop">
-      <div className="w-full max-w-3xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col max-h-[92vh]">
+      <div className="w-full max-w-4xl bg-white rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.14)] border border-[#D1D1D1] overflow-hidden animate-modal flex flex-col max-h-[92vh]">
         <div className="flex items-center justify-between px-5 py-3 bg-[#F9F9F9] border-b border-[#E5E5E5] select-none">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-[4px] bg-[#107C41]/10 text-[#107C41] flex items-center justify-center">
@@ -94,7 +94,7 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({
                 Datos del Negocio y Plantilla de Ticket
               </h2>
               <p className="text-[11px] text-[#717783]">
-                Información fiscal, propietario y formato del comprobante 80mm
+                Información fiscal, propietario, formato de venta (Ticket / Hoja Carta) y envíos digitales
               </p>
             </div>
           </div>

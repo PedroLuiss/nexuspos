@@ -87,6 +87,12 @@ export const POSView: React.FC<POSViewProps> = ({
   const [ticketNumber, setTicketNumber] = useState(createTicketNumber)
   const [lastTicketNumber, setLastTicketNumber] = useState<string | null>(null)
   const [lastCustomerDisplayName, setLastCustomerDisplayName] = useState<string | undefined>()
+  const [lastCustomer, setLastCustomer] = useState<Customer | null>(null)
+  const [lastItems, setLastItems] = useState<typeof cart>([])
+  const [lastSubtotal, setLastSubtotal] = useState(0)
+  const [lastTax, setLastTax] = useState(0)
+  const [lastDiscount, setLastDiscount] = useState(0)
+  const [lastTotal, setLastTotal] = useState(0)
 
   // Modals state
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
@@ -439,6 +445,15 @@ export const POSView: React.FC<POSViewProps> = ({
 
   // Split payment confirmation
   const handleConfirmSplit = async (cashAmount: number, cardAmount: number): Promise<void> => {
+    const currentCart = [...cart]
+    const currentSubtotal = subtotal
+    const currentTax = taxTotal
+    const currentDiscount = discountTotal
+    const currentTotal = finalTotal
+    const currentCustomer = selectedCustomer
+    const currentCustomerName = activeCustomerDisplayName
+    const currentTicket = ticketNumber
+
     const details: PaymentDetails = {
       method: 'mixed',
       amountPaid: finalTotal,
@@ -450,13 +465,24 @@ export const POSView: React.FC<POSViewProps> = ({
     }
     const completed = await completeSale(details)
     if (completed === false) return
+
+    setLastItems(currentCart)
+    setLastSubtotal(currentSubtotal)
+    setLastTax(currentTax)
+    setLastDiscount(currentDiscount)
+    setLastTotal(currentTotal)
+    setLastCustomer(currentCustomer)
     setLastPaymentDetails(details)
-    setLastTicketNumber(ticketNumber)
-    setLastCustomerDisplayName(activeCustomerDisplayName)
+    setLastTicketNumber(currentTicket)
+    setLastCustomerDisplayName(currentCustomerName)
     setTicketNumber(createTicketNumber())
     setAssignCustomer(false)
     setSelectedCustomer(null)
     setIsSplitModalOpen(false)
+
+    if (businessConfig.invoiceOutputMode === 'PREVIEW_AND_DOWNLOAD') {
+      setIsPreviewModalOpen(true)
+    }
   }
 
   return (
@@ -1124,15 +1150,36 @@ export const POSView: React.FC<POSViewProps> = ({
           canCompleteSale={!cannotCompleteSale}
           onClose={() => setIsSaleModalOpen(false)}
           onConfirmSale={async (details) => {
+            const currentCart = [...cart]
+            const currentSubtotal = subtotal
+            const currentTax = taxTotal
+            const currentDiscount = discountTotal
+            const currentTotal = finalTotal
+            const currentCustomer = selectedCustomer
+            const currentCustomerName = activeCustomerDisplayName
+            const currentTicket = ticketNumber
+
             const completed = await completeSale(details)
             if (completed === false) return false
+
+            setLastItems(currentCart)
+            setLastSubtotal(currentSubtotal)
+            setLastTax(currentTax)
+            setLastDiscount(currentDiscount)
+            setLastTotal(currentTotal)
+            setLastCustomer(currentCustomer)
             setLastPaymentDetails(details)
-            setLastTicketNumber(ticketNumber)
-            setLastCustomerDisplayName(activeCustomerDisplayName)
+            setLastTicketNumber(currentTicket)
+            setLastCustomerDisplayName(currentCustomerName)
             setTicketNumber(`TK-${Date.now()}`)
             setAssignCustomer(false)
             setSelectedCustomer(null)
             setIsSaleModalOpen(false)
+
+            if (businessConfig.invoiceOutputMode === 'PREVIEW_AND_DOWNLOAD') {
+              setIsPreviewModalOpen(true)
+            }
+
             return true
           }}
         />
@@ -1161,18 +1208,19 @@ export const POSView: React.FC<POSViewProps> = ({
         onDeleteSuspendedSale={onDeleteSuspendedSale}
       />
 
-      {/* 80mm Thermal Receipt Preview Modal */}
+      {/* Comprobante / Ticket / Factura Carta Preview Modal */}
       <TicketPreviewModal
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
-        items={cart}
-        subtotal={subtotal}
-        tax={taxTotal}
-        discount={discountTotal}
-        total={finalTotal}
+        items={cart.length > 0 ? cart : lastItems}
+        subtotal={cart.length > 0 ? subtotal : lastSubtotal}
+        tax={cart.length > 0 ? taxTotal : lastTax}
+        discount={cart.length > 0 ? discountTotal : lastDiscount}
+        total={cart.length > 0 ? finalTotal : lastTotal}
         payment={lastPaymentDetails}
         ticketNumber={cart.length > 0 ? ticketNumber : (lastTicketNumber ?? ticketNumber)}
         cashierName={cashierName}
+        customer={cart.length > 0 ? selectedCustomer : lastCustomer}
         customerName={cart.length > 0 ? activeCustomerDisplayName : lastCustomerDisplayName}
         exchangeRate={exchangeRate}
       />

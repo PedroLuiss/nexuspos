@@ -33,6 +33,7 @@ import { LaravelAuthAdapter } from '../adapters/remote/laravel-auth.adapter'
 import { BcvExchangeRateAdapter } from '../adapters/remote/bcv-exchange-rate.adapter'
 import { LaravelDatabaseBackupAdapter } from '../adapters/remote/laravel-database-backup.adapter'
 import { LaravelIssueReportAdapter } from '../adapters/remote/laravel-issue-report.adapter'
+import { SmtpMailerAdapter } from '../adapters/mail/smtp-mailer.adapter'
 import { ProductService } from '../domain/products/product.service'
 import { TaxService } from '../domain/taxes/tax.service'
 import { BrandService } from '../domain/brands/brand.service'
@@ -152,12 +153,14 @@ export function registerIpcHandlers(): void {
   const supplierService = new SupplierService(supplierRepository, authService)
   const productTypeService = new ProductTypeService(productTypeRepository, authService)
   const userService = new UserService(userRepository, authService, passwordHasher)
+  const mailerAdapter = new SmtpMailerAdapter()
   const settingsService = new SettingsService(
     settingsRepository,
     authService,
     exchangeRateService,
     currencyConversionRepository,
-    transactionRunner
+    transactionRunner,
+    mailerAdapter
   )
   const scaleService = new ScaleService(scaleRepository, authService)
   const customerRepository = new SqliteCustomerRepository(db)

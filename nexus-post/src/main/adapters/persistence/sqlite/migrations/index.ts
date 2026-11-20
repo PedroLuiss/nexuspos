@@ -34,6 +34,7 @@ import { migration025KardexMetadata } from './025_kardex_metadata'
 import { migration026OperatingCurrency } from './026_operating_currency'
 import { migration027CashStation } from './027_cash_station'
 import { migration028RestoreCoreProductTypes } from './028_restore_core_product_types'
+import { migration029TicketAndInvoiceDeliverySettings } from './029_ticket_and_invoice_delivery_settings'
 
 const MIGRATIONS: Migration[] = [
   migration001Products,
@@ -63,7 +64,8 @@ const MIGRATIONS: Migration[] = [
   migration025KardexMetadata,
   migration026OperatingCurrency,
   migration027CashStation,
-  migration028RestoreCoreProductTypes
+  migration028RestoreCoreProductTypes,
+  migration029TicketAndInvoiceDeliverySettings
 ]
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

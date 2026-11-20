@@ -183,7 +183,9 @@ export const IPC_CHANNELS = {
   },
   settings: {
     getBusiness: 'settings:getBusiness',
-    updateBusiness: 'settings:updateBusiness'
+    updateBusiness: 'settings:updateBusiness',
+    testSmtp: 'settings:testSmtp',
+    sendInvoiceEmail: 'settings:sendInvoiceEmail'
   },
   hardware: {
     listPorts: 'hardware:listPorts',

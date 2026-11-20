@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@shared/contracts'
-import type { BusinessConfigInput } from '@shared/contracts'
+import type { BusinessConfigInput, TestSmtpInput, SendInvoiceEmailInput } from '@shared/contracts'
 import type { SettingsService } from '../domain/settings/settings.service'
 
 /**
@@ -15,5 +15,13 @@ export function registerSettingsIpc(settingsService: SettingsService): void {
 
   ipcMain.handle(IPC_CHANNELS.settings.updateBusiness, (_event, input: BusinessConfigInput) =>
     Promise.resolve().then(() => settingsService.updateBusiness(input))
+  )
+
+  ipcMain.handle(IPC_CHANNELS.settings.testSmtp, (_event, input: TestSmtpInput) =>
+    Promise.resolve().then(() => settingsService.testSmtp(input))
+  )
+
+  ipcMain.handle(IPC_CHANNELS.settings.sendInvoiceEmail, (_event, input: SendInvoiceEmailInput) =>
+    Promise.resolve().then(() => settingsService.sendInvoiceEmail(input))
   )
 }

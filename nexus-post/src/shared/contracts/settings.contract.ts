@@ -70,7 +70,7 @@ export interface BusinessConfig {
   postalCode: string
   // ── Operación ──────────────────────────────────────────────────────
   currency: CurrencyCode
-  // ── Plantilla de ticket ────────────────────────────────────────────
+  // ── Plantilla de ticket y emisión ──────────────────────────────────
   ticketHeader: string
   ticketFooter: string
   /** Leyenda legal impresa al pie (p. ej. "No es comprobante fiscal ante el SENIAT"). */
@@ -78,6 +78,23 @@ export interface BusinessConfig {
   ticketShowTaxId: boolean
   ticketShowAddress: boolean
   ticketShowCashier: boolean
+  /** Formato de papel: TICKET_80MM (térmica 80mm), TICKET_58MM (térmica 58mm), LETTER_PDF (hoja carta / A4 para ferreterías). */
+  invoicePaperSize: 'TICKET_80MM' | 'TICKET_58MM' | 'LETTER_PDF'
+  /** Modo de emisión: PRINT_DIRECT (imprime directo a térmica), PREVIEW_AND_DOWNLOAD (permite previsualizar, imprimir o descargar PDF). */
+  invoiceOutputMode: 'PRINT_DIRECT' | 'PREVIEW_AND_DOWNLOAD'
+  // ── Envío por Correo Electrónico (Google SMTP) ──────────────────────
+  emailInvoiceEnabled: boolean
+  smtpHost: string
+  smtpPort: number
+  smtpSecure: boolean
+  smtpUser: string
+  smtpPassword: string
+  smtpFromName: string
+  emailSubjectTemplate: string
+  emailBodyTemplate: string
+  // ── Envío por WhatsApp ─────────────────────────────────────────────
+  whatsappInvoiceEnabled: boolean
+  whatsappMessageTemplate: string
   // ── Impuestos ──────────────────────────────────────────────────────
   taxEnabled: boolean
   /** Nombre local del impuesto: IVA (configurable desde Ajustes). */
@@ -94,7 +111,29 @@ export interface BusinessConfig {
 /** Datos editables desde Ajustes (sin campos de auditoría). */
 export type BusinessConfigInput = Omit<BusinessConfig, 'updatedAt' | 'updatedBy'>
 
+export interface TestSmtpInput {
+  host: string
+  port: number
+  secure: boolean
+  user: string
+  password: string
+}
+
+export interface SendInvoiceEmailInput {
+  toEmail: string
+  customerName?: string
+  invoiceNumber: string
+  totalFormatted: string
+  itemsSummary?: Array<{ description: string; quantity: number; total: string }>
+  pdfBase64?: string
+  pdfFileName?: string
+  customSubject?: string
+  customBody?: string
+}
+
 export interface SettingsApi {
   getBusiness(): Promise<BusinessConfig>
   updateBusiness(input: BusinessConfigInput): Promise<BusinessConfig>
+  testSmtp(input: TestSmtpInput): Promise<{ success: boolean; message: string }>
+  sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<{ success: boolean; message: string }>
 }
