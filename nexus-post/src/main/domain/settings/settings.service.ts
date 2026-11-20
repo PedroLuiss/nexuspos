@@ -6,7 +6,10 @@ import type {
 } from '@shared/contracts'
 import { CURRENCY_OPTIONS, TAX_ID_TYPE_OPTIONS } from '@shared/contracts'
 import type { SettingsRepository } from '../../ports/settings.repository'
+import type { CurrencyConversionRepository } from '../../ports/currency-conversion.repository'
+import type { TransactionRunner } from '../../ports/transaction'
 import type { AuthService } from '../auth/auth.service'
+import type { ExchangeRateService } from '../exchange-rate/exchange-rate.service'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_TAX_RATE = 100
@@ -35,7 +38,10 @@ function clean(value: unknown, maxLength = 200): string {
 export class SettingsService {
   constructor(
     private readonly repository: SettingsRepository,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
+    private readonly exchangeRates: ExchangeRateService,
+    private readonly currencyConversion: CurrencyConversionRepository,
+    private readonly transaction: TransactionRunner
   ) {}
 
   private requireAdminSession(): { name: string } {
@@ -55,7 +61,7 @@ export class SettingsService {
     return this.repository.getBusiness()
   }
 
-  updateBusiness(input: BusinessConfigInput): BusinessConfig {
+  async updateBusiness(input: BusinessConfigInput): Promise<BusinessConfig> {
     const session = this.requireAdminSession()
 
     const legalName = clean(input.legalName, 160)
@@ -142,6 +148,45 @@ export class SettingsService {
       pricesIncludeTax: Boolean(input.pricesIncludeTax)
     }
 
-    return this.repository.updateBusiness(sanitized, session.name)
+    const previous = this.repository.getBusiness()
+    if (previous.currency === sanitized.currency) {
+      return this.repository.updateBusiness(sanitized, session.name)
+    }
+
+    if (this.currencyConversion.hasOpenCashShift()) {
+      throw new Error('Cierre todas las cajas abiertas antes de cambiar la moneda del negocio.')
+    }
+
+    const fromRate = await this.getVesRate(previous.currency)
+    const toRate = await this.getVesRate(sanitized.currency)
+    if (fromRate.isStale || toRate.isStale) {
+      throw new Error(
+        'La tasa BCV disponible está desactualizada. Actualice la conexión y vuelva a intentar el cambio de moneda.'
+      )
+    }
+
+    const changedAt = new Date().toISOString()
+    return this.transaction.run(() => {
+      if (this.repository.getBusiness().currency !== previous.currency) {
+        throw new Error('La moneda del negocio cambió durante la operación. Vuelva a cargar Ajustes.')
+      }
+      this.currencyConversion.convertOperationalAmounts({
+        fromCurrency: previous.currency,
+        toCurrency: sanitized.currency,
+        fromRateToVes: fromRate.rate,
+        toRateToVes: toRate.rate,
+        multiplier: fromRate.rate / toRate.rate,
+        changedAt,
+        changedBy: session.name
+      })
+      return this.repository.updateBusiness(sanitized, session.name)
+    })
+  }
+
+  private async getVesRate(
+    currency: CurrencyCode
+  ): Promise<{ rate: number; isStale: boolean }> {
+    if (currency === 'VES') return { rate: 1, isStale: false }
+    return this.exchangeRates.getCurrencyVes(currency)
   }
 }

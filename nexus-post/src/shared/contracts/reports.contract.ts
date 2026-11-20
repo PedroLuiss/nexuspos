@@ -1,4 +1,5 @@
 import type { CustomerAccountSummary } from './customer.contract'
+import type { CurrencyCode } from './settings.contract'
 
 export type ReportPeriod = 'today' | 'week' | 'month' | 'year' | 'custom'
 export type ReportGrouping = 'day' | 'week' | 'month' | 'year'
@@ -54,6 +55,7 @@ export interface ReportPaymentBreakdown {
 export interface ReportsData {
   period: ReportPeriod
   year: number
+  currency: CurrencyCode
   rangeStart: string
   rangeEnd: string
   availableYears: number[]

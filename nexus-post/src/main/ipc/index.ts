@@ -20,6 +20,7 @@ import { SqliteSettingsRepository } from '../adapters/persistence/sqlite/setting
 import { SqliteCustomerRepository } from '../adapters/persistence/sqlite/customers.sqlite'
 import { SqliteSalesRepository } from '../adapters/persistence/sqlite/sales.sqlite'
 import { SqliteExchangeRateRepository } from '../adapters/persistence/sqlite/exchange-rates.sqlite'
+import { SqliteCurrencyConversionRepository } from '../adapters/persistence/sqlite/currency-conversion.sqlite'
 import { SqliteCashRepository } from '../adapters/persistence/sqlite/cash.sqlite'
 import { SqliteReportsRepository } from '../adapters/persistence/sqlite/reports.sqlite'
 import { SqliteDatabaseMaintenanceRepository } from '../adapters/persistence/sqlite/database-maintenance.sqlite'
@@ -109,6 +110,12 @@ export function registerIpcHandlers(): void {
   const authAdapter = new LaravelAuthAdapter()
   const passwordHasher = new ScryptPasswordHasher()
   const authService = new AuthService(userRepository, passwordHasher, authAdapter)
+  const exchangeRateRepository = new SqliteExchangeRateRepository(db)
+  const exchangeRateService = new ExchangeRateService(
+    exchangeRateRepository,
+    new BcvExchangeRateAdapter()
+  )
+  const currencyConversionRepository = new SqliteCurrencyConversionRepository(db)
 
   const productService = new ProductService(
     productRepository,
@@ -136,7 +143,8 @@ export function registerIpcHandlers(): void {
     stockMovementRepository,
     productBatchRepository,
     authService,
-    transactionRunner
+    transactionRunner,
+    settingsRepository
   )
   const categoryService = new CategoryService(categoryRepository, authService)
   const taxService = new TaxService(taxRepository, authService)
@@ -144,14 +152,21 @@ export function registerIpcHandlers(): void {
   const supplierService = new SupplierService(supplierRepository, authService)
   const productTypeService = new ProductTypeService(productTypeRepository, authService)
   const userService = new UserService(userRepository, authService, passwordHasher)
-  const settingsService = new SettingsService(settingsRepository, authService)
+  const settingsService = new SettingsService(
+    settingsRepository,
+    authService,
+    exchangeRateService,
+    currencyConversionRepository,
+    transactionRunner
+  )
   const scaleService = new ScaleService(scaleRepository, authService)
   const customerRepository = new SqliteCustomerRepository(db)
   const customerService = new CustomerService(
     customerRepository,
     authService,
     cashRepository,
-    transactionRunner
+    transactionRunner,
+    settingsRepository
   )
   const salesRepository = new SqliteSalesRepository(db)
   const salesService = new SalesService(
@@ -164,12 +179,9 @@ export function registerIpcHandlers(): void {
     cashRepository,
     customerService,
     settingsRepository,
+    exchangeRateRepository,
     authService,
     transactionRunner
-  )
-  const exchangeRateService = new ExchangeRateService(
-    new SqliteExchangeRateRepository(db),
-    new BcvExchangeRateAdapter()
   )
   const cashService = new CashService(
     cashRepository,
@@ -180,9 +192,16 @@ export function registerIpcHandlers(): void {
     stockMovementRepository,
     customerService,
     authService,
-    transactionRunner
+    transactionRunner,
+    settingsRepository
   )
-  const reportsService = new ReportsService(reportsRepository, authService, customerService)
+  const reportsService = new ReportsService(
+    reportsRepository,
+    authService,
+    customerService,
+    settingsRepository,
+    exchangeRateRepository
+  )
   const databaseMaintenanceService = new DatabaseMaintenanceService(
     new SqliteDatabaseMaintenanceRepository(
       db,

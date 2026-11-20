@@ -3,6 +3,7 @@ import { Percent, Info } from '../../../shared/icons/Icons'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { useTaxes } from '../../../shared/hooks/useTaxes'
 import { formatTaxLabel, formatTaxRate } from '@shared/lib/tax'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductTaxFieldProps {
   /** Tasa asignada; vacío = se aplicará la predeterminada al guardar. */
@@ -58,9 +59,12 @@ export const ProductTaxField: React.FC<ProductTaxFieldProps> = ({ taxId, onChang
       </div>
 
       <div className="mt-1 text-[10px] text-slate-500 leading-snug">
-        <span className="font-mono">${netPrice.toFixed(2)}</span> sin impuesto
+        <span className="font-mono">{formatCurrency(netPrice, config.currency)}</span> sin impuesto
         <span className="mx-1 text-slate-300">·</span>
-        <span className="font-mono font-semibold text-[#107C41]">${grossPrice.toFixed(2)}</span> con
+        <span className="font-mono font-semibold text-[#107C41]">
+          {formatCurrency(grossPrice, config.currency)}
+        </span>{' '}
+        con
         impuesto
         {config.pricesIncludeTax && rate > 0 && (
           <span className="ml-1 text-slate-400">

@@ -1,10 +1,9 @@
-import type { CashShift } from '@shared/contracts'
+import type { CashShift, CurrencyCode } from '@shared/contracts'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface CashCloseSummaryProps {
   shift: CashShift
 }
-
-const money = (value: number): string => `$${value.toFixed(2)}`
 
 export function CashCloseSummary({ shift }: CashCloseSummaryProps): React.JSX.Element {
   return (
@@ -19,16 +18,32 @@ export function CashCloseSummary({ shift }: CashCloseSummaryProps): React.JSX.El
           </span>
           <span className="text-[10px] text-[#717783]">Según los movimientos registrados</span>
         </div>
-        <strong className="font-mono text-xl text-[#0067C0]">{money(shift.expectedCash)}</strong>
+        <strong className="font-mono text-xl text-[#0067C0]">
+          {formatCurrency(shift.expectedCash, shift.currency)}
+        </strong>
       </div>
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-        <CashLine label="Fondo inicial" amount={shift.openingAmount} />
-        <CashLine label="Efectivo de ventas" amount={shift.cashSales} />
-        <CashLine label="Abonos de clientes" amount={shift.customerPayments} />
-        <CashLine label="Ingresos manuales" amount={shift.manualIncomes} />
-        <CashLine label="Gastos manuales" amount={shift.manualExpenses} negative />
-        <CashLine label="Devoluciones en efectivo" amount={shift.cashRefunds} negative />
+        <CashLine label="Fondo inicial" amount={shift.openingAmount} currency={shift.currency} />
+        <CashLine label="Efectivo de ventas" amount={shift.cashSales} currency={shift.currency} />
+        <CashLine
+          label="Abonos de clientes"
+          amount={shift.customerPayments}
+          currency={shift.currency}
+        />
+        <CashLine label="Ingresos manuales" amount={shift.manualIncomes} currency={shift.currency} />
+        <CashLine
+          label="Gastos manuales"
+          amount={shift.manualExpenses}
+          negative
+          currency={shift.currency}
+        />
+        <CashLine
+          label="Devoluciones en efectivo"
+          amount={shift.cashRefunds}
+          negative
+          currency={shift.currency}
+        />
         <div className="col-span-2 flex justify-between border-t border-[#D1D1D1] pt-2 font-bold">
           <dt>Tickets emitidos</dt>
           <dd>{shift.ticketCount}</dd>
@@ -47,18 +62,20 @@ export function CashCloseSummary({ shift }: CashCloseSummaryProps): React.JSX.El
 function CashLine({
   label,
   amount,
-  negative = false
+  negative = false,
+  currency
 }: {
   label: string
   amount: number
   negative?: boolean
+  currency: CurrencyCode
 }): React.JSX.Element {
   return (
     <div className="flex justify-between gap-2">
       <dt className="text-[#5C5C5C]">{label}</dt>
       <dd className={`font-mono font-semibold ${negative ? 'text-[#C42B1C]' : 'text-[#1B1B1B]'}`}>
         {negative ? '-' : '+'}
-        {money(amount)}
+        {formatCurrency(amount, currency)}
       </dd>
     </div>
   )

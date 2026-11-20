@@ -11,6 +11,7 @@ import type { CustomerRepository } from '../../ports/customer.repository'
 import type { CashRepository } from '../../ports/cash.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import type { AuthService } from '../auth/auth.service'
+import type { SettingsRepository } from '../../ports/settings.repository'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -31,7 +32,8 @@ export class CustomerService {
     private readonly repository: CustomerRepository,
     private readonly auth: AuthService,
     private readonly cash: CashRepository,
-    private readonly tx: TransactionRunner
+    private readonly tx: TransactionRunner,
+    private readonly settings: SettingsRepository
   ) {}
 
   private requireAdminSession(): { name: string } {
@@ -104,7 +106,7 @@ export class CustomerService {
       email,
       address,
       creditLimit
-    })
+    }, this.settings.getBusiness().currency)
   }
 
   /** Actualiza los datos de un cliente (solo ADMIN). */
@@ -232,7 +234,8 @@ export class CustomerService {
         concept: `Abono de cliente: ${concept.trim() || customerId}`,
         cashierName: session.name,
         source: 'CUSTOMER_PAYMENT',
-        sourceId: payment.id
+        sourceId: payment.id,
+        currency: shift.currency
       })
       return payment
     })
@@ -261,14 +264,24 @@ export class CustomerService {
       throw new Error('El folio de la venta es obligatorio para generar la deuda.')
     }
 
-    const newDebt = customer.currentDebt + totalAmount
-    if (newDebt > customer.creditLimit) {
+    const currentDebtCents = Math.round((customer.currentDebt + Number.EPSILON) * 100)
+    const totalAmountCents = Math.round((totalAmount + Number.EPSILON) * 100)
+    const creditLimitCents = Math.round((customer.creditLimit + Number.EPSILON) * 100)
+    const availableCreditCents = Math.max(0, creditLimitCents - currentDebtCents)
+
+    if (totalAmountCents > availableCreditCents) {
       throw new Error(
-        `La venta excedería el límite de crédito de ${customer.name} (${customer.creditLimit.toFixed(2)}).`
+        `Crédito insuficiente para ${customer.name}: disponible ${(availableCreditCents / 100).toFixed(2)} ${customer.currency}, venta ${(totalAmountCents / 100).toFixed(2)} ${customer.currency}, límite ${customer.creditLimit.toFixed(2)} ${customer.currency} y deuda actual ${customer.currentDebt.toFixed(2)} ${customer.currency}.`
       )
     }
 
-    return this.repository.createCreditSale(customerId, ticketNumber.trim(), totalAmount, date)
+    return this.repository.createCreditSale(
+      customerId,
+      ticketNumber.trim(),
+      totalAmount,
+      date,
+      this.settings.getBusiness().currency
+    )
   }
 
   /** Aplica un pago a una deuda específica (cajero o admin). */
@@ -289,7 +302,8 @@ export class CustomerService {
         concept: `Abono a ticket ${debt.ticketNumber}`,
         cashierName: session.name,
         source: 'CUSTOMER_PAYMENT',
-        sourceId: debt.id
+        sourceId: debt.id,
+        currency: shift.currency
       })
       return debt
     })

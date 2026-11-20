@@ -1,4 +1,4 @@
-import type { ReportKpis, UsdVesExchangeRate } from '@shared/contracts'
+import type { CurrencyCode, ReportKpis, CurrencyVesExchangeRate } from '@shared/contracts'
 import {
   BadgeDollarSign,
   ChartNoAxesCombined,
@@ -11,10 +11,16 @@ import { ReportMoney } from './ReportMoney'
 interface ReportsKpisProps {
   kpis: ReportKpis
   isLoading: boolean
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
+  currency: CurrencyCode
 }
 
-export function ReportsKpis({ kpis, isLoading, rate }: ReportsKpisProps): React.JSX.Element {
+export function ReportsKpis({
+  kpis,
+  isLoading,
+  rate,
+  currency
+}: ReportsKpisProps): React.JSX.Element {
   const cards = [
     {
       label: 'Ventas netas (con impuestos)',
@@ -57,6 +63,7 @@ export function ReportsKpis({ kpis, isLoading, rate }: ReportsKpisProps): React.
           card={card}
           isLoading={isLoading}
           rate={rate}
+          currency={currency}
           returnedAmount={kpis.returnedAmount}
         />
       ))}
@@ -77,11 +84,13 @@ function KpiCard({
   card,
   isLoading,
   rate,
+  currency,
   returnedAmount
 }: {
   card: KpiCardData
   isLoading: boolean
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
+  currency: CurrencyCode
   returnedAmount: number
 }): React.JSX.Element {
   const Icon = card.icon
@@ -102,7 +111,7 @@ function KpiCard({
         {isLoading ? (
           <strong className="block font-mono text-2xl">—</strong>
         ) : card.amount !== undefined ? (
-          <ReportMoney amount={card.amount} rate={rate} prominent />
+          <ReportMoney amount={card.amount} rate={rate} currency={currency} prominent />
         ) : (
           <strong className="block font-mono text-2xl">{card.value}</strong>
         )}
@@ -112,7 +121,8 @@ function KpiCard({
       </span>
       {card.label === 'Facturas emitidas' && (
         <div className="mt-2 border-t border-[#F0F0F0] pt-2 text-[10px] text-amber-700">
-          Devoluciones por {isLoading ? '…' : <ReportMoney amount={returnedAmount} rate={rate} />}
+          Devoluciones por{' '}
+          {isLoading ? '…' : <ReportMoney amount={returnedAmount} rate={rate} currency={currency} />}
         </div>
       )}
     </article>

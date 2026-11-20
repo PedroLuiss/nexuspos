@@ -1,14 +1,15 @@
 import React from 'react'
 import { SuspendedSale } from '../../../shared/types/domain'
 import { Clock, Play, Trash2, X, ShoppingCart } from '../../../shared/icons/Icons'
-import type { UsdVesExchangeRate } from '@shared/contracts'
-import { formatVesAmount } from '../../../shared/lib/currency'
+import type { CurrencyVesExchangeRate } from '@shared/contracts'
+import { formatCurrency, formatVesAmount } from '../../../shared/lib/currency'
 import { formatProductQuantity } from '@shared/lib/product-quantity'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 
 interface SuspendedSalesModalProps {
   isOpen: boolean
   suspendedSales: SuspendedSale[]
-  exchangeRate: UsdVesExchangeRate | null
+  exchangeRate: CurrencyVesExchangeRate | null
   onClose: () => void
   onResumeSale: (sale: SuspendedSale) => Promise<boolean>
   onDeleteSuspendedSale: (id: string) => Promise<void>
@@ -22,6 +23,7 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
   onResumeSale,
   onDeleteSuspendedSale
 }) => {
+  const { config } = useBusinessConfig()
   if (!isOpen) return null
 
   return (
@@ -94,9 +96,9 @@ export const SuspendedSalesModal: React.FC<SuspendedSalesModalProps> = ({
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <div className="text-sm font-extrabold font-tabular text-[#0067C0]">
-                      ${sale.total.toFixed(2)}
+                      {formatCurrency(sale.total, sale.currency ?? config.currency)}
                     </div>
-                    {exchangeRate && (
+                    {(sale.currency ?? config.currency) !== 'VES' && exchangeRate && (
                       <div className="text-[10px] text-[#717783]">
                         ≈ {formatVesAmount(sale.total * exchangeRate.rate)}
                       </div>

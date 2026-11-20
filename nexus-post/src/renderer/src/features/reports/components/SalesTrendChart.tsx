@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import type { ReportGrouping, ReportSeriesPoint, UsdVesExchangeRate } from '@shared/contracts'
+import type {
+  CurrencyCode,
+  CurrencyVesExchangeRate,
+  ReportGrouping,
+  ReportSeriesPoint
+} from '@shared/contracts'
 import { ChartNoAxesCombined } from '../../../shared/icons/Icons'
 import { ReportMoney } from './ReportMoney'
 import { formatAxisValue, formatBucket } from './SalesTrendChartHelpers'
@@ -14,14 +19,16 @@ interface SalesTrendChartProps {
   points: ReportSeriesPoint[]
   grouping: ReportGrouping
   isLoading: boolean
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
+  currency: CurrencyCode
 }
 
 export function SalesTrendChart({
   points,
   grouping,
   isLoading,
-  rate
+  rate,
+  currency
 }: SalesTrendChartProps): React.JSX.Element {
   const [hoveredBucket, setHoveredBucket] = useState<string | null>(null)
   const width = Math.max(760, points.length * 72)
@@ -100,13 +107,13 @@ export function SalesTrendChart({
             <div className="mt-2 grid grid-cols-2 gap-3">
               <div>
                 <span className="block text-[9px] font-semibold text-[#5C5C5C]">Ventas netas</span>
-                <ReportMoney amount={selectedPoint.totalSales} rate={rate} />
+                <ReportMoney amount={selectedPoint.totalSales} rate={rate} currency={currency} />
               </div>
               <div>
                 <span className="block text-[9px] font-semibold text-emerald-700">
                   Utilidad bruta
                 </span>
-                <ReportMoney amount={selectedPoint.grossProfit} rate={rate} />
+                <ReportMoney amount={selectedPoint.grossProfit} rate={rate} currency={currency} />
               </div>
             </div>
             <p className="mt-1.5 text-right text-[9px] text-[#717783]">
@@ -139,7 +146,7 @@ export function SalesTrendChart({
           <div className="overflow-x-auto rounded-lg bg-[#FAFBFD]">
             <svg
               role="img"
-              aria-label="Gráfico interactivo de ventas netas y utilidad bruta por período, con valores en dólares"
+              aria-label={`Gráfico interactivo de ventas netas y utilidad bruta por período, con valores en ${currency}`}
               width={width}
               height={height}
               viewBox={`0 0 ${width} ${height}`}
@@ -172,7 +179,7 @@ export function SalesTrendChart({
                       textAnchor="end"
                       className="fill-[#717783] font-mono text-[10px]"
                     >
-                      {formatAxisValue(value)}
+                      {formatAxisValue(value, currency)}
                     </text>
                   </g>
                 )
@@ -214,7 +221,7 @@ export function SalesTrendChart({
                     onFocus={() => setHoveredBucket(point.bucket)}
                     tabIndex={0}
                     role="button"
-                    aria-label={`${point.label}: ventas netas ${formatAxisValue(point.totalSales)}, utilidad bruta ${formatAxisValue(point.grossProfit)}, ${point.ticketCount} facturas`}
+                    aria-label={`${point.label}: ventas netas ${formatAxisValue(point.totalSales, currency)}, utilidad bruta ${formatAxisValue(point.grossProfit, currency)}, ${point.ticketCount} facturas`}
                   >
                     {isSelected && (
                       <line
@@ -258,8 +265,8 @@ export function SalesTrendChart({
               {selectedPoint && (
                 <SalesTrendTooltip
                   label={`${selectedPoint.label} · ${selectedPoint.ticketCount} facturas`}
-                  sales={formatAxisValue(selectedPoint.totalSales)}
-                  profit={formatAxisValue(selectedPoint.grossProfit)}
+                  sales={formatAxisValue(selectedPoint.totalSales, currency)}
+                  profit={formatAxisValue(selectedPoint.grossProfit, currency)}
                   x={tooltipX}
                   y={tooltipY}
                 />
@@ -267,7 +274,10 @@ export function SalesTrendChart({
             </svg>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E5E5] py-2 text-[10px] text-[#717783]">
-            <span>Valores monetarios en USD · conversión VES informativa en el detalle</span>
+            <span>
+              Valores monetarios en {currency}
+              {currency === 'VES' ? '' : ' · conversión VES informativa en el detalle'}
+            </span>
             <span>Pasa el cursor o usa el teclado sobre un punto para ver el detalle</span>
           </div>
         </div>

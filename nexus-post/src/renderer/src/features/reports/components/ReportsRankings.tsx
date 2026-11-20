@@ -3,7 +3,7 @@ import type {
   CustomerAccountSummary,
   ReportsData,
   TopCustomer,
-  UsdVesExchangeRate
+  CurrencyVesExchangeRate
 } from '@shared/contracts'
 import { reportsApi, reportsErrorMessage } from '../api/reports.api'
 import { CustomerReportDetail } from './CustomerReportDetail'
@@ -11,7 +11,7 @@ import { ReportMoney } from './ReportMoney'
 
 interface ReportsRankingsProps {
   data: ReportsData
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
 }
 
 export function ReportsRankings({ data, rate }: ReportsRankingsProps): React.JSX.Element {
@@ -79,7 +79,7 @@ export function ReportsRankings({ data, rate }: ReportsRankingsProps): React.JSX
                     <strong className="block font-mono text-xs">
                       {product.unitsSold} unidades
                     </strong>
-                    <ReportMoney amount={product.revenue} rate={rate} />
+                    <ReportMoney amount={product.revenue} rate={rate} currency={data.currency} />
                   </div>
                 </li>
               ))}
@@ -112,7 +112,7 @@ export function ReportsRankings({ data, rate }: ReportsRankingsProps): React.JSX
                     <span className="truncate text-xs font-semibold">{customer.customerName}</span>
                   </div>
                   <div className="shrink-0 text-right">
-                    <ReportMoney amount={customer.totalSpent} rate={rate} />
+                    <ReportMoney amount={customer.totalSpent} rate={rate} currency={data.currency} />
                     <span className="text-[10px] text-[#5C5C5C]">
                       {customer.purchaseCount}{' '}
                       {customer.purchaseCount === 1 ? 'factura emitida' : 'facturas emitidas'}

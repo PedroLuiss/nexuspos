@@ -1,12 +1,15 @@
 import React from 'react'
 import { AlertCircle } from '../../../shared/icons/Icons'
 import type { ProductStats } from '../hooks/useProductFilters'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductStatusBarProps {
   stats: ProductStats
 }
 
 export const ProductStatusBar: React.FC<ProductStatusBarProps> = ({ stats }) => {
+  const { config } = useBusinessConfig()
   return (
     <div className="flex flex-wrap items-center justify-between px-3 py-2 bg-[#F9F9F9] border-t border-[#E5E5E5] text-xs text-[#5C5C5C]">
       <div className="flex items-center gap-4">
@@ -23,7 +26,7 @@ export const ProductStatusBar: React.FC<ProductStatusBarProps> = ({ stats }) => 
         <span>
           Valuación Inventario (Costo):{' '}
           <strong className="text-[#107C41] font-mono font-bold">
-            ${stats.totalValue.toFixed(2)}
+            {formatCurrency(stats.totalValue, config.currency)}
           </strong>
         </span>
       </div>

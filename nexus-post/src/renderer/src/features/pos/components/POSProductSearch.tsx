@@ -3,6 +3,8 @@ import type { Product } from '@shared/contracts'
 import ProductAvatar from '../../../shared/ui/ProductAvatar'
 import { Search } from '../../../shared/icons/Icons'
 import { usePosProductSearch } from '../hooks/usePosProductSearch'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 export interface POSProductSearchHandle {
   focusSearch: () => void
@@ -38,6 +40,7 @@ const SearchSkeletons: React.FC<{ count: number }> = ({ count }) => (
 const POSProductSearch = forwardRef<POSProductSearchHandle, POSProductSearchProps>(
   function POSProductSearch({ showResults, onResultsVisibilityChange, onAddToCart }, ref) {
     const [searchInput, setSearchInput] = useState('')
+    const { config } = useBusinessConfig()
     const searchInputRef = useRef<HTMLInputElement>(null)
     const {
       products,
@@ -169,7 +172,7 @@ const POSProductSearch = forwardRef<POSProductSearchHandle, POSProductSearchProp
                       </div>
                       <div className="shrink-0 text-right">
                         <div className="text-xs font-bold font-mono text-[#0067C0]">
-                          ${product.salePrice.toFixed(2)}
+                          {formatCurrency(product.salePrice, config.currency)}
                         </div>
                         <span
                           className={`text-[10px] font-semibold ${outOfStock ? 'text-[#C42B1C]' : 'text-emerald-700'}`}

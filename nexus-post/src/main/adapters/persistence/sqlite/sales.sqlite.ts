@@ -22,6 +22,7 @@ interface TicketRow {
   returned_at: string | null
   return_payment_json: string | null
   return_cash_amount: number
+  currency: CashTicket['currency']
 }
 
 interface TicketItemRow {
@@ -56,11 +57,11 @@ export class SqliteSalesRepository implements SalesRepository {
       INSERT INTO sales (
         id, ticket_number, sold_at, customer_id, cashier_name, cash_shift_id,
         subtotal, discount, tax, total, payment_json,
-        exchange_rate, exchange_rate_updated_at
+        exchange_rate, exchange_rate_updated_at, currency
       ) VALUES (
         @id, @ticketNumber, @soldAt, @customerId, @cashierName, @cashShiftId,
         @subtotal, @discount, @tax, @total, @paymentJson,
-        @exchangeRate, @exchangeRateUpdatedAt
+        @exchangeRate, @exchangeRateUpdatedAt, @currency
       )
     `
       )
@@ -77,7 +78,8 @@ export class SqliteSalesRepository implements SalesRepository {
         total: sale.total,
         paymentJson: JSON.stringify(sale.payment),
         exchangeRate: sale.exchangeRate ?? null,
-        exchangeRateUpdatedAt: sale.exchangeRateUpdatedAt ?? null
+        exchangeRateUpdatedAt: sale.exchangeRateUpdatedAt ?? null,
+        currency: sale.currency
       })
 
     const insertItem = this.db.prepare(`
@@ -171,6 +173,7 @@ export class SqliteSalesRepository implements SalesRepository {
       discount: row.discount,
       tax: row.tax,
       total: row.total,
+      currency: row.currency,
       taxBreakdown:
         taxRows.length > 0
           ? taxRows.map((tax) => ({

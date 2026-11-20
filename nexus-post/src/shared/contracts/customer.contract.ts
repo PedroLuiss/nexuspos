@@ -4,6 +4,8 @@
  * No debe importar Electron, SQLite ni React.
  */
 
+import type { CurrencyCode } from './settings.contract'
+
 /** Datos de un cliente en el directorio. */
 export interface Customer {
   id: string
@@ -16,6 +18,7 @@ export interface Customer {
   creditLimit: number
   currentDebt: number
   creditBalance?: number
+  currency: CurrencyCode
   active: boolean
   deleted?: boolean
   createdAt?: string
@@ -25,7 +28,14 @@ export interface Customer {
 /** Datos de entrada para crear un cliente. */
 export type CustomerInput = Omit<
   Customer,
-  'id' | 'currentDebt' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'currentDebt'
+  | 'currency'
+  | 'currency'
+  | 'active'
+  | 'deleted'
+  | 'createdAt'
+  | 'updatedAt'
 >
 
 /** Datos de entrada para actualizar un cliente. */
@@ -48,6 +58,7 @@ export interface CustomerDebt {
   totalAmount: number
   balance: number
   status: 'PENDING' | 'PARTIAL' | 'PAID'
+  currency: CurrencyCode
 }
 
 /** Pago / abono registrado a la cuenta de un cliente. */
@@ -60,6 +71,7 @@ export interface CustomerPayment {
   cashierName: string
   cashShiftId?: string
   createdAt: string
+  currency: CurrencyCode
 }
 
 /** Resumen de cuenta de cliente para el estado de cuenta. */

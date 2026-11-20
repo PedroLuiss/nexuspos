@@ -23,7 +23,7 @@ export interface CurrencyOption {
 
 export const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: 'VES', label: 'Bolívar Soberano', symbol: 'Bs.' },
-  { code: 'USD', label: 'Dólar estadounidense', symbol: 'US$' },
+  { code: 'USD', label: 'Dólar estadounidense', symbol: '$' },
   { code: 'EUR', label: 'Euro', symbol: '€' }
 ]
 

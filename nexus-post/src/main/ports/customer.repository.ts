@@ -5,6 +5,7 @@ import type {
   CustomerFilter
 } from '@shared/contracts'
 import type { CustomerDebt, CustomerPayment, CustomerAccountSummary } from '@shared/contracts'
+import type { CurrencyCode } from '@shared/contracts'
 
 /**
  * Puerto de persistencia de clientes y crédito/cobranza.
@@ -16,7 +17,7 @@ export interface CustomerRepository {
   /** Obtiene un cliente por su id. */
   getById(id: string): Customer | null
   /** Crea un nuevo cliente. */
-  create(input: CustomerInput): Customer
+  create(input: CustomerInput, currency: CurrencyCode): Customer
   /** Actualiza los datos de un cliente existente. */
   update(input: CustomerUpdateInput): Customer
   /** Baja lógica del cliente (soft delete). */
@@ -42,7 +43,8 @@ export interface CustomerRepository {
     customerId: string,
     ticketNumber: string,
     totalAmount: number,
-    date: string
+    date: string,
+    currency: CurrencyCode
   ): CustomerDebt
   /** Abona a una deuda específica de un cliente. */
   applyPaymentToDebt(

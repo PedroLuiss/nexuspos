@@ -1,4 +1,5 @@
 import type {
+  CurrencyCode,
   ReportGrouping,
   ReportPaymentBreakdown,
   ReportSeriesPoint,
@@ -22,10 +23,23 @@ export interface ReportSummary {
   payments: ReportPaymentBreakdown
 }
 
+export interface ReportCurrencyContext {
+  currency: CurrencyCode
+  targetVesRate: number
+  usdVesRate: number
+  eurVesRate: number
+}
+
 export interface ReportsRepository {
   getAvailableYears(): number[]
-  getSummary(range: ReportDateRange): ReportSummary
-  getSeries(range: ReportDateRange, grouping: ReportGrouping): ReportSeriesPoint[]
-  getTopProducts(range: ReportDateRange): TopSellingProduct[]
-  getTopCustomers(range: ReportDateRange): TopCustomer[]
+  getCurrencies(range: ReportDateRange): CurrencyCode[]
+  getCurrenciesWithoutRate(range: ReportDateRange): CurrencyCode[]
+  getSummary(range: ReportDateRange, context: ReportCurrencyContext): ReportSummary
+  getSeries(
+    range: ReportDateRange,
+    grouping: ReportGrouping,
+    context: ReportCurrencyContext
+  ): ReportSeriesPoint[]
+  getTopProducts(range: ReportDateRange, context: ReportCurrencyContext): TopSellingProduct[]
+  getTopCustomers(range: ReportDateRange, context: ReportCurrencyContext): TopCustomer[]
 }

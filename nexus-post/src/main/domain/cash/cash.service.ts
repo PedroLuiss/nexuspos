@@ -17,6 +17,7 @@ import type { ProductBatchRepository } from '../../ports/product-batch.repositor
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import type { CustomerService } from '../customers/customer.service'
+import type { SettingsRepository } from '../../ports/settings.repository'
 import type { KardexMovement } from '@shared/contracts'
 import { ValidationError } from '../shared/errors'
 
@@ -32,7 +33,8 @@ export class CashService {
     private readonly movements: StockMovementRepository,
     private readonly customers: CustomerService,
     private readonly auth: AuthService,
-    private readonly tx: TransactionRunner
+    private readonly tx: TransactionRunner,
+    private readonly settings: SettingsRepository
   ) {}
 
   getRegister(shiftId?: string): CashRegisterData {
@@ -48,7 +50,14 @@ export class CashService {
     if (this.cash.getActiveShift(user.id)) {
       throw new ValidationError('Ya existe una caja abierta para este usuario.')
     }
-    this.tx.run(() => this.cash.openShift(user.id, user.name, money(input.openingAmount)))
+    this.tx.run(() =>
+      this.cash.openShift(
+        user.id,
+        user.name,
+        money(input.openingAmount),
+        this.settings.getBusiness().currency
+      )
+    )
     return this.getRegisterForUser(user)
   }
 
@@ -108,7 +117,8 @@ export class CashService {
         cashEffect: input.type === 'INGRESO' ? amount : -amount,
         concept,
         cashierName: user.name,
-        source: 'MANUAL'
+        source: 'MANUAL',
+        currency: shift.currency
       })
     )
     return this.getRegisterForUser(user)
@@ -162,7 +172,13 @@ export class CashService {
       }
 
       for (const item of currentTicket.items) {
-        this.restockSaleItem(item, returnedAt, user.name, currentTicket.ticketNumber)
+        this.restockSaleItem(
+          item,
+          returnedAt,
+          user.name,
+          currentTicket.ticketNumber,
+          currentTicket.currency
+        )
       }
 
       if (currentTicket.payment.method === 'credit' && currentTicket.customerId) {
@@ -191,7 +207,8 @@ export class CashService {
         cashierName: user.name,
         source: 'SALE_REFUND',
         paymentMethod: currentTicket.payment.method,
-        sourceId: saleId
+        sourceId: saleId,
+        currency: currentTicket.currency
       })
     })
 
@@ -211,7 +228,8 @@ export class CashService {
     item: CashSaleItem,
     returnedAt: string,
     responsibleUser: string,
-    ticketNumber: string
+    ticketNumber: string,
+    currency: KardexMovement['currency']
   ): void {
     if (item.isCombo && item.comboId) {
       const components = this.combos
@@ -231,7 +249,8 @@ export class CashService {
           `Devolución de combo "${item.productName}" (ticket ${ticketNumber})`,
           ticketNumber,
           saleUnitCost ?? componentProduct.costPrice,
-          saleUnitCost === null ? 'PRODUCT_COST' : 'SALE_SNAPSHOT'
+          saleUnitCost === null ? 'PRODUCT_COST' : 'SALE_SNAPSHOT',
+          currency
         )
       }
       return
@@ -251,7 +270,8 @@ export class CashService {
       `Devolución completa de ticket ${ticketNumber}`,
       ticketNumber,
       item.unitCost,
-      'SALE_SNAPSHOT'
+      'SALE_SNAPSHOT',
+      currency
     )
   }
 
@@ -266,7 +286,8 @@ export class CashService {
     notes: string,
     reference: string,
     unitCost: number,
-    valuationBasis: 'SALE_SNAPSHOT' | 'PRODUCT_COST'
+    valuationBasis: 'SALE_SNAPSHOT' | 'PRODUCT_COST',
+    currency: KardexMovement['currency']
   ): void {
     let runningStock = product.stock
 
@@ -306,6 +327,7 @@ export class CashService {
             reference,
             unitCost,
             valuationBasis,
+            currency,
             entry.batchNumber
           )
           runningStock += entry.quantity
@@ -337,6 +359,7 @@ export class CashService {
           reference,
           unitCost,
           valuationBasis,
+          currency,
           returnBatchNumber
         )
         runningStock += quantity
@@ -354,6 +377,7 @@ export class CashService {
         reference,
         unitCost,
         valuationBasis,
+        currency,
         undefined
       )
       runningStock += quantity
@@ -374,6 +398,7 @@ export class CashService {
     reference: string,
     unitCost: number,
     valuationBasis: 'SALE_SNAPSHOT' | 'PRODUCT_COST',
+    currency: KardexMovement['currency'],
     batchNumber?: string
   ): void {
     const movement: KardexMovement = {
@@ -394,7 +419,8 @@ export class CashService {
       reference,
       batchNumber,
       unitCost,
-      valuationBasis
+      valuationBasis,
+      currency
     }
     this.movements.insert(movement)
   }

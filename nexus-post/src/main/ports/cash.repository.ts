@@ -1,5 +1,6 @@
 import type { CashMovement, CashRegisterData } from '@shared/contracts'
 import type { SalePayment } from '@shared/contracts'
+import type { CurrencyCode } from '@shared/contracts'
 
 export interface OpenCashShiftRecord {
   id: string
@@ -7,12 +8,18 @@ export interface OpenCashShiftRecord {
   cashierName: string
   openedAt: string
   openingAmount: number
+  currency: CurrencyCode
 }
 
 export interface CashRepository {
   getRegister(cashierId: string, shiftId?: string, includeAllCashiers?: boolean): CashRegisterData
   getActiveShift(cashierId: string): OpenCashShiftRecord | null
-  openShift(cashierId: string, cashierName: string, openingAmount: number): void
+  openShift(
+    cashierId: string,
+    cashierName: string,
+    openingAmount: number,
+    currency: CurrencyCode
+  ): void
   closeShift(
     shiftId: string,
     closedAt: string,

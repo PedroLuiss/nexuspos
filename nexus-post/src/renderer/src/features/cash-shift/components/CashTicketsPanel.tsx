@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CashTicket } from '@shared/contracts'
 import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
+import { formatCurrency } from '../../../shared/lib/currency'
 import { CashTicketsPagination } from './CashTicketsPagination'
 
 const PAGE_SIZE = 10
@@ -127,7 +128,7 @@ export function CashTicketsPanel({
                   <td className="px-3 py-2">{ticket.customerName ?? 'Consumidor final'}</td>
                   <td className="px-3 py-2">{paymentLabel(ticket)}</td>
                   <td className="px-3 py-2 text-right font-mono font-bold">
-                    ${ticket.total.toFixed(2)}
+                    {formatCurrency(ticket.total, ticket.currency)}
                   </td>
                   <td className="px-3 py-2">
                     {ticket.returnedAt ? (
@@ -209,8 +210,12 @@ export function CashTicketsPanel({
                         <span className="block text-[10px] text-[#717783]">{item.productCode}</span>
                       </td>
                       <td className="py-2 text-right font-mono">{item.quantity}</td>
-                      <td className="py-2 text-right font-mono">${item.unitPrice.toFixed(2)}</td>
-                      <td className="py-2 text-right font-mono">${item.lineTotal.toFixed(2)}</td>
+                      <td className="py-2 text-right font-mono">
+                        {formatCurrency(item.unitPrice, selectedTicket.currency)}
+                      </td>
+                      <td className="py-2 text-right font-mono">
+                        {formatCurrency(item.lineTotal, selectedTicket.currency)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -218,19 +223,19 @@ export function CashTicketsPanel({
               <dl className="ml-auto mt-3 max-w-xs space-y-1 text-xs">
                 <div className="flex justify-between">
                   <dt>Subtotal</dt>
-                  <dd>${selectedTicket.subtotal.toFixed(2)}</dd>
+                  <dd>{formatCurrency(selectedTicket.subtotal, selectedTicket.currency)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Descuentos</dt>
-                  <dd>-${selectedTicket.discount.toFixed(2)}</dd>
+                  <dd>-{formatCurrency(selectedTicket.discount, selectedTicket.currency)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Impuestos</dt>
-                  <dd>${selectedTicket.tax.toFixed(2)}</dd>
+                  <dd>{formatCurrency(selectedTicket.tax, selectedTicket.currency)}</dd>
                 </div>
                 <div className="flex justify-between border-t border-[#E5E5E5] pt-1 text-sm font-bold">
                   <dt>Total</dt>
-                  <dd>${selectedTicket.total.toFixed(2)}</dd>
+                  <dd>{formatCurrency(selectedTicket.total, selectedTicket.currency)}</dd>
                 </div>
               </dl>
               {selectedTicket.returnedAt && (

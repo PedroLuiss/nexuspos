@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3'
 import type {
+  CurrencyCode,
   ReportGrouping,
   ReportSeriesPoint,
   TopCustomer,
@@ -7,6 +8,7 @@ import type {
 } from '@shared/contracts'
 import type {
   ReportDateRange,
+  ReportCurrencyContext,
   ReportSummary,
   ReportsRepository
 } from '../../../ports/reports.repository'
@@ -33,6 +35,16 @@ interface SeriesRow {
 
 const money = (value: number | null): number =>
   Math.round(((value ?? 0) + Number.EPSILON) * 100) / 100
+const currencyFactor = `(CASE
+  WHEN s.currency = @currency THEN 1.0
+  WHEN s.currency = 'VES' THEN 1.0 / @targetVesRate
+  WHEN s.currency = 'USD' THEN COALESCE(s.exchange_rate, @usdVesRate) / @targetVesRate
+  ELSE COALESCE(s.exchange_rate, @eurVesRate) / @targetVesRate
+END)`
+
+function parameters(range: ReportDateRange, context: ReportCurrencyContext): object {
+  return { ...range, ...context }
+}
 
 export class SqliteReportsRepository implements ReportsRepository {
   constructor(private readonly db: Database.Database) {}
@@ -51,28 +63,59 @@ export class SqliteReportsRepository implements ReportsRepository {
     return rows.flatMap((row) => (row.year ? [row.year] : []))
   }
 
-  getSummary(range: ReportDateRange): ReportSummary {
+  getCurrencies(range: ReportDateRange): CurrencyCode[] {
+    const rows = this.db
+      .prepare(
+        `SELECT currency FROM sales WHERE sold_at >= @start AND sold_at < @end
+         UNION
+         SELECT s.currency FROM sale_refunds r
+         JOIN sales s ON s.id = r.sale_id
+         WHERE r.returned_at >= @start AND r.returned_at < @end`
+      )
+      .all(range) as Array<{ currency: CurrencyCode }>
+    return [...new Set(rows.map((row) => row.currency))]
+  }
+
+  getCurrenciesWithoutRate(range: ReportDateRange): CurrencyCode[] {
+    const rows = this.db
+      .prepare(
+        `SELECT currency FROM sales
+         WHERE sold_at >= @start AND sold_at < @end
+           AND currency IN ('USD', 'EUR')
+           AND (exchange_rate IS NULL OR exchange_rate <= 0)
+         UNION
+         SELECT s.currency FROM sale_refunds r
+         JOIN sales s ON s.id = r.sale_id
+         WHERE r.returned_at >= @start AND r.returned_at < @end
+           AND s.currency IN ('USD', 'EUR')
+           AND (s.exchange_rate IS NULL OR s.exchange_rate <= 0)`
+      )
+      .all(range) as Array<{ currency: CurrencyCode }>
+    return [...new Set(rows.map((row) => row.currency))]
+  }
+
+  getSummary(range: ReportDateRange, context: ReportCurrencyContext): ReportSummary {
     const row = this.db
       .prepare(
         `WITH sale_totals AS (
            SELECT
-             COALESCE(SUM(CAST(ROUND(s.total * 100) AS INTEGER)), 0) AS gross_sales_cents,
-             COALESCE(SUM(CAST(ROUND((s.total - s.tax) * 100) AS INTEGER)), 0) AS net_revenue_cents,
+             COALESCE(SUM(CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER)), 0) AS gross_sales_cents,
+             COALESCE(SUM(CAST(ROUND((s.total - s.tax) * ${currencyFactor} * 100) AS INTEGER)), 0) AS net_revenue_cents,
              COUNT(*) AS transaction_count,
              COALESCE(SUM(CASE json_extract(s.payment_json, '$.method')
-               WHEN 'cash' THEN CAST(ROUND(s.total * 100) AS INTEGER)
+               WHEN 'cash' THEN CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER)
                WHEN 'mixed' THEN CAST(ROUND(CAST(COALESCE(
                  json_extract(s.payment_json, '$.cashAmount'), 0
-               ) AS REAL) * 100) AS INTEGER)
+               ) AS REAL) * ${currencyFactor} * 100) AS INTEGER)
                ELSE 0 END), 0) AS cash_cents,
              COALESCE(SUM(CASE json_extract(s.payment_json, '$.method')
-               WHEN 'card' THEN CAST(ROUND(s.total * 100) AS INTEGER)
+               WHEN 'card' THEN CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER)
                WHEN 'mixed' THEN CAST(ROUND(CAST(COALESCE(
                  json_extract(s.payment_json, '$.cardAmount'), 0
-               ) AS REAL) * 100) AS INTEGER)
+               ) AS REAL) * ${currencyFactor} * 100) AS INTEGER)
                ELSE 0 END), 0) AS card_cents,
              COALESCE(SUM(CASE json_extract(s.payment_json, '$.method')
-               WHEN 'credit' THEN CAST(ROUND(s.total * 100) AS INTEGER) ELSE 0 END), 0) AS credit_cents
+               WHEN 'credit' THEN CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER) ELSE 0 END), 0) AS credit_cents
            FROM sales s
            WHERE s.sold_at >= @start AND s.sold_at < @end
          ), sale_costs AS (
@@ -82,38 +125,40 @@ export class SqliteReportsRepository implements ReportsRepository {
            GROUP BY sale_id
          ), sale_profit AS (
            SELECT COALESCE(SUM(
-             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE(sc.cost_cents, 0)
+             CAST(ROUND((s.total - s.tax) * ${currencyFactor} * 100) AS INTEGER) -
+               CAST(ROUND(COALESCE(sc.cost_cents, 0) * ${currencyFactor}) AS INTEGER)
            ), 0) AS profit_cents
            FROM sales s
            LEFT JOIN sale_costs sc ON sc.sale_id = s.id
            WHERE s.sold_at >= @start AND s.sold_at < @end
          ), refund_totals AS (
            SELECT
-             COALESCE(SUM(CAST(ROUND(r.amount * 100) AS INTEGER)), 0) AS refund_cents,
+             COALESCE(SUM(CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER)), 0) AS refund_cents,
              COALESCE(SUM(CAST(ROUND((
                r.amount - r.amount * s.tax / NULLIF(s.total, 0)
-             ) * 100) AS INTEGER)), 0) AS refund_net_cents,
+             ) * ${currencyFactor} * 100) AS INTEGER)), 0) AS refund_net_cents,
              COUNT(*) AS returned_count,
              COALESCE(SUM(CASE json_extract(r.payment_json, '$.method')
-               WHEN 'cash' THEN CAST(ROUND(r.amount * 100) AS INTEGER)
+               WHEN 'cash' THEN CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER)
                WHEN 'mixed' THEN CAST(ROUND(CAST(COALESCE(
                  json_extract(r.payment_json, '$.cashAmount'), 0
-               ) AS REAL) * 100) AS INTEGER)
+               ) AS REAL) * ${currencyFactor} * 100) AS INTEGER)
                ELSE 0 END), 0) AS cash_refund_cents,
              COALESCE(SUM(CASE json_extract(r.payment_json, '$.method')
-               WHEN 'card' THEN CAST(ROUND(r.amount * 100) AS INTEGER)
+               WHEN 'card' THEN CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER)
                WHEN 'mixed' THEN CAST(ROUND(CAST(COALESCE(
                  json_extract(r.payment_json, '$.cardAmount'), 0
-               ) AS REAL) * 100) AS INTEGER)
+               ) AS REAL) * ${currencyFactor} * 100) AS INTEGER)
                ELSE 0 END), 0) AS card_refund_cents,
              COALESCE(SUM(CASE json_extract(r.payment_json, '$.method')
-               WHEN 'credit' THEN CAST(ROUND(r.amount * 100) AS INTEGER) ELSE 0 END), 0) AS credit_refund_cents
+               WHEN 'credit' THEN CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER) ELSE 0 END), 0) AS credit_refund_cents
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
            WHERE r.returned_at >= @start AND r.returned_at < @end
          ), refund_profit AS (
            SELECT COALESCE(SUM(
-             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE(sc.cost_cents, 0)
+             CAST(ROUND((s.total - s.tax) * ${currencyFactor} * 100) AS INTEGER) -
+               CAST(ROUND(COALESCE(sc.cost_cents, 0) * ${currencyFactor}) AS INTEGER)
            ), 0) AS profit_cents
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
@@ -133,7 +178,7 @@ export class SqliteReportsRepository implements ReportsRepository {
            (sale_totals.credit_cents - refund_totals.credit_refund_cents) / 100.0 AS credit
          FROM sale_totals, sale_profit, refund_totals, refund_profit`
       )
-      .get(range) as SummaryRow
+      .get(parameters(range, context)) as SummaryRow
 
     return {
       totalSales: money(row.total_sales),
@@ -151,7 +196,11 @@ export class SqliteReportsRepository implements ReportsRepository {
     }
   }
 
-  getSeries(range: ReportDateRange, grouping: ReportGrouping): ReportSeriesPoint[] {
+  getSeries(
+    range: ReportDateRange,
+    grouping: ReportGrouping,
+    context: ReportCurrencyContext
+  ): ReportSeriesPoint[] {
     const bucketExpression: Record<ReportGrouping, string> = {
       day: "date(event_at, 'localtime')",
       week: "strftime('%Y-W%W', event_at, 'localtime')",
@@ -161,19 +210,20 @@ export class SqliteReportsRepository implements ReportsRepository {
     const rows = this.db
       .prepare(
         `WITH events AS (
-           SELECT s.sold_at AS event_at, CAST(ROUND(s.total * 100) AS INTEGER) AS sales_cents,
-             CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE((
+           SELECT s.sold_at AS event_at,
+             CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER) AS sales_cents,
+             CAST(ROUND((s.total - s.tax) * ${currencyFactor} * 100) AS INTEGER) - CAST(ROUND(COALESCE((
                SELECT SUM(CAST(ROUND(si.unit_cost * si.quantity * 100) AS INTEGER))
                FROM sale_items si WHERE si.sale_id = s.id
-             ), 0) AS profit_cents, 1 AS ticket_count
+             ), 0) * ${currencyFactor}) AS INTEGER) AS profit_cents, 1 AS ticket_count
            FROM sales s
            WHERE s.sold_at >= @start AND s.sold_at < @end
            UNION ALL
-           SELECT r.returned_at AS event_at, -CAST(ROUND(r.amount * 100) AS INTEGER) AS sales_cents,
-             -(CAST(ROUND((s.total - s.tax) * 100) AS INTEGER) - COALESCE((
+           SELECT r.returned_at AS event_at, -CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER) AS sales_cents,
+             -(CAST(ROUND((s.total - s.tax) * ${currencyFactor} * 100) AS INTEGER) - CAST(ROUND(COALESCE((
                SELECT SUM(CAST(ROUND(si.unit_cost * si.quantity * 100) AS INTEGER))
                FROM sale_items si WHERE si.sale_id = s.id
-             ), 0)) AS profit_cents, 0 AS ticket_count
+             ), 0) * ${currencyFactor}) AS INTEGER)) AS profit_cents, 0 AS ticket_count
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
            WHERE r.returned_at >= @start AND r.returned_at < @end
@@ -184,7 +234,7 @@ export class SqliteReportsRepository implements ReportsRepository {
            SUM(ticket_count) AS ticket_count
          FROM events GROUP BY bucket ORDER BY bucket`
       )
-      .all(range) as SeriesRow[]
+      .all(parameters(range, context)) as SeriesRow[]
     return rows.map((row) => ({
       bucket: row.bucket,
       totalSales: money(row.total_sales),
@@ -193,14 +243,17 @@ export class SqliteReportsRepository implements ReportsRepository {
     }))
   }
 
-  getTopProducts(range: ReportDateRange): TopSellingProduct[] {
+  getTopProducts(
+    range: ReportDateRange,
+    context: ReportCurrencyContext
+  ): TopSellingProduct[] {
     const rows = this.db
       .prepare(
         `WITH product_events AS (
            SELECT si.product_id, si.product_name, si.product_code,
              si.quantity AS units,
              CAST(ROUND(
-               si.line_total * (s.total - s.tax) * 100 /
+               si.line_total * (s.total - s.tax) * ${currencyFactor} * 100 /
                NULLIF((SELECT SUM(sii.line_total) FROM sale_items sii WHERE sii.sale_id = s.id), 0)
              ) AS INTEGER) AS revenue_cents
            FROM sale_items si
@@ -210,7 +263,7 @@ export class SqliteReportsRepository implements ReportsRepository {
            SELECT si.product_id, si.product_name, si.product_code,
              -si.quantity AS units,
              -CAST(ROUND(
-               si.line_total * (s.total - s.tax) * 100 /
+               si.line_total * (s.total - s.tax) * ${currencyFactor} * 100 /
                NULLIF((SELECT SUM(sii.line_total) FROM sale_items sii WHERE sii.sale_id = s.id), 0)
              ) AS INTEGER) AS revenue_cents
            FROM sale_refunds r
@@ -226,19 +279,26 @@ export class SqliteReportsRepository implements ReportsRepository {
          HAVING SUM(units) > 0
          ORDER BY unitsSold DESC, revenue DESC LIMIT 5`
       )
-      .all(range) as TopSellingProduct[]
+      .all(parameters(range, context)) as TopSellingProduct[]
     return rows.map((row) => ({ ...row, revenue: money(row.revenue) }))
   }
 
-  getTopCustomers(range: ReportDateRange): TopCustomer[] {
+  getTopCustomers(
+    range: ReportDateRange,
+    context: ReportCurrencyContext
+  ): TopCustomer[] {
     return this.db
       .prepare(
         `WITH customer_events AS (
-           SELECT s.customer_id, CAST(ROUND(s.total * 100) AS INTEGER) AS amount_cents, 1 AS purchase_count
+           SELECT s.customer_id,
+             CAST(ROUND(s.total * ${currencyFactor} * 100) AS INTEGER) AS amount_cents,
+             1 AS purchase_count
            FROM sales s
            WHERE s.customer_id IS NOT NULL AND s.sold_at >= @start AND s.sold_at < @end
            UNION ALL
-           SELECT s.customer_id, -CAST(ROUND(r.amount * 100) AS INTEGER) AS amount_cents, 0 AS purchase_count
+           SELECT s.customer_id,
+             -CAST(ROUND(r.amount * ${currencyFactor} * 100) AS INTEGER) AS amount_cents,
+             0 AS purchase_count
            FROM sale_refunds r
            JOIN sales s ON s.id = r.sale_id
            WHERE s.customer_id IS NOT NULL AND r.returned_at >= @start AND r.returned_at < @end
@@ -252,7 +312,7 @@ export class SqliteReportsRepository implements ReportsRepository {
          HAVING SUM(customer_events.amount_cents) > 0
          ORDER BY totalSpent DESC, purchaseCount DESC LIMIT 5`
       )
-      .all(range)
+      .all(parameters(range, context))
       .map((row) => {
         const customer = row as TopCustomer
         return { ...customer, totalSpent: money(customer.totalSpent) }

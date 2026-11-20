@@ -8,6 +8,8 @@ import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { formatTaxLabel } from '@shared/lib/tax'
 import { useTablePagination } from '../hooks/useTablePagination'
 import TablePagination from './TablePagination'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductImportTabProps {
   onImportBatch: (
@@ -23,6 +25,7 @@ export interface ProductImportBatchResult {
 }
 
 export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatch, products }) => {
+  const { config } = useBusinessConfig()
   const { taxes, defaultTax, error: taxesError } = useTaxes()
   const { brands, error: brandsError } = useBrands()
   const { suppliers, error: suppliersError } = useSuppliers()
@@ -268,9 +271,11 @@ export const ProductImportTab: React.FC<ProductImportTabProps> = ({ onImportBatc
                         {supplierLabel(r.supplierId)}
                       </td>
                       <td className="py-1 px-2 text-center font-sans">{typeLabel(r.typeId)}</td>
-                      <td className="py-1 px-2 text-right">${r.costPrice.toFixed(2)}</td>
+                      <td className="py-1 px-2 text-right">
+                        {formatCurrency(r.costPrice, config.currency)}
+                      </td>
                       <td className="py-1 px-2 text-right font-bold text-[#107C41]">
-                        ${r.salePrice.toFixed(2)}
+                        {formatCurrency(r.salePrice, config.currency)}
                       </td>
                       <td className="py-1 px-2 text-center">{r.stock}</td>
                       <td className="py-1 px-2 text-center font-sans">{taxLabel(r.taxId)}</td>

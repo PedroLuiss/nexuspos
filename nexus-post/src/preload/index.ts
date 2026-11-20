@@ -166,7 +166,8 @@ const api: NexusApi = {
     deleteSuspended: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sales.deleteSuspended, id)
   },
   exchangeRate: {
-    getUsdVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getUsdVes)
+    getUsdVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getUsdVes),
+    getEurVes: () => ipcRenderer.invoke(IPC_CHANNELS.exchangeRate.getEurVes)
   },
   cash: {
     getRegister: (shiftId?: string) => ipcRenderer.invoke(IPC_CHANNELS.cash.getRegister, shiftId),

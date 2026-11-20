@@ -31,6 +31,7 @@ const fallbackCustomers: Customer[] = [
     address: 'Av. Siempre Viva 123, Col. Centro',
     creditLimit: 5000,
     currentDebt: 0,
+    currency: 'USD',
     active: true,
     deleted: false
   },
@@ -44,6 +45,7 @@ const fallbackCustomers: Customer[] = [
     address: 'Calle Libertad 456, Col. Reforma',
     creditLimit: 3000,
     currentDebt: 0,
+    currency: 'USD',
     active: true,
     deleted: false
   },
@@ -57,6 +59,7 @@ const fallbackCustomers: Customer[] = [
     address: 'Av. Principal 789, Col. Sur',
     creditLimit: 10000,
     currentDebt: 2500,
+    currency: 'USD',
     active: true,
     deleted: false
   }
@@ -70,7 +73,8 @@ const fallbackDebts: CustomerDebt[] = [
     date: new Date().toISOString(),
     totalAmount: 2500,
     balance: 2500,
-    status: 'PENDING'
+    status: 'PENDING',
+    currency: 'USD'
   }
 ]
 
@@ -82,7 +86,8 @@ const fallbackPayments: CustomerPayment[] = [
     amount: 500,
     concept: 'Abono parcial',
     cashierName: 'Administrador',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    currency: 'USD'
   }
 ]
 
@@ -118,6 +123,7 @@ export const customersApi = {
       ...input,
       id: `cust-${Date.now()}`,
       currentDebt: 0,
+      currency: 'USD',
       active: true,
       deleted: false,
       createdAt: new Date().toISOString(),
@@ -207,7 +213,8 @@ export const customersApi = {
       amount: input.amount,
       concept: input.concept,
       cashierName: 'Operador',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      currency: customer.currency
     }
     fallbackPayments.push(payment)
     customer.currentDebt -= input.amount
@@ -242,7 +249,8 @@ export const customersApi = {
       amount: input.amount,
       concept: `Abono a ticket ${debt.ticketNumber}`,
       cashierName: 'Operador',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      currency: customer?.currency ?? 'USD'
     })
     return debt
   }

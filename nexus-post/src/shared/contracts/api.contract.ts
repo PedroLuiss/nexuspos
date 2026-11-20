@@ -132,7 +132,8 @@ export const IPC_CHANNELS = {
     deleteSuspended: 'sales:deleteSuspended'
   },
   exchangeRate: {
-    getUsdVes: 'exchangeRate:getUsdVes'
+    getUsdVes: 'exchangeRate:getUsdVes',
+    getEurVes: 'exchangeRate:getEurVes'
   },
   cash: {
     getRegister: 'cash:getRegister',

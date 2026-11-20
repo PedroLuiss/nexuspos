@@ -77,7 +77,7 @@ nexus-post/src/
 
 - Clientes, deudas y pagos se guardan en SQLite mediante la migración `011_customers` y los canales `customers:*` expuestos por el preload.
 - El POS carga los clientes registrados, permite crear un cliente persistente y asociarlo al ticket.
-- El método **Crédito** del modal de cobro requiere cliente seleccionado. Al confirmar, crea una deuda con el folio del ticket y valida que el saldo no exceda el límite de crédito; un error deja la venta sin completar.
+- El método **Crédito** del modal de cobro requiere cliente seleccionado. Al confirmar, crea una deuda con el folio del ticket y valida en centavos que la venta no exceda el crédito disponible; el error informa crédito disponible, monto de la venta, límite, deuda actual y moneda. Un rechazo deja la venta sin completar.
 - Los abonos se registran en una transacción SQLite, se aplican primero a las deudas más antiguas y reducen el saldo del cliente. Tras confirmarse, el POS agrega el importe a los ingresos del turno/caja.
 - El listado y el estado de cuenta se cargan desde SQLite; los datos de clientes que antes vivían únicamente en el estado de React fueron retirados de `App.tsx`.
 - Las ventas regulares (efectivo/tarjeta/mixto/crédito) y facturas se persisten en SQLite por el módulo POS/Ventas; el cliente seleccionado queda asociado a la venta. No hay que recrear ventas desde Clientes.
@@ -88,6 +88,7 @@ nexus-post/src/
 - Los abonos requieren un turno abierto del usuario y se persisten junto con su movimiento de ingreso en caja; el flujo transaccional coordina `CustomerService`, `CashRepository` y SQLite.
 - Los permisos de la interfaz corresponden a las reglas del dominio: ADMIN puede crear/editar/dar de baja y activar/desactivar; ADMIN y CASHIER pueden registrar abonos, pero la acción se deshabilita si no hay turno de caja abierto. Los demás roles autorizados al módulo tienen consulta.
 - Los campos de límite de crédito y abonos muestran dos decimales y normalizan los valores a centavos; el estado de cuenta también presenta sus importes con dos decimales.
+- La migración 026 agrega moneda a clientes, deudas y pagos. El cambio de moneda convierte límites/créditos de clientes no eliminados y deudas pendientes; pagos históricos conservan su moneda de origen y el estado de cuenta los totaliza por moneda, sin mezclar importes.
 - La baja es lógica (`deleted = 1`, `active = 0`) y el dominio impide dar de baja clientes con deuda pendiente; el historial de ventas, pagos y movimientos se conserva.
 - La deuda de una venta solo se genera desde `SalesService` en el flujo transaccional del POS. Ya no existe un canal IPC independiente para crear deudas, evitando insertar una deuda sin la venta asociada.
 - La vista usa `useConfirmDialog` para confirmar la baja y los cambios de estado; no usa `window.confirm`.

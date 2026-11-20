@@ -1,4 +1,9 @@
-import type { UsdVesExchangeRate } from '@shared/contracts'
+import type {
+  CurrencyVesExchangeRate,
+  ExchangeRateCurrency,
+  EurVesExchangeRate,
+  UsdVesExchangeRate
+} from '@shared/contracts'
 import type {
   CachedExchangeRate,
   ExchangeRateRepository
@@ -14,23 +19,39 @@ export class ExchangeRateService {
   ) {}
 
   async getUsdVes(): Promise<UsdVesExchangeRate> {
-    let latest: CachedExchangeRate
-    try {
-      latest = await this.source.fetchBcvUsdVes()
-    } catch (error) {
-      const cached = this.repository.getBcvUsdVes()
-      if (!cached) {
-        const detail = error instanceof Error ? ` ${error.message}` : ''
-        throw new Error(`No hay una tasa BCV guardada y no se pudo consultar la API.${detail}`)
-      }
-      return this.toContract(cached.rate, cached.updatedAt, true)
-    }
-    this.repository.saveBcvUsdVes(latest)
-    return this.toContract(latest.rate, latest.updatedAt)
+    return { ...(await this.getCurrencyVes('USD')), currency: 'USD' }
   }
 
-  private toContract(rate: number, updatedAt: string, isFallback = false): UsdVesExchangeRate {
+  async getEurVes(): Promise<EurVesExchangeRate> {
+    return { ...(await this.getCurrencyVes('EUR')), currency: 'EUR' }
+  }
+
+  async getCurrencyVes(currency: ExchangeRateCurrency): Promise<CurrencyVesExchangeRate> {
+    let latest: CachedExchangeRate
+    try {
+      latest = await this.source.fetchBcvRate(currency)
+    } catch (error) {
+      const cached = this.repository.getBcvRate(currency)
+      if (!cached) {
+        const detail = error instanceof Error ? ` ${error.message}` : ''
+        throw new Error(
+          `No hay una tasa BCV ${currency}/VES guardada y no se pudo consultar la API.${detail}`
+        )
+      }
+      return this.toContract(currency, cached.rate, cached.updatedAt, true)
+    }
+    this.repository.saveBcvRate(currency, latest)
+    return this.toContract(currency, latest.rate, latest.updatedAt)
+  }
+
+  private toContract(
+    currency: ExchangeRateCurrency,
+    rate: number,
+    updatedAt: string,
+    isFallback = false
+  ): CurrencyVesExchangeRate {
     return {
+      currency,
       rate,
       updatedAt,
       source: 'BCV',

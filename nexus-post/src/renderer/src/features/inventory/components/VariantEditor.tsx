@@ -11,6 +11,8 @@ import VariantForm, { type VariantDraft } from './VariantForm'
 import { useTablePagination } from '../hooks/useTablePagination'
 import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import TablePagination from './TablePagination'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface VariantEditorProps {
   parent: Product
@@ -27,6 +29,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
   variantAttrs,
   onVariantAttrsChange
 }) => {
+  const { config } = useBusinessConfig()
   const { variants, error, createVariant, updateVariant, deleteVariant } = useProductVariants(
     parent.id
   )
@@ -238,7 +241,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                       </div>
                     </td>
                     <td className="py-1 px-2 text-right font-mono text-[#107C41]">
-                      ${variant.salePrice.toFixed(2)}
+                      {formatCurrency(variant.salePrice, config.currency)}
                     </td>
                     <td className="py-1 px-2 text-right font-mono">{variant.stock}</td>
                     <td className="py-1 px-2">

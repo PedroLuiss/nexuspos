@@ -9,6 +9,7 @@ import type { StockMovementRepository } from '../../ports/stock-movement.reposit
 import type { SalesRepository, SaleItemRecord, SaleRecord } from '../../ports/sales.repository'
 import type { CashRepository } from '../../ports/cash.repository'
 import type { SettingsRepository } from '../../ports/settings.repository'
+import type { ExchangeRateRepository } from '../../ports/exchange-rate.repository'
 import type { TransactionRunner } from '../../ports/transaction'
 import { ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
@@ -30,6 +31,7 @@ export class SalesService {
     private readonly cash: CashRepository,
     private readonly customers: CustomerService,
     private readonly settings: SettingsRepository,
+    private readonly exchangeRates: ExchangeRateRepository,
     private readonly auth: AuthService,
     private readonly tx: TransactionRunner
   ) {}
@@ -46,6 +48,11 @@ export class SalesService {
     if (!activeShift) throw new ValidationError('Debe abrir su caja antes de cobrar una venta.')
 
     const config = this.settings.getBusiness()
+    if (activeShift.currency !== config.currency) {
+      throw new ValidationError(
+        'La moneda de la caja no coincide con la moneda actual del negocio. Cierre y vuelva a abrir la caja.'
+      )
+    }
     const seenProducts = new Set<string>()
     const items: SaleItemRecord[] = []
     const taxLines: SaleLineInput[] = []
@@ -138,6 +145,10 @@ export class SalesService {
     }
 
     const id = `sale-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const rateSnapshot =
+      config.currency === 'VES'
+        ? { rate: 1, updatedAt: now }
+        : this.exchangeRates.getBcvRate(config.currency)
     const result: SaleResult = {
       id,
       cashShiftId: activeShift.id,
@@ -147,6 +158,7 @@ export class SalesService {
       discount,
       tax,
       total,
+      currency: config.currency,
       customerId: input.customerId,
       taxBreakdown: totals.taxBreakdown
     }
@@ -154,8 +166,9 @@ export class SalesService {
       ...result,
       cashierName: user.name,
       payment: input.payment,
-      exchangeRate: input.exchangeRate,
-      exchangeRateUpdatedAt: input.exchangeRateUpdatedAt
+      exchangeRate: rateSnapshot?.rate,
+      exchangeRateUpdatedAt: rateSnapshot?.updatedAt,
+      currency: config.currency
     }
 
     return this.tx.run(() => {
@@ -267,7 +280,8 @@ export class SalesService {
           cashierName: user.name,
           source: 'SALE',
           paymentMethod: input.payment.method,
-          sourceId: sale.id
+          sourceId: sale.id,
+          currency: config.currency
         })
       }
       return result
@@ -301,7 +315,8 @@ export class SalesService {
         throw new ValidationError('La venta en espera contiene un producto no válido.')
       }
     }
-    this.sales.saveSuspended(sale, user.id)
+    const currency = this.settings.getBusiness().currency
+    this.sales.saveSuspended({ ...sale, currency }, user.id)
   }
 
   deleteSuspended(id: string): void {
@@ -366,7 +381,8 @@ export class SalesService {
           reference,
           batchNumber: issue.batchNumber,
           unitCost,
-          valuationBasis: 'SALE_SNAPSHOT'
+          valuationBasis: 'SALE_SNAPSHOT',
+          currency: this.settings.getBusiness().currency
         })
         consumed.push({
           batchId: issue.batchId,
@@ -399,7 +415,8 @@ export class SalesService {
       unit: product.unit,
       reference,
       unitCost,
-      valuationBasis: 'SALE_SNAPSHOT'
+      valuationBasis: 'SALE_SNAPSHOT',
+      currency: this.settings.getBusiness().currency
     })
     return []
   }

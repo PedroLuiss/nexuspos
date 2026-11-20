@@ -3,8 +3,10 @@ import ExcelJS from 'exceljs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { CURRENCY_OPTIONS } from '@shared/contracts'
 import type {
   BusinessConfig,
+  CurrencyCode,
   KardexExportFormat,
   KardexMovement,
   KardexMovementQuery
@@ -15,6 +17,11 @@ const SOURCE_LABELS: Record<KardexMovement['source'], string> = {
   POS: 'Venta POS',
   CASH: 'Caja / devolución',
   LEGACY: 'Histórico'
+}
+const EXCEL_CURRENCY_FORMAT: Record<CurrencyCode, string> = {
+  USD: '"US$ " #,##0.00',
+  EUR: '"€ " #,##0.00',
+  VES: '"Bs. " #,##0.00'
 }
 
 function periodLabel(period: KardexMovementQuery['period']): string {
@@ -40,14 +47,14 @@ function formatQuantity(value: number): string {
   return new Intl.NumberFormat('es-VE', { maximumFractionDigits: 3 }).format(value)
 }
 
-function formatMoney(value: number | undefined): string {
+function formatMoney(value: number | undefined, currency: CurrencyCode): string {
   if (value === undefined) return '—'
-  return new Intl.NumberFormat('es-VE', {
-    style: 'currency',
-    currency: 'USD',
+  const symbol = CURRENCY_OPTIONS.find((option) => option.code === currency)?.symbol ?? currency
+  const amount = new Intl.NumberFormat('es-VE', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value)
+  return `${symbol} ${amount}`
 }
 
 function formatTimestamp(value: string): string {
@@ -172,8 +179,8 @@ function createWorkbook(
     { header: 'Stock previo', key: 'previousStock', width: 15 },
     { header: 'Cantidad', key: 'quantity', width: 15 },
     { header: 'Stock final', key: 'newStock', width: 15 },
-    { header: 'Costo unitario USD', key: 'unitCost', width: 19 },
-    { header: 'Costo total USD', key: 'movementCost', width: 19 },
+    { header: 'Costo unitario', key: 'unitCost', width: 19 },
+    { header: 'Costo total', key: 'movementCost', width: 19 },
     { header: 'Responsable', key: 'responsibleUser', width: 22 },
     { header: 'Notas', key: 'notes', width: 40 },
     { header: 'Base de valoración', key: 'valuation', width: 30 }
@@ -204,7 +211,7 @@ function createWorkbook(
 
   for (const movement of movements) {
     const parsedDate = new Date(movement.timestamp)
-    sheet.addRow({
+    const row = sheet.addRow({
       timestamp: Number.isNaN(parsedDate.getTime()) ? movement.timestamp : parsedDate,
       reference: movement.reference ?? '',
       productCode: movement.productCode,
@@ -223,13 +230,14 @@ function createWorkbook(
       notes: movement.notes ?? '',
       valuation: valuationLabel(movement)
     })
+    row.getCell(13).numFmt = EXCEL_CURRENCY_FORMAT[movement.currency]
+    row.getCell(14).numFmt = EXCEL_CURRENCY_FORMAT[movement.currency]
   }
 
   sheet.autoFilter = { from: { row: 7, column: 1 }, to: { row: 7, column: columns.length } }
   sheet.views = [{ state: 'frozen', ySplit: 7 }]
   sheet.getColumn(1).numFmt = 'dd/mm/yyyy hh:mm:ss'
   for (const column of [10, 11, 12]) sheet.getColumn(column).numFmt = '#,##0.###'
-  for (const column of [13, 14]) sheet.getColumn(column).numFmt = '"USD " #,##0.00'
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber <= 7) return
     row.height = 22
@@ -262,7 +270,7 @@ function createWorkbook(
     ['Fecha de exportación', new Date()],
     ['Movimientos incluidos', movements.length],
     ['Productos afectados', new Set(movements.map((movement) => movement.productId)).size],
-    ['Valorización', 'Costo unitario en USD; total = cantidad × costo unitario']
+    ['Valorización', 'Moneda de origen del movimiento; total = cantidad × costo unitario']
   ])
   summary.getCell('B10').numFmt = 'dd/mm/yyyy hh:mm'
   summary.eachRow((row, rowNumber) => {
@@ -300,10 +308,11 @@ function createPdfHtml(
         <td class="number">${escapeHtml(formatQuantity(movement.previousStock))}</td>
         <td class="number">${escapeHtml(formatQuantity(movement.quantity))}</td>
         <td class="number">${escapeHtml(formatQuantity(movement.newStock))}</td>
-        <td class="number">${escapeHtml(formatMoney(movement.unitCost))}</td>
+        <td class="number">${escapeHtml(formatMoney(movement.unitCost, movement.currency))}</td>
         <td class="number">${escapeHtml(
           formatMoney(
-            movement.unitCost === undefined ? undefined : movement.quantity * movement.unitCost
+            movement.unitCost === undefined ? undefined : movement.quantity * movement.unitCost,
+            movement.currency
           )
         )}</td>
         <td>${escapeHtml(movement.responsibleUser)}</td>
@@ -354,12 +363,12 @@ function createPdfHtml(
         <strong>Motivo:</strong> ${escapeHtml(reasonLabel(query.reason))}<br>
         <strong>Búsqueda:</strong> ${escapeHtml(query.search || 'Todas')} &nbsp;·&nbsp;
         <strong>Movimientos:</strong> ${movements.length} &nbsp;·&nbsp;
-        <strong>Valoración:</strong> costo en USD, costo total = cantidad × costo unitario
+        <strong>Valoración:</strong> moneda de origen de cada movimiento, costo total = cantidad × costo unitario
       </div>
       <table><thead><tr>
         <th>Fecha</th><th>Referencia</th><th>Código</th><th>Producto</th><th>Unidad</th>
         <th>Origen</th><th>Tipo / motivo</th><th>Lote</th><th>Stock previo</th><th>Cantidad</th>
-        <th>Stock final</th><th>Costo unit. USD</th><th>Costo total USD</th><th>Responsable</th>
+        <th>Stock final</th><th>Costo unitario</th><th>Costo total</th><th>Responsable</th>
         <th>Notas</th><th>Base de valoración</th>
       </tr></thead><tbody>
         ${rows || '<tr><td class="empty" colspan="16">No hay movimientos que coincidan con los filtros.</td></tr>'}

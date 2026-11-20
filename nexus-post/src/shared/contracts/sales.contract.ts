@@ -1,4 +1,5 @@
 import type { Product } from './product.contract'
+import type { CurrencyCode } from './settings.contract'
 
 export type SalePaymentMethod = 'cash' | 'card' | 'mixed' | 'credit'
 
@@ -30,6 +31,7 @@ export interface SuspendedSale {
   customerName?: string
   subtotal: number
   total: number
+  currency?: CurrencyCode
 }
 
 /** Desglose de impuesto por tasa dentro de una venta (16%, 8%, exento…). */
@@ -73,6 +75,7 @@ export interface SaleResult {
   discount: number
   tax: number
   total: number
+  currency: CurrencyCode
   customerId?: string
   /** Desglose por tasa guardado en `sale_taxes`. */
   taxBreakdown?: SaleTaxLine[]

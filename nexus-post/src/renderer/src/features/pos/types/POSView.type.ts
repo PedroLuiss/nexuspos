@@ -4,7 +4,7 @@ import type {
   Product,
   SuspendedSale
 } from '@renderer/shared/types/domain'
-import type { Customer, CustomerInput, UsdVesExchangeRate } from '@shared/contracts'
+import type { Customer, CustomerInput, CurrencyVesExchangeRate } from '@shared/contracts'
 
 export interface POSViewProps {
   cart: CartItem[]
@@ -20,7 +20,7 @@ export interface POSViewProps {
   onSuspendSale: (sale: SuspendedSale) => Promise<boolean>
   onResumeSale: (sale: SuspendedSale) => Promise<boolean>
   onDeleteSuspendedSale: (id: string) => Promise<void>
-  exchangeRate: UsdVesExchangeRate | null
+  exchangeRate: CurrencyVesExchangeRate | null
   cashierName: string
   cashShiftOpen: boolean
   canOverrideNoStock: boolean

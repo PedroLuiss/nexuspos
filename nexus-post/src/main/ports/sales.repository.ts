@@ -1,4 +1,5 @@
 import type { CreateSaleInput, SaleResult } from '@shared/contracts'
+import type { CurrencyCode } from '@shared/contracts'
 import type { CashTicket, SaleItemBatch, SalePayment } from '@shared/contracts'
 
 export interface SaleRecord extends SaleResult {
@@ -6,6 +7,7 @@ export interface SaleRecord extends SaleResult {
   payment: CreateSaleInput['payment']
   exchangeRate?: number
   exchangeRateUpdatedAt?: string
+  currency: CurrencyCode
 }
 
 export interface SaleItemRecord {

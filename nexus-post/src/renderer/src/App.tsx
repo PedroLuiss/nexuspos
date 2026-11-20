@@ -17,6 +17,7 @@ import type {
   CloseCashShiftInput,
   CreateCashMovementInput,
   Customer,
+  CustomerInput,
   OpenCashShiftInput,
   User
 } from '@shared/contracts'
@@ -34,6 +35,7 @@ import { posProductsApi } from './features/pos/api/products.api'
 import { salesApi, salesErrorMessage } from './features/pos/api/sales.api'
 import { cashApi, cashErrorMessage } from './features/cash-shift/api/cash.api'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
+import { formatCurrency } from './shared/lib/currency'
 
 function AppContent(): React.JSX.Element {
   const { activeTab } = useRouter()
@@ -45,7 +47,10 @@ function AppContent(): React.JSX.Element {
     isLoading: isExchangeRateLoading,
     error: exchangeRateError,
     refresh: refreshExchangeRate
-  } = useUsdVesRate(Boolean(currentUser))
+  } = useUsdVesRate(
+    Boolean(currentUser),
+    businessConfig.currency === 'VES' ? 'USD' : businessConfig.currency
+  )
   const {
     data: kardexData,
     query: kardexQuery,
@@ -333,7 +338,9 @@ function AppContent(): React.JSX.Element {
       return false
     }
 
-    showToast(`¡Venta cobrada con éxito! ($${saleTotal.toFixed(2)})`)
+    showToast(
+      `¡Venta cobrada con éxito! (${formatCurrency(saleTotal, businessConfig.currency)})`
+    )
     setCart([])
     return true
   }
@@ -385,10 +392,7 @@ function AppContent(): React.JSX.Element {
   }
 
   const handleAddCustomer = async (
-    customerData: Omit<
-      Customer,
-      'id' | 'currentDebt' | 'active' | 'deleted' | 'createdAt' | 'updatedAt'
-    >
+    customerData: CustomerInput
   ): Promise<Customer> => {
     const newCustomer = await createCustomer(customerData)
     showToast(`Cliente "${newCustomer.name}" registrado`)
@@ -404,7 +408,9 @@ function AppContent(): React.JSX.Element {
     try {
       setCashRegister(await cashApi.openShift(input))
       setCashError(null)
-      showToast(`Caja abierta con fondo de $${input.openingAmount.toFixed(2)}.`)
+      showToast(
+        `Caja abierta con fondo de ${formatCurrency(input.openingAmount, businessConfig.currency)}.`
+      )
       return true
     } catch (error: unknown) {
       showToast(`No se pudo abrir la caja: ${cashErrorMessage(error)}`, 'error')
@@ -416,7 +422,9 @@ function AppContent(): React.JSX.Element {
     try {
       setCashRegister(await cashApi.closeShift(input))
       setSuspendedSales([])
-      showToast(`Caja cerrada. Efectivo contado: $${input.countedCash.toFixed(2)}.`)
+      showToast(
+        `Caja cerrada. Efectivo contado: ${formatCurrency(input.countedCash, businessConfig.currency)}.`
+      )
       return true
     } catch (error: unknown) {
       showToast(`No se pudo cerrar la caja: ${cashErrorMessage(error)}`, 'error')
@@ -428,7 +436,7 @@ function AppContent(): React.JSX.Element {
     try {
       setCashRegister(await cashApi.addMovement(input))
       showToast(
-        `Movimiento ${input.type.toLowerCase()} registrado por $${input.amount.toFixed(2)}.`
+        `Movimiento ${input.type.toLowerCase()} registrado por ${formatCurrency(input.amount, businessConfig.currency)}.`
       )
       return true
     } catch (error: unknown) {

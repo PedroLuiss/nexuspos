@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { CashRegisterData } from '@shared/contracts'
 import { Banknote, Clock3, RefreshCw, Search, X } from '../../../shared/icons/Icons'
 import { DetailValue, SummaryCard } from './CashierOpenShiftMetrics'
+import { formatCurrency, formatCurrencyTotals } from '../../../shared/lib/currency'
 
 type CashShiftOption = CashRegisterData['shiftOptions'][number]
 
@@ -22,9 +23,6 @@ const formatDate = (date: string): string =>
     hour: '2-digit',
     minute: '2-digit'
   })
-
-const formatMoney = (amount: number): string =>
-  `$${amount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 function getElapsedTime(openedAt: string): string {
   const openedTime = new Date(openedAt).getTime()
@@ -63,9 +61,13 @@ export function CashierOpenShiftsPanel({
       ),
     [cashierFilter, shifts]
   )
-  const netSales = shifts.reduce((total, shift) => total + shift.totalSales, 0)
   const ticketCount = shifts.reduce((total, shift) => total + shift.ticketCount, 0)
-  const expectedCash = shifts.reduce((total, shift) => total + shift.expectedCash, 0)
+  const netSales = formatCurrencyTotals(
+    shifts.map((shift) => ({ amount: shift.totalSales, currency: shift.currency }))
+  )
+  const expectedCash = formatCurrencyTotals(
+    shifts.map((shift) => ({ amount: shift.expectedCash, currency: shift.currency }))
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
@@ -115,13 +117,13 @@ export function CashierOpenShiftsPanel({
             />
             <SummaryCard
               label="Ventas netas"
-              value={formatMoney(netSales)}
+              value={netSales || '—'}
               detail={`${ticketCount.toLocaleString('es-VE')} tickets vigentes`}
               tone="green"
             />
             <SummaryCard
               label="Efectivo esperado"
-              value={formatMoney(expectedCash)}
+              value={expectedCash || '—'}
               detail="Total estimado en gaveta"
               tone="slate"
             />
@@ -215,15 +217,18 @@ export function CashierOpenShiftsPanel({
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-3 rounded-md bg-slate-50 p-3">
-                        <DetailValue label="Ventas netas" value={formatMoney(shift.totalSales)} />
+                        <DetailValue
+                          label="Ventas netas"
+                          value={formatCurrency(shift.totalSales, shift.currency)}
+                        />
                         <DetailValue
                           label="Efectivo esperado"
-                          value={formatMoney(shift.expectedCash)}
+                          value={formatCurrency(shift.expectedCash, shift.currency)}
                           emphasized
                         />
                         <DetailValue
                           label="Fondo inicial"
-                          value={formatMoney(shift.openingAmount)}
+                          value={formatCurrency(shift.openingAmount, shift.currency)}
                         />
                         <DetailValue
                           label="Tickets vigentes"

@@ -3,6 +3,8 @@ import type { FormEvent, JSX } from 'react'
 import type { Customer, CustomerInput } from '@shared/contracts'
 import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import { Modal } from '../../../shared/ui/Modal'
+import { getCurrencySymbol } from '../../../shared/lib/businessConfig'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 
 interface CustomerFormDialogProps {
   isOpen: boolean
@@ -31,6 +33,7 @@ export function CustomerFormDialog({
   onClose,
   onSave
 }: CustomerFormDialogProps): JSX.Element | null {
+  const { config } = useBusinessConfig()
   const [form, setForm] = useState<CustomerInput>(() =>
     customer
       ? {
@@ -152,7 +155,9 @@ export function CustomerFormDialog({
         <label className="block max-w-xs space-y-1 text-xs font-semibold text-[#1B1B1B]">
           Límite de crédito
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">
+              {getCurrencySymbol(config.currency)}
+            </span>
             <CurrencyInput
               min="0"
               required

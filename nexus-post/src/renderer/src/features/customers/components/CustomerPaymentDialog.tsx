@@ -3,6 +3,8 @@ import type { FormEvent, JSX } from 'react'
 import type { Customer } from '@shared/contracts'
 import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import { Modal } from '../../../shared/ui/Modal'
+import { formatCurrency } from '../../../shared/lib/currency'
+import { getCurrencySymbol } from '../../../shared/lib/businessConfig'
 
 interface CustomerPaymentDialogProps {
   isOpen: boolean
@@ -64,13 +66,15 @@ export function CustomerPaymentDialog({
             <p className="mt-1 text-xs font-semibold text-[#1B1B1B]">{customer.name}</p>
           </div>
           <strong className="font-mono text-xl text-[#C42B1C]">
-            ${customer.currentDebt.toFixed(2)}
+            {formatCurrency(customer.currentDebt, customer.currency)}
           </strong>
         </div>
         <label className="block space-y-1 text-xs font-semibold text-[#1B1B1B]">
           Monto recibido
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783]">
+              {getCurrencySymbol(customer.currency)}
+            </span>
             <CurrencyInput
               autoFocus
               min="0.01"

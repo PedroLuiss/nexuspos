@@ -5,8 +5,8 @@ import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
 import { formatBusinessAddress } from '../../../shared/lib/businessConfig'
 import { computeSaleTotals, formatTaxLabel, resolveProductTax } from '@shared/lib/tax'
-import type { UsdVesExchangeRate } from '@shared/contracts'
-import { formatVesAmount } from '../../../shared/lib/currency'
+import type { CurrencyVesExchangeRate } from '@shared/contracts'
+import { formatCurrency, formatVesAmount } from '../../../shared/lib/currency'
 import { formatProductQuantity } from '@shared/lib/product-quantity'
 
 interface TicketPreviewModalProps {
@@ -21,7 +21,7 @@ interface TicketPreviewModalProps {
   ticketNumber: string
   cashierName: string
   customerName?: string
-  exchangeRate: UsdVesExchangeRate | null
+  exchangeRate: CurrencyVesExchangeRate | null
 }
 
 export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
@@ -134,18 +134,20 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                       <td className="py-1">
                         <div className="font-bold line-clamp-1">{item.product.name}</div>
                         <div className="text-[9px] text-slate-500">
-                          {formatProductQuantity(item.quantity)} {item.product.unit} x $
-                          {item.product.salePrice.toFixed(2)}
+                          {formatProductQuantity(item.quantity)} {item.product.unit} x{' '}
+                          {formatCurrency(item.product.salePrice, business.currency)}
                           {item.discountPercent > 0 && ` (-${item.discountPercent}%)`}
                         </div>
                       </td>
                       <td className="text-right align-top py-1 font-bold">
-                        $
-                        {(
+                        {formatCurrency(
+                          (
                           item.product.salePrice *
                           item.quantity *
                           (1 - item.discountPercent / 100)
-                        ).toFixed(2)}
+                          ),
+                          business.currency
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -157,12 +159,12 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
             <div className="py-2 border-b border-dashed border-slate-300 text-[11px] space-y-1">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(subtotal, business.currency)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-700">
                   <span>Descuentos:</span>
-                  <span>-${discount.toFixed(2)}</span>
+                  <span>-{formatCurrency(discount, business.currency)}</span>
                 </div>
               )}
               {business.taxEnabled &&
@@ -177,7 +179,7 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                         {formatTaxLabel(line.taxName, line.taxRate)}
                         {business.pricesIncludeTax ? ' incluido' : ''}:
                       </span>
-                      <span>${line.amount.toFixed(2)}</span>
+                      <span>{formatCurrency(line.amount, business.currency)}</span>
                     </div>
                   ))}
               {business.taxEnabled &&
@@ -187,25 +189,27 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                     <span>
                       {business.taxName} ({business.taxRate}%):
                     </span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>{formatCurrency(tax, business.currency)}</span>
                   </div>
                 )}
               {business.taxEnabled && totals.exemptBase > 0 && (
                 <div className="flex justify-between text-slate-500">
                   <span>Base exenta:</span>
-                  <span>${totals.exemptBase.toFixed(2)}</span>
+                  <span>{formatCurrency(totals.exemptBase, business.currency)}</span>
                 </div>
               )}
               <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-200">
                 <span>TOTAL A PAGAR:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatCurrency(total, business.currency)}</span>
               </div>
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>Referencia en bolívares (BCV):</span>
-                <span>
-                  {exchangeRate ? formatVesAmount(total * exchangeRate.rate) : 'No disponible'}
-                </span>
-              </div>
+              {business.currency !== 'VES' && (
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>Referencia en bolívares (BCV):</span>
+                  <span>
+                    {exchangeRate ? formatVesAmount(total * exchangeRate.rate) : 'No disponible'}
+                  </span>
+                </div>
+              )}
 
               {payment && (
                 <div className="pt-1 text-[10px] space-y-0.5 text-slate-600 border-t border-slate-100">
@@ -217,11 +221,11 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
                     <>
                       <div className="flex justify-between">
                         <span>Efectivo Recibido:</span>
-                        <span>${payment.amountPaid.toFixed(2)}</span>
+                        <span>{formatCurrency(payment.amountPaid, business.currency)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-emerald-700">
                         <span>Cambio Entregado:</span>
-                        <span>${payment.change.toFixed(2)}</span>
+                        <span>{formatCurrency(payment.change, business.currency)}</span>
                       </div>
                     </>
                   )}

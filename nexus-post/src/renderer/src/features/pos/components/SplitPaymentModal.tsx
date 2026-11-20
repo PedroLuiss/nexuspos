@@ -1,14 +1,15 @@
 import React, { useState } from 'react'
 import { AlertCircle, Banknote, CreditCard, Layers, X, Check } from '../../../shared/icons/Icons'
-import type { UsdVesExchangeRate } from '@shared/contracts'
-import { formatVesAmount } from '../../../shared/lib/currency'
+import type { CurrencyCode, CurrencyVesExchangeRate } from '@shared/contracts'
+import { formatCurrency, formatVesAmount } from '../../../shared/lib/currency'
 import { roundMoney } from '@shared/lib/tax'
 import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 
 interface SplitPaymentModalProps {
   isOpen: boolean
   total: number
-  exchangeRate: UsdVesExchangeRate | null
+  exchangeRate: CurrencyVesExchangeRate | null
+  currency: CurrencyCode
   canCompleteSale: boolean
   onClose: () => void
   onConfirmSplit: (cashAmount: number, cardAmount: number) => void | Promise<void>
@@ -18,6 +19,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   isOpen,
   total,
   exchangeRate,
+  currency,
   canCompleteSale,
   onClose,
   onConfirmSplit
@@ -72,12 +74,14 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
             Total a Cubrir
           </span>
           <div className="text-3xl font-extrabold font-tabular text-[#0078D4]">
-            ${total.toFixed(2)}
+            {formatCurrency(total, currency)}
           </div>
           <div className="mt-1 text-[11px] text-slate-500">
-            {exchangeRate
+            {currency !== 'VES' && exchangeRate
               ? `≈ ${formatVesAmount(total * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}${exchangeRate.isStale ? ' (tasa desactualizada)' : ''}`
-              : 'Tasa BCV no disponible'}
+              : currency === 'VES'
+                ? 'Moneda de operación: Bolívar'
+                : 'Tasa BCV no disponible'}
           </div>
         </div>
 
@@ -98,7 +102,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-semibold text-slate-700 flex items-center gap-1.5">
                   <Banknote size={15} className="text-emerald-600" />
-                  Monto en Efectivo ($)
+                  Monto en Efectivo ({currency})
                 </span>
                 <button
                   type="button"
@@ -125,13 +129,13 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-semibold text-slate-700 flex items-center gap-1.5">
                   <CreditCard size={15} className="text-blue-600" />
-                  Restante en Tarjeta / Terminal ($)
+                  Restante en Tarjeta / Terminal ({currency})
                 </span>
                 <span className="text-[10px] text-slate-400">Calculado automáticamente</span>
               </div>
 
               <div className="px-3 py-2 bg-slate-200/70 border border-slate-300 rounded-sm font-bold font-tabular text-lg text-blue-700">
-                ${cardRemainder.toFixed(2)}
+                {formatCurrency(cardRemainder, currency)}
               </div>
             </div>
 
@@ -141,7 +145,8 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 <Check size={14} /> Total distribuido:
               </span>
               <span className="font-tabular font-bold">
-                ${(cashAmount + cardRemainder).toFixed(2)} de ${total.toFixed(2)}
+                {formatCurrency(cashAmount + cardRemainder, currency)} de{' '}
+                {formatCurrency(total, currency)}
               </span>
             </div>
           </div>

@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import type { Customer, CustomerAccountSummary } from '@shared/contracts'
 import { AlertCircle, CheckCircle2 } from '../../../shared/icons/Icons'
 import { Modal } from '../../../shared/ui/Modal'
+import { formatCurrency, formatCurrencyTotals } from '../../../shared/lib/currency'
 
 interface CustomerAccountDialogProps {
   isOpen: boolean
@@ -93,7 +94,7 @@ export function CustomerAccountDialog({
                   {label}
                 </p>
                 <p className="mt-2 font-mono text-base font-bold text-[#1B1B1B]">
-                  ${value.toFixed(2)}
+                  {formatCurrency(value, summary.customer.currency)}
                 </p>
               </div>
             ))}
@@ -131,10 +132,10 @@ export function CustomerAccountDialog({
                         </td>
                         <td className="px-3 py-2 text-[#5C5C5C]">{formatDate(debt.date)}</td>
                         <td className="px-3 py-2 text-right font-mono">
-                          ${debt.totalAmount.toFixed(2)}
+                          {formatCurrency(debt.totalAmount, debt.currency)}
                         </td>
                         <td className="px-3 py-2 text-right font-mono font-bold text-[#C42B1C]">
-                          ${debt.balance.toFixed(2)}
+                          {formatCurrency(debt.balance, debt.currency)}
                         </td>
                         <td className="px-3 py-2 text-center text-[10px] font-bold text-amber-700">
                           {debt.status === 'PARTIAL' ? 'Parcial' : 'Pendiente'}
@@ -153,7 +154,13 @@ export function CustomerAccountDialog({
                 Historial de abonos
               </h3>
               <span className="text-[11px] text-[#717783]">
-                Total recibido: ${summary.totalPaid.toFixed(2)}
+                Total recibido:{' '}
+                {formatCurrencyTotals(
+                  summary.payments.map((payment) => ({
+                    amount: payment.amount,
+                    currency: payment.currency
+                  })) || []
+                ) || '—'}
               </span>
             </div>
             {summary.payments.length === 0 ? (
@@ -178,7 +185,7 @@ export function CustomerAccountDialog({
                           {formatDate(payment.date)}
                         </td>
                         <td className="px-3 py-2 text-right font-mono font-semibold text-[#107C41]">
-                          ${payment.amount.toFixed(2)}
+                          {formatCurrency(payment.amount, payment.currency)}
                         </td>
                         <td className="max-w-[260px] truncate px-3 py-2">{payment.concept}</td>
                         <td className="px-3 py-2 text-[#5C5C5C]">{payment.cashierName}</td>

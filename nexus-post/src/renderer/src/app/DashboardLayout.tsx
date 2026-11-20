@@ -8,7 +8,7 @@ import { canAccessTab } from '../shared/lib/permissions'
 import { ExchangeRateIndicator } from '../shared/ui/ExchangeRateIndicator'
 import { IssueReportModal } from '../features/support/components/IssueReportModal'
 import logoBanner from '@resources/logobanner.png'
-import type { UsdVesExchangeRate, User } from '@shared/contracts'
+import type { CurrencyVesExchangeRate, User } from '@shared/contracts'
 
 interface DashboardLayoutProps {
   children?: React.ReactNode
@@ -19,7 +19,7 @@ interface DashboardLayoutProps {
   /** Indica si el turno de caja está abierto para pintar el estado real. */
   cashShiftOpen?: boolean
   isLoggingOut?: boolean
-  exchangeRate?: UsdVesExchangeRate | null
+  exchangeRate?: CurrencyVesExchangeRate | null
   exchangeRateLoading?: boolean
   exchangeRateError?: string | null
   onRefreshExchangeRate?: () => void

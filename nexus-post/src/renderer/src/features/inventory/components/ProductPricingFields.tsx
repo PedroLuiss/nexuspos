@@ -4,6 +4,8 @@ import { Sparkles } from '../../../shared/icons/Icons'
 import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import ProductTaxField from './ProductTaxField'
 import { getProductQuantityStep } from '@shared/lib/product-quantity'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductPricingFieldsProps {
   values: ProductFormValues
@@ -33,6 +35,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
   canAdjustStock,
   canDeleteProduct
 }) => {
+  const { config } = useBusinessConfig()
   const quantityStep = getProductQuantityStep(values.unit)
   const pricingDisabled = isEditing && !canModifyPrice
 
@@ -48,11 +51,11 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
         {/* Precio de Costo */}
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
-            Precio Costo ($) <span className="text-red-500">*</span>
+            Precio Costo ({config.currency}) <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-              $
+              {config.currency}
             </span>
             <CurrencyInput
               min="0"
@@ -86,7 +89,8 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
             </span>
           </div>
           <span className="text-[10px] text-emerald-600 mt-0.5 block">
-            Ej: 10% de $100 = $10 ganancia
+            Ej: 10% de {formatCurrency(100, config.currency)} ={' '}
+            {formatCurrency(10, config.currency)} de ganancia
           </span>
         </div>
       </div>
@@ -127,7 +131,7 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               Precio de Venta Final
             </span>
             <div className="text-xl font-mono font-extrabold text-[#107C41] mt-0.5">
-              ${values.salePrice.toFixed(2)}
+              {formatCurrency(values.salePrice, config.currency)}
             </div>
           </div>
           <div className="text-right">
@@ -135,14 +139,16 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
               Ganancia Neta
             </span>
             <span className="text-xs font-mono font-bold text-[#107C41] bg-white px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-              +${marginDollar.toFixed(2)} ({values.profitMarginPercent.toFixed(1)}%)
+              +{formatCurrency(marginDollar, config.currency)} (
+              {values.profitMarginPercent.toFixed(1)}%)
             </span>
           </div>
         </div>
 
         <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[11px] text-slate-600">
           <span>
-            Fórmula: ${values.costPrice.toFixed(2)} costo + ${marginDollar.toFixed(2)} (
+            Fórmula: {formatCurrency(values.costPrice, config.currency)} costo +{' '}
+            {formatCurrency(marginDollar, config.currency)} (
             {values.profitMarginPercent.toFixed(1)}%)
           </span>
           <div className="flex items-center gap-1.5">

@@ -8,6 +8,7 @@ import type {
   SalePayment,
   UserRole
 } from '@shared/contracts'
+import type { CurrencyCode } from '@shared/contracts'
 import type { CashRepository, OpenCashShiftRecord } from '../../../ports/cash.repository'
 
 interface ShiftRow {
@@ -20,6 +21,7 @@ interface ShiftRow {
   expected_cash: number | null
   counted_cash: number | null
   difference: number | null
+  currency: CurrencyCode
 }
 
 interface MovementRow {
@@ -34,6 +36,7 @@ interface MovementRow {
   source: CashMovement['source']
   payment_method: SalePayment['method'] | null
   source_id: string | null
+  currency: CurrencyCode
 }
 
 interface TicketRow {
@@ -52,6 +55,7 @@ interface TicketRow {
   returned_at: string | null
   return_payment_json: string | null
   return_cash_amount: number
+  currency: CurrencyCode
 }
 
 interface TicketItemRow {
@@ -81,7 +85,8 @@ function mapMovement(row: MovementRow): CashMovement {
     cashierName: row.cashier_name,
     source: row.source,
     paymentMethod: row.payment_method ?? undefined,
-    sourceId: row.source_id ?? undefined
+    sourceId: row.source_id ?? undefined,
+    currency: row.currency
   }
 }
 
@@ -98,6 +103,7 @@ function mapTicket(row: TicketRow, items: CashSaleItem[]): CashTicket {
     discount: row.discount,
     tax: row.tax,
     total: row.total,
+    currency: row.currency,
     payment: JSON.parse(row.payment_json) as SalePayment,
     items,
     returnedAt: row.returned_at ?? undefined,
@@ -115,7 +121,7 @@ export class SqliteCashRepository implements CashRepository {
     const row = this.db
       .prepare(
         `SELECT id, cashier_id AS cashierId, cashier_name AS cashierName,
-          opened_at AS openedAt, opening_amount AS openingAmount
+          opened_at AS openedAt, opening_amount AS openingAmount, currency
          FROM cash_shifts WHERE cashier_id = ? AND closed_at IS NULL`
       )
       .get(cashierId) as OpenCashShiftRecord | undefined
@@ -131,7 +137,8 @@ export class SqliteCashRepository implements CashRepository {
         `
       SELECT cash_shifts.id, cash_shifts.opened_at AS openedAt,
         cash_shifts.closed_at AS closedAt, cash_shifts.cashier_name AS cashierName,
-        cash_shifts.opening_amount AS openingAmount, users.role AS cashierRole,
+        cash_shifts.opening_amount AS openingAmount, cash_shifts.currency,
+        users.role AS cashierRole,
         COALESCE(expected_cash, opening_amount + (
           SELECT COALESCE(SUM(cash_effect), 0) FROM cash_movements
           WHERE cash_movements.shift_id = cash_shifts.id
@@ -157,6 +164,7 @@ export class SqliteCashRepository implements CashRepository {
       closedAt: string | null
       cashierName: string
       openingAmount: number
+      currency: CurrencyCode
       cashierRole: UserRole | null
       expectedCash: number
       countedCash: number | null
@@ -320,17 +328,23 @@ export class SqliteCashRepository implements CashRepository {
       totalRefunds: money(sum(totalRefunds)),
       grossProfit: money(sum(grossProfit)),
       taxCollected: money(sum(taxCollected)),
-      ticketCount: tickets.length
+      ticketCount: tickets.length,
+      currency: row.currency
     }
     return { shift, activeShiftId: active?.id, shiftOptions, movements, tickets }
   }
 
-  openShift(cashierId: string, cashierName: string, openingAmount: number): void {
+  openShift(
+    cashierId: string,
+    cashierName: string,
+    openingAmount: number,
+    currency: CurrencyCode
+  ): void {
     this.db
       .prepare(
         `
-      INSERT INTO cash_shifts (id, cashier_id, cashier_name, opened_at, opening_amount)
-      VALUES (@id, @cashierId, @cashierName, @openedAt, @openingAmount)
+      INSERT INTO cash_shifts (id, cashier_id, cashier_name, opened_at, opening_amount, currency)
+      VALUES (@id, @cashierId, @cashierName, @openedAt, @openingAmount, @currency)
     `
       )
       .run({
@@ -338,7 +352,8 @@ export class SqliteCashRepository implements CashRepository {
         cashierId,
         cashierName,
         openedAt: new Date().toISOString(),
-        openingAmount
+        openingAmount,
+        currency
       })
   }
 
@@ -366,10 +381,10 @@ export class SqliteCashRepository implements CashRepository {
         `
       INSERT INTO cash_movements (
         id, shift_id, created_at, type, amount, cash_effect, concept,
-        cashier_name, source, payment_method, source_id
+        cashier_name, source, payment_method, source_id, currency
       ) VALUES (
         @id, @shiftId, @createdAt, @type, @amount, @cashEffect, @concept,
-        @cashierName, @source, @paymentMethod, @sourceId
+        @cashierName, @source, @paymentMethod, @sourceId, @currency
       )
     `
       )
@@ -384,7 +399,8 @@ export class SqliteCashRepository implements CashRepository {
         cashierName: movement.cashierName,
         source: movement.source,
         paymentMethod: movement.paymentMethod ?? null,
-        sourceId: movement.sourceId ?? null
+        sourceId: movement.sourceId ?? null,
+        currency: movement.currency
       })
   }
 

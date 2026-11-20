@@ -8,6 +8,7 @@ import type {
   KardexReason,
   KardexValuationBasis
 } from '@shared/contracts'
+import type { CurrencyCode } from '@shared/contracts'
 import type { StockMovementRepository } from '../../../ports/stock-movement.repository'
 
 interface MovementRow {
@@ -29,6 +30,7 @@ interface MovementRow {
   batch_number: string | null
   unit_cost: number | null
   valuation_basis: string | null
+  currency: CurrencyCode
 }
 
 function mapRow(row: MovementRow): KardexMovement {
@@ -50,7 +52,8 @@ function mapRow(row: MovementRow): KardexMovement {
     reference: row.reference ?? undefined,
     batchNumber: row.batch_number ?? undefined,
     unitCost: row.unit_cost ?? undefined,
-    valuationBasis: (row.valuation_basis ?? undefined) as KardexValuationBasis | undefined
+    valuationBasis: (row.valuation_basis ?? undefined) as KardexValuationBasis | undefined,
+    currency: row.currency
   }
 }
 
@@ -99,11 +102,11 @@ export class SqliteStockMovementRepository implements StockMovementRepository {
         `INSERT INTO stock_movements (
           id, product_id, product_name, product_code, type, reason,
           previous_stock, quantity, new_stock, responsible_user, notes, created_at,
-          source, unit, reference, batch_number, unit_cost, valuation_basis
+          source, unit, reference, batch_number, unit_cost, valuation_basis, currency
         ) VALUES (
           @id, @productId, @productName, @productCode, @type, @reason,
           @previousStock, @quantity, @newStock, @responsibleUser, @notes, @timestamp,
-          @source, @unit, @reference, @batchNumber, @unitCost, @valuationBasis
+          @source, @unit, @reference, @batchNumber, @unitCost, @valuationBasis, @currency
         )`
       )
       .run({
@@ -124,7 +127,8 @@ export class SqliteStockMovementRepository implements StockMovementRepository {
         reference: movement.reference ?? null,
         batchNumber: movement.batchNumber ?? null,
         unitCost: movement.unitCost ?? null,
-        valuationBasis: movement.valuationBasis ?? null
+        valuationBasis: movement.valuationBasis ?? null,
+        currency: movement.currency
       })
   }
 

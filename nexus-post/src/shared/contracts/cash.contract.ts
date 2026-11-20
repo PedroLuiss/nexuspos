@@ -1,5 +1,6 @@
 import type { SalePayment, SaleTaxLine } from './sales.contract'
 import type { UserRole } from './auth.contract'
+import type { CurrencyCode } from './settings.contract'
 
 export type CashMovementType = 'INGRESO' | 'EGRESO' | 'DEVOLUCION'
 export type CashMovementSource = 'MANUAL' | 'SALE' | 'CUSTOMER_PAYMENT' | 'SALE_REFUND'
@@ -28,6 +29,7 @@ export interface CashShift {
   grossProfit: number
   taxCollected: number
   ticketCount: number
+  currency: CurrencyCode
 }
 
 export interface CashMovement {
@@ -42,6 +44,7 @@ export interface CashMovement {
   source: CashMovementSource
   paymentMethod?: SalePayment['method']
   sourceId?: string
+  currency: CurrencyCode
 }
 
 /** Lote descontado de una línea de venta (para reponer en devoluciones). */
@@ -89,6 +92,7 @@ export interface CashTicket {
   returnedAt?: string
   returnPayment?: SalePayment
   returnCashAmount: number
+  currency: CurrencyCode
 }
 
 export interface CashRegisterData {
@@ -96,6 +100,7 @@ export interface CashRegisterData {
   activeShiftId?: string
   shiftOptions: Array<
     Pick<CashShift, 'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'openingAmount'> &
+      Pick<CashShift, 'currency'> &
       Pick<
         CashShift,
         'expectedCash' | 'countedCash' | 'difference' | 'totalSales' | 'ticketCount'

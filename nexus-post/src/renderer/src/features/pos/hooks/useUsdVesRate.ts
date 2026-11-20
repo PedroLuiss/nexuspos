@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { UsdVesExchangeRate } from '@shared/contracts'
+import type { CurrencyCode, CurrencyVesExchangeRate } from '@shared/contracts'
 
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000
 
-export function useUsdVesRate(enabled: boolean): {
-  rate: UsdVesExchangeRate | null
+export function useUsdVesRate(enabled: boolean, currency: CurrencyCode): {
+  rate: CurrencyVesExchangeRate | null
   isLoading: boolean
   error: string | null
   refresh: () => Promise<void>
 } {
-  const [rate, setRate] = useState<UsdVesExchangeRate | null>(null)
+  const [rate, setRate] = useState<CurrencyVesExchangeRate | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
@@ -26,7 +26,10 @@ export function useUsdVesRate(enabled: boolean): {
     setError(null)
     try {
       if (!window.api) throw new Error('El puente IPC no está disponible (preload no cargado)')
-      const current = await window.api.exchangeRate.getUsdVes()
+      const current =
+        currency === 'EUR'
+          ? await window.api.exchangeRate.getEurVes()
+          : await window.api.exchangeRate.getUsdVes()
       if (mounted.current) setRate(current)
     } catch (reason: unknown) {
       if (mounted.current) {
@@ -35,7 +38,7 @@ export function useUsdVesRate(enabled: boolean): {
     } finally {
       if (mounted.current) setIsLoading(false)
     }
-  }, [])
+  }, [currency])
 
   useEffect(() => {
     if (!enabled) return

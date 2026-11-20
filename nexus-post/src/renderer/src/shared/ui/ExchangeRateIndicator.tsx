@@ -1,10 +1,10 @@
 import React from 'react'
-import type { UsdVesExchangeRate } from '@shared/contracts'
+import type { CurrencyVesExchangeRate } from '@shared/contracts'
 import { RefreshCw } from '../icons/Icons'
 import { formatVesAmount } from '../lib/currency'
 
 interface ExchangeRateIndicatorProps {
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
   isLoading: boolean
   error: string | null
   onRefresh: () => void
@@ -29,7 +29,7 @@ function getUpdatedAtLabel(updatedAt: string): string {
 }
 
 function getStatusLabel(
-  rate: UsdVesExchangeRate | null,
+  rate: CurrencyVesExchangeRate | null,
   isLoading: boolean,
   error: string | null
 ): string {
@@ -55,7 +55,7 @@ export function ExchangeRateIndicator({
 
   return (
     <section
-      aria-label={`Tasa oficial USD del BCV: ${rate ? formatVesAmount(rate.rate) : statusLabel}`}
+      aria-label={`Tasa oficial ${rate?.currency ?? 'USD'} del BCV: ${rate ? formatVesAmount(rate.rate) : statusLabel}`}
       aria-live="polite"
       title={detail}
       className="flex h-9 items-center gap-2 rounded border border-[#E5E5E5] bg-[#F9F9F9] px-2"

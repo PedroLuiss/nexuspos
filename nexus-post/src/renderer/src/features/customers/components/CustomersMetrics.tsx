@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import type { Customer } from '@shared/contracts'
 import { AlertCircle, CheckCircle2, Clock, Users } from '../../../shared/icons/Icons'
+import { formatCurrencyTotals } from '../../../shared/lib/currency'
 
 interface CustomersMetricsProps {
   customers: Customer[]
@@ -13,7 +14,9 @@ export function CustomersMetrics({
 }: CustomersMetricsProps): JSX.Element {
   const active = customers.filter((customer) => customer.active)
   const debtors = active.filter((customer) => customer.currentDebt > 0)
-  const totalDebt = active.reduce((total, customer) => total + customer.currentDebt, 0)
+  const totalDebt = formatCurrencyTotals(
+    active.map((customer) => ({ amount: customer.currentDebt, currency: customer.currency }))
+  )
   const metrics = [
     {
       label: 'Clientes activos',
@@ -25,7 +28,7 @@ export function CustomersMetrics({
     },
     {
       label: 'Cuentas por cobrar',
-      value: `$${totalDebt.toFixed(2)}`,
+      value: totalDebt || '—',
       description: 'Saldo pendiente de recuperación',
       icon: AlertCircle,
       color: 'text-[#C42B1C]',

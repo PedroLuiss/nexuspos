@@ -10,6 +10,7 @@ import type { ProductRepository } from '../../ports/product.repository'
 import type { StockMovementRepository } from '../../ports/stock-movement.repository'
 import type { ProductBatchRepository } from '../../ports/product-batch.repository'
 import type { TransactionRunner } from '../../ports/transaction'
+import type { SettingsRepository } from '../../ports/settings.repository'
 import type { AuthService } from '../auth/auth.service'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import { isValidProductQuantity } from '@shared/lib/product-quantity'
@@ -22,7 +23,8 @@ export class InventoryService {
     private readonly movements: StockMovementRepository,
     private readonly batches: ProductBatchRepository,
     private readonly auth: AuthService,
-    private readonly tx: TransactionRunner
+    private readonly tx: TransactionRunner,
+    private readonly settings: SettingsRepository
   ) {}
 
   adjustStock(input: AdjustStockInput): AdjustStockResult {
@@ -103,7 +105,8 @@ export class InventoryService {
       unit: product.unit,
       batchNumber,
       unitCost: product.costPrice,
-      valuationBasis: 'PRODUCT_COST'
+      valuationBasis: 'PRODUCT_COST',
+      currency: this.settings.getBusiness().currency
     }
 
     return this.tx.run(() => {

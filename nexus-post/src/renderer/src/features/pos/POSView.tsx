@@ -32,7 +32,7 @@ import {
 } from '../../shared/icons/Icons'
 import { POSViewProps } from './types'
 import type { Customer } from '@shared/contracts'
-import { formatVesAmount } from '../../shared/lib/currency'
+import { formatCurrency, formatVesAmount } from '../../shared/lib/currency'
 import { CartQuantityControl } from './components/CartQuantityControl'
 import { CurrencyInput } from '../../shared/ui/CurrencyInput'
 
@@ -599,11 +599,12 @@ export const POSView: React.FC<POSViewProps> = ({
                         {/* P. UNITARIO */}
                         <td className="py-2 px-3 text-right font-mono font-medium text-xs text-[#1B1B1B]">
                           <span className={hasTierDiscount ? 'text-[#107C41]' : ''}>
-                            ${effectiveUnitPrice.toFixed(2)}
+                            {formatCurrency(effectiveUnitPrice, businessConfig.currency)}
                           </span>
                           {hasTierDiscount && (
                             <span className="block text-[9px] text-amber-700 font-semibold">
-                              Precio mayoreo · antes ${item.product.salePrice.toFixed(2)}
+                              Precio mayoreo · antes{' '}
+                              {formatCurrency(item.product.salePrice, businessConfig.currency)}
                             </span>
                           )}
                         </td>
@@ -632,7 +633,7 @@ export const POSView: React.FC<POSViewProps> = ({
 
                         {/* TOTAL */}
                         <td className="py-2 px-3 text-right font-mono font-bold text-xs text-[#1B1B1B]">
-                          ${discountedTotal.toFixed(2)}
+                          {formatCurrency(discountedTotal, businessConfig.currency)}
                         </td>
 
                         {/* ACCIONES */}
@@ -768,7 +769,8 @@ export const POSView: React.FC<POSViewProps> = ({
                         <span>{selectedCustomer.name}</span>
                         {selectedCustomer.currentDebt > 0 ? (
                           <span className="text-[10px] font-bold text-[#C42B1C] bg-red-50 border border-red-200 px-1 py-0.2 rounded">
-                            Deuda: ${selectedCustomer.currentDebt.toFixed(2)}
+                            Deuda:{' '}
+                            {formatCurrency(selectedCustomer.currentDebt, selectedCustomer.currency)}
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-[#107C41] bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded">
@@ -915,13 +917,17 @@ export const POSView: React.FC<POSViewProps> = ({
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-[#5C5C5C]">
                 <span>Subtotal ({totalItemCount} productos):</span>
-                <span className="font-mono font-medium text-[#1B1B1B]">${subtotal.toFixed(2)}</span>
+                <span className="font-mono font-medium text-[#1B1B1B]">
+                  {formatCurrency(subtotal, businessConfig.currency)}
+                </span>
               </div>
 
               {discountTotal > 0 && (
                 <div className="flex justify-between text-[#107C41] font-semibold">
                   <span>Descuentos aplicados:</span>
-                  <span className="font-mono">-${discountTotal.toFixed(2)}</span>
+                  <span className="font-mono">
+                    -{formatCurrency(discountTotal, businessConfig.currency)}
+                  </span>
                 </div>
               )}
 
@@ -938,7 +944,7 @@ export const POSView: React.FC<POSViewProps> = ({
                         {businessConfig.pricesIncludeTax ? ' incluido' : ''}:
                       </span>
                       <span className="font-mono font-medium text-[#1B1B1B]">
-                        ${line.amount.toFixed(2)}
+                        {formatCurrency(line.amount, businessConfig.currency)}
                       </span>
                     </div>
                   ))}
@@ -946,7 +952,9 @@ export const POSView: React.FC<POSViewProps> = ({
               {businessConfig.taxEnabled && totals.exemptBase > 0 && (
                 <div className="flex justify-between text-[#717783]">
                   <span>Base exenta:</span>
-                  <span className="font-mono">${totals.exemptBase.toFixed(2)}</span>
+                  <span className="font-mono">
+                    {formatCurrency(totals.exemptBase, businessConfig.currency)}
+                  </span>
                 </div>
               )}
             </div>
@@ -957,10 +965,10 @@ export const POSView: React.FC<POSViewProps> = ({
                 Total a Pagar
               </span>
               <div className="text-4xl font-extrabold font-mono text-[#1B1B1B] mt-1 tracking-tight">
-                ${finalTotal.toFixed(2)}
+                {formatCurrency(finalTotal, businessConfig.currency)}
               </div>
               <div className="mt-1 text-xs text-[#5C5C5C]">
-                {exchangeRate ? (
+                {businessConfig.currency !== 'VES' && exchangeRate ? (
                   <>
                     <span className="font-mono font-semibold">
                       ≈ {formatVesAmount(finalTotal * exchangeRate.rate)}
@@ -969,6 +977,10 @@ export const POSView: React.FC<POSViewProps> = ({
                       Referencia informativa · no modifica el cobro
                     </span>
                   </>
+                ) : businessConfig.currency === 'VES' ? (
+                  <span className="text-[10px] text-[#717783]">
+                    Moneda de operación: Bolívar
+                  </span>
                 ) : (
                   <span className="text-[10px] text-[#717783]">
                     Referencia en bolívares no disponible
@@ -998,7 +1010,9 @@ export const POSView: React.FC<POSViewProps> = ({
                 <span>COBRAR TICKET</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-sm">${finalTotal.toFixed(2)}</span>
+                <span className="font-mono font-bold text-sm">
+                  {formatCurrency(finalTotal, businessConfig.currency)}
+                </span>
                 <span className="kbd-badge bg-[#005228]/50 text-white border-emerald-700/50">
                   F12
                 </span>
@@ -1110,6 +1124,7 @@ export const POSView: React.FC<POSViewProps> = ({
           isOpen={isSplitModalOpen}
           total={finalTotal}
           exchangeRate={exchangeRate}
+          currency={businessConfig.currency}
           canCompleteSale={!cannotCompleteSale}
           onClose={() => setIsSplitModalOpen(false)}
           onConfirmSplit={handleConfirmSplit}
@@ -1240,7 +1255,7 @@ export const POSView: React.FC<POSViewProps> = ({
 
                   <div>
                     <label className="block font-semibold text-[#1B1B1B] mb-1">
-                      Límite de Crédito ($)
+                      Límite de Crédito ({businessConfig.currency})
                     </label>
                     <CurrencyInput
                       min="0"

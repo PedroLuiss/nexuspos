@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { KardexMovement, KardexMovementPage, KardexMovementQuery } from '@shared/contracts'
 import { ClipboardList } from '../../../shared/icons/Icons'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface KardexTableProps {
   data: KardexMovementPage
@@ -19,15 +20,6 @@ const sourceLabels: Record<KardexMovement['source'], string> = {
 
 function formatQuantity(value: number): string {
   return new Intl.NumberFormat('es-VE', { maximumFractionDigits: 3 }).format(value)
-}
-
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('es-VE', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value)
 }
 
 function formatTimestamp(value: string): string {
@@ -66,8 +58,8 @@ export const KardexTable: React.FC<KardexTableProps> = ({
               <th className="w-24 px-3 py-2.5 text-right">Stock previo</th>
               <th className="w-24 px-3 py-2.5 text-right">Cambio</th>
               <th className="w-24 px-3 py-2.5 text-right">Stock final</th>
-              <th className="w-28 px-3 py-2.5 text-right">Costo unit. USD</th>
-              <th className="w-28 px-3 py-2.5 text-right">Costo total USD</th>
+              <th className="w-28 px-3 py-2.5 text-right">Costo unitario</th>
+              <th className="w-28 px-3 py-2.5 text-right">Costo total</th>
               <th className="w-32 px-3 py-2.5">Responsable</th>
             </tr>
           </thead>
@@ -149,10 +141,14 @@ export const KardexTable: React.FC<KardexTableProps> = ({
                         {formatQuantity(movement.newStock)} {movement.unit ?? ''}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[#5C5C5C]">
-                        {movement.unitCost === undefined ? '—' : formatMoney(movement.unitCost)}
+                        {movement.unitCost === undefined
+                          ? '—'
+                          : formatCurrency(movement.unitCost, movement.currency)}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-semibold text-[#1B1B1B]">
-                        {movementValue === undefined ? '—' : formatMoney(movementValue)}
+                        {movementValue === undefined
+                          ? '—'
+                          : formatCurrency(movementValue, movement.currency)}
                       </td>
                       <td className="px-3 py-2">
                         <span className="rounded-[2px] border border-[#E5E5E5] bg-[#F3F3F3] px-2 py-0.5 text-[10px] font-medium text-[#5C5C5C]">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { BusinessConfig, BusinessConfigInput } from '@shared/contracts'
 import { formatTaxLabel, formatTaxRate } from '@shared/lib/tax'
+import { formatCurrency } from '../../../shared/lib/currency'
 import { useTaxes } from '../../../shared/hooks/useTaxes'
 import { X, Percent, Check, AlertCircle, ShieldAlert, Info } from '../../../shared/icons/Icons'
 import TaxCatalogEditor from './TaxCatalogEditor'
@@ -195,15 +196,15 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
             </span>
             <div className="flex justify-between text-slate-600">
               <span>Base gravable:</span>
-              <span className="font-mono">${exampleBase.toFixed(2)}</span>
+              <span className="font-mono">{formatCurrency(exampleBase, config.currency)}</span>
             </div>
             <div className="flex justify-between text-slate-600">
               <span>{defaultLabel}:</span>
-              <span className="font-mono">${exampleTax.toFixed(2)}</span>
+              <span className="font-mono">{formatCurrency(exampleTax, config.currency)}</span>
             </div>
             <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1">
               <span>Total a cobrar:</span>
-              <span className="font-mono">${exampleTotal.toFixed(2)}</span>
+              <span className="font-mono">{formatCurrency(exampleTotal, config.currency)}</span>
             </div>
             {enabled && taxes.some((tax) => tax.active && tax.rate === 0) && (
               <p className="text-[10px] text-slate-500">
@@ -212,8 +213,8 @@ export const TaxSettingsModal: React.FC<TaxSettingsModalProps> = ({
             )}
             {defaultTax && pricesIncludeTax && (
               <p className="text-[10px] text-slate-500">
-                Precio final ${exampleBase.toFixed(2)} · impuesto desagregado{' '}
-                {formatTaxRate(defaultRate)}: ${exampleTax.toFixed(2)}.
+                Precio final {formatCurrency(exampleBase, config.currency)} · impuesto desagregado{' '}
+                {formatTaxRate(defaultRate)}: {formatCurrency(exampleTax, config.currency)}.
               </p>
             )}
           </div>

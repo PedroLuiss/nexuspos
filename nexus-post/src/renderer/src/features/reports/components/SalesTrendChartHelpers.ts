@@ -1,4 +1,5 @@
-import type { ReportGrouping } from '@shared/contracts'
+import type { CurrencyCode, ReportGrouping } from '@shared/contracts'
+import { getCurrencySymbol } from '../../../shared/lib/businessConfig'
 
 export function formatBucket(bucket: string, grouping: ReportGrouping): string {
   if (grouping === 'day') {
@@ -22,9 +23,10 @@ export function formatBucket(bucket: string, grouping: ReportGrouping): string {
   return bucket
 }
 
-export function formatAxisValue(value: number): string {
+export function formatAxisValue(value: number, currency: CurrencyCode): string {
   const formatted = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 }).format(
     Math.abs(value)
   )
-  return value < 0 ? `−$${formatted}` : `$${formatted}`
+  const symbol = getCurrencySymbol(currency)
+  return value < 0 ? `−${symbol}${formatted}` : `${symbol}${formatted}`
 }

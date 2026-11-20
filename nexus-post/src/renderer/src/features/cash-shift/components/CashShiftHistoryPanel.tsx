@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CashRegisterData } from '@shared/contracts'
+import { formatCurrency, formatCurrencyTotals } from '../../../shared/lib/currency'
 
 interface CashShiftHistoryPanelProps {
   options: CashRegisterData['shiftOptions']
@@ -14,9 +15,6 @@ type DateRange = 'ALL' | 'TODAY' | '7D' | '30D'
 
 const formatDate = (date: string | undefined): string =>
   date ? new Date(date).toLocaleString('es-VE') : '—'
-
-const formatMoney = (amount: number): string =>
-  `$${amount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 function formatDuration(openedAt: string, closedAt?: string): string {
   if (!closedAt) return '—'
@@ -65,11 +63,15 @@ export function CashShiftHistoryPanel({
   const balancedCount = filteredShifts.filter((shift) => shift.difference === 0).length
   const shortfalls = filteredShifts.filter((shift) => (shift.difference ?? 0) < 0)
   const surpluses = filteredShifts.filter((shift) => (shift.difference ?? 0) > 0)
-  const shortfallTotal = shortfalls.reduce(
-    (total, shift) => total + Math.abs(shift.difference ?? 0),
-    0
+  const shortfallTotal = formatCurrencyTotals(
+    shortfalls.map((shift) => ({
+      amount: Math.abs(shift.difference ?? 0),
+      currency: shift.currency
+    }))
   )
-  const surplusTotal = surpluses.reduce((total, shift) => total + (shift.difference ?? 0), 0)
+  const surplusTotal = formatCurrencyTotals(
+    surpluses.map((shift) => ({ amount: shift.difference ?? 0, currency: shift.currency }))
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -127,13 +129,13 @@ export function CashShiftHistoryPanel({
           />
           <HistoryMetric
             label="Faltantes acumulados"
-            value={formatMoney(shortfallTotal)}
+            value={shortfallTotal || '—'}
             detail={`${shortfalls.length} turnos con diferencia`}
             tone="danger"
           />
           <HistoryMetric
             label="Sobrantes acumulados"
-            value={formatMoney(surplusTotal)}
+            value={surplusTotal || '—'}
             detail={`${surpluses.length} turnos con diferencia`}
             tone="warning"
           />
@@ -179,13 +181,15 @@ export function CashShiftHistoryPanel({
                       {formatDuration(shift.openedAt, shift.closedAt)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">
-                      {formatMoney(shift.openingAmount)}
+                      {formatCurrency(shift.openingAmount, shift.currency)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">
-                      {formatMoney(shift.expectedCash)}
+                      {formatCurrency(shift.expectedCash, shift.currency)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">
-                      {shift.countedCash === undefined ? '—' : formatMoney(shift.countedCash)}
+                      {shift.countedCash === undefined
+                        ? '—'
+                        : formatCurrency(shift.countedCash, shift.currency)}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {shift.difference === undefined ? (
@@ -202,7 +206,7 @@ export function CashShiftHistoryPanel({
                             }`}
                           >
                             {shift.difference < 0 ? '−' : shift.difference > 0 ? '+' : ''}
-                            {formatMoney(Math.abs(shift.difference))}
+                            {formatCurrency(Math.abs(shift.difference), shift.currency)}
                           </span>
                           <span
                             className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${

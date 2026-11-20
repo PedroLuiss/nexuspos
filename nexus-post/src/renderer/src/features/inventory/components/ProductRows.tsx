@@ -5,6 +5,8 @@ import ProductAvatar from '../../../shared/ui/ProductAvatar'
 import { formatTaxRate } from '@shared/lib/tax'
 import type { User } from '@shared/contracts'
 import { hasPermission } from '../../../shared/lib/permissions'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductRowsProps {
   user: User
@@ -29,6 +31,7 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
   onEdit,
   onDelete
 }) => {
+  const { config } = useBusinessConfig()
   const canEditProduct = hasPermission(user, 'CAN_EDIT_PRODUCT')
   const canDeleteProduct = hasPermission(user, 'CAN_DELETE_PRODUCT')
   return (
@@ -109,11 +112,11 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
                   </td>
 
                   <td className="py-2 px-3 text-right font-mono text-[#5C5C5C]">
-                    ${p.costPrice.toFixed(2)}
+                    {formatCurrency(p.costPrice, config.currency)}
                   </td>
 
                   <td className="py-2 px-3 text-right font-mono font-bold text-[#107C41]">
-                    ${p.salePrice.toFixed(2)}
+                    {formatCurrency(p.salePrice, config.currency)}
                   </td>
 
                   <td className="py-2 px-3 text-center font-mono font-bold">

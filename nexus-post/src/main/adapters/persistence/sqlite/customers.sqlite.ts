@@ -21,6 +21,7 @@ interface CustomerRow {
   credit_limit: number
   current_debt: number
   credit_balance: number
+  currency: Customer['currency']
   active: number
   deleted: number
   created_at: string
@@ -35,6 +36,7 @@ interface CustomerDebtRow {
   total_amount: number
   balance: number
   status: string
+  currency: CustomerDebt['currency']
   created_at: string
 }
 
@@ -46,6 +48,7 @@ interface CustomerPaymentRow {
   concept: string
   cashier_name: string
   created_at: string
+  currency: CustomerPayment['currency']
 }
 
 function mapRow(row: CustomerRow): Customer {
@@ -60,6 +63,7 @@ function mapRow(row: CustomerRow): Customer {
     creditLimit: row.credit_limit,
     currentDebt: row.current_debt,
     creditBalance: row.credit_balance,
+    currency: row.currency,
     active: Boolean(row.active),
     deleted: Boolean(row.deleted),
     createdAt: row.created_at,
@@ -75,7 +79,8 @@ function mapDebtRow(row: CustomerDebtRow): CustomerDebt {
     date: row.date,
     totalAmount: row.total_amount,
     balance: row.balance,
-    status: row.status as 'PENDING' | 'PARTIAL' | 'PAID'
+    status: row.status as 'PENDING' | 'PARTIAL' | 'PAID',
+    currency: row.currency
   }
 }
 
@@ -87,7 +92,8 @@ function mapPaymentRow(row: CustomerPaymentRow): CustomerPayment {
     amount: row.amount,
     concept: row.concept,
     cashierName: row.cashier_name,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    currency: row.currency
   }
 }
 
@@ -135,7 +141,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
     return row ? mapRow(row) : null
   }
 
-  create(input: CustomerInput): Customer {
+  create(input: CustomerInput, currency: Customer['currency']): Customer {
     const now = new Date().toISOString()
     const id = `cust-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -143,10 +149,10 @@ export class SqliteCustomerRepository implements CustomerRepository {
       .prepare(
         `INSERT INTO customers (
           id, code, name, tax_id, phone, email, address,
-          credit_limit, current_debt, active, deleted, created_at, updated_at
+          credit_limit, current_debt, currency, active, deleted, created_at, updated_at
         ) VALUES (
           @id, @code, @name, @taxId, @phone, @email, @address,
-          @creditLimit, @currentDebt, @active, @deleted, @createdAt, @updatedAt
+          @creditLimit, @currentDebt, @currency, @active, @deleted, @createdAt, @updatedAt
         )`
       )
       .run({
@@ -159,6 +165,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
         address: input.address,
         creditLimit: input.creditLimit,
         currentDebt: 0,
+        currency,
         active: 1,
         deleted: 0,
         createdAt: now,
@@ -265,9 +272,9 @@ export class SqliteCustomerRepository implements CustomerRepository {
       this.db
         .prepare(
           `INSERT INTO customer_payments (
-            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id
+            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id, currency
           ) VALUES (
-            @id, @customerId, @date, @amount, @concept, @cashierName, @createdAt, @cashShiftId
+            @id, @customerId, @date, @amount, @concept, @cashierName, @createdAt, @cashShiftId, @currency
           )`
         )
         .run({
@@ -278,7 +285,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
           concept,
           cashierName,
           createdAt: now,
-          cashShiftId
+          cashShiftId,
+          currency: customer.currency
         })
 
       this.applyPaymentToDebts(customerId, amount)
@@ -294,7 +302,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
         concept,
         cashierName,
         cashShiftId,
-        createdAt: now
+        createdAt: now,
+        currency: customer.currency
       }
     })()
   }
@@ -333,9 +342,9 @@ export class SqliteCustomerRepository implements CustomerRepository {
       this.db
         .prepare(
           `INSERT INTO customer_debts (
-            id, customer_id, ticket_number, date, total_amount, balance, status, created_at
+            id, customer_id, ticket_number, date, total_amount, balance, status, created_at, currency
           ) VALUES (
-            @id, @customerId, @ticketNumber, @date, @totalAmount, @balance, 'PENDING', @createdAt
+            @id, @customerId, @ticketNumber, @date, @totalAmount, @balance, 'PENDING', @createdAt, @currency
           )`
         )
         .run({
@@ -345,7 +354,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
           date,
           totalAmount,
           balance: totalAmount,
-          createdAt: date
+          createdAt: date,
+          currency: customer.currency
         })
 
       this.db
@@ -359,7 +369,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
         date,
         totalAmount,
         balance: totalAmount,
-        status: 'PENDING' as const
+        status: 'PENDING' as const,
+        currency: customer.currency
       }
     })()
   }
@@ -404,8 +415,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
       this.db
         .prepare(
           `INSERT INTO customer_payments (
-            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+            id, customer_id, date, amount, concept, cashier_name, created_at, cash_shift_id, currency
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -415,7 +426,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
           `Abono a ticket ${row.ticket_number}`,
           cashierName,
           now,
-          cashShiftId
+          cashShiftId,
+          row.currency
         )
 
       return {
@@ -425,7 +437,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
         date: row.date,
         totalAmount: row.total_amount,
         balance: newBalance,
-        status: newStatus
+        status: newStatus,
+        currency: row.currency
       }
     })()
   }

@@ -144,6 +144,8 @@ Consumidores de la configuración:
 - Si `taxIdType === 'RIF'`, el número de RIF debe tener formato válido venezolano (ej. `J-00000000-0`, prefijos J/V/E/G/P).
 - Correo con formato válido cuando se informa; se normaliza a minúsculas.
 - Moneda (`VES`, `USD`, `EUR`) y tipo de identificación fiscal (`RIF`, `NONE`) deben pertenecer al catálogo de `@shared/contracts`.
+- Cambiar la moneda requiere tasas BCV USD/VES y/o EUR/VES vigentes y no desactualizadas; si existe cualquier caja abierta, el backend bloquea el cambio. La conversión operativa y la actualización de `business_settings` se ejecutan en una única transacción.
+- La migración 026 agrega snapshots de moneda a ventas, turnos, movimientos de efectivo, clientes/deudas/pagos y Kardex, además de tablas de tasas USD/EUR e historial de cambios. El cambio convierte precios/costos de productos no eliminados (activos o inactivos), escalas por mayoreo, clientes no eliminados (crédito/deuda/saldo a favor), deudas pendientes/parciales y ventas pausadas. Los pagos ya registrados, tickets emitidos, turnos cerrados y movimientos históricos conservan sus importes y moneda de origen.
 - `taxRate` debe ser un porcentaje finito entre `0` y `100`.
 - Con `taxEnabled` activo, `taxName` no puede quedar vacío (fallback `IVA`).
 - País por defecto: Venezuela.
@@ -292,7 +294,8 @@ nexus-post/src/
 ## 7. Estado de integración
 
 - Usuarios, roles/permisos, identidad comercial, plantilla de ticket e impuestos se leen/guardan mediante servicios e IPC conectados a SQLite; los cambios de catálogos y hardware validan ADMIN en `main`.
-- La carga fallida de datos fiscales no se presenta como configuración guardada: Ajustes muestra error/reintento y bloquea la edición hasta leer SQLite.
+- La moneda operativa VES/USD/EUR gobierna los montos y símbolos de POS, inventario, caja, clientes, Kardex y reportes. USD/EUR muestran referencia informativa en VES; en VES no se convierte el total. La conversión al cambiar la moneda es transaccional y exige tasas BCV vigentes y caja cerrada.
+- Una falla al leer la configuración fiscal muestra error/reintento y bloquea la edición hasta leer SQLite. Un rechazo al guardar (por ejemplo, intentar cambiar la moneda con una caja abierta) se muestra en el modal, pero no marca como fallida la lectura ni deshabilita los submódulos de negocio y ticket o impuestos.
 - La configuración de báscula se persiste y se refresca tras conectar, desconectar o guardar. `ScaleService` valida ADMIN en escritura/operación y `SerialScaleAdapter` implementa enumeración y lectura serial con limpieza de listeners.
 - El estado de enlace se consulta al adaptador en cada actualización de la tarjeta; no sustituye pruebas con hardware físico.
 - El mantenimiento de DB usa los canales `database:getStatus`, `database:listBackups`, `database:createBackup`, `database:verifyIntegrity`, `database:optimize` y `database:restoreBackup`; las mutaciones y consultas administrativas requieren `ADMIN` en backend.

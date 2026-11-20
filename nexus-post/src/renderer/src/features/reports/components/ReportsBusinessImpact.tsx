@@ -1,9 +1,9 @@
-import type { ReportsData, UsdVesExchangeRate } from '@shared/contracts'
+import type { ReportsData, CurrencyVesExchangeRate } from '@shared/contracts'
 import { ReportMoney } from './ReportMoney'
 
 interface ReportsBusinessImpactProps {
   data: ReportsData
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
 }
 
 function percentage(value: number, total: number): number {
@@ -51,6 +51,7 @@ export function ReportsBusinessImpact({
           amount={strongestBucket?.totalSales}
           value={strongestBucket ? undefined : '—'}
           rate={rate}
+          currency={data.currency}
           detail={
             strongestBucket
               ? `${strongestBucket.bucket} · ${strongestBucket.ticketCount} facturas`
@@ -61,26 +62,44 @@ export function ReportsBusinessImpact({
           label="Peso del cliente líder"
           value={topCustomer ? `${topCustomerShare.toFixed(1)}%` : '—'}
           rate={rate}
+          currency={data.currency}
           detail={topCustomer ? topCustomer.customerName : 'Sin compras asociadas a clientes'}
         />
         <Insight
           label="Devoluciones registradas"
           amount={data.kpis.returnedAmount}
           rate={rate}
+          currency={data.currency}
           detail={`${data.kpis.returnedCount} facturas devueltas en el período`}
         />
         <Insight
           label="Método de pago predominante"
           value={paymentTotal === 0 ? '—' : dominantPayment}
           rate={rate}
+          currency={data.currency}
           detail={
             paymentTotal === 0 ? (
               'Sin ventas registradas'
             ) : (
               <div className="mt-1 grid gap-1">
-                <PaymentAmount label="Efectivo" amount={data.payments.cash} rate={rate} />
-                <PaymentAmount label="Tarjeta" amount={data.payments.card} rate={rate} />
-                <PaymentAmount label="Crédito" amount={data.payments.credit} rate={rate} />
+                <PaymentAmount
+                  label="Efectivo"
+                  amount={data.payments.cash}
+                  rate={rate}
+                  currency={data.currency}
+                />
+                <PaymentAmount
+                  label="Tarjeta"
+                  amount={data.payments.card}
+                  rate={rate}
+                  currency={data.currency}
+                />
+                <PaymentAmount
+                  label="Crédito"
+                  amount={data.payments.credit}
+                  rate={rate}
+                  currency={data.currency}
+                />
               </div>
             )
           }
@@ -99,12 +118,14 @@ function Insight({
   value,
   amount,
   rate,
+  currency,
   detail
 }: {
   label: string
   value?: string
   amount?: number
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
+  currency: ReportsData['currency']
   detail: React.ReactNode
 }): React.JSX.Element {
   return (
@@ -112,7 +133,7 @@ function Insight({
       <span className="block text-[10px] font-bold uppercase text-[#5C5C5C]">{label}</span>
       {amount !== undefined ? (
         <div className="mt-1 text-[#0067C0]">
-          <ReportMoney amount={amount} rate={rate} prominent />
+          <ReportMoney amount={amount} rate={rate} currency={currency} prominent />
         </div>
       ) : (
         <strong className="mt-1 block truncate text-lg font-mono text-[#0067C0]">{value}</strong>
@@ -125,16 +146,18 @@ function Insight({
 function PaymentAmount({
   label,
   amount,
-  rate
+  rate,
+  currency
 }: {
   label: string
   amount: number
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
+  currency: ReportsData['currency']
 }): React.JSX.Element {
   return (
     <div className="flex items-start justify-between gap-1">
       <span>{label}</span>
-      <ReportMoney amount={amount} rate={rate} />
+      <ReportMoney amount={amount} rate={rate} currency={currency} />
     </div>
   )
 }

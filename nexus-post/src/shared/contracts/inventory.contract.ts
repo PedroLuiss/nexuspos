@@ -1,4 +1,5 @@
 import type { Product } from './product.contract'
+import type { CurrencyCode } from './settings.contract'
 
 /**
  * Contrato compartido de movimientos de inventario (Kardex).
@@ -40,6 +41,7 @@ export interface KardexMovement {
   batchNumber?: string
   unitCost?: number
   valuationBasis?: KardexValuationBasis
+  currency: CurrencyCode
 }
 
 export interface KardexMovementQuery {

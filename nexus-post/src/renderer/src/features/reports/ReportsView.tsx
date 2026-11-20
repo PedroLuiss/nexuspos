@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   RefreshCw
 } from '../../shared/icons/Icons'
+import { useBusinessConfig } from '../../shared/hooks/useBusinessConfig'
 import { ReportsBusinessImpact } from './components/ReportsBusinessImpact'
 import { ReportsKpis } from './components/ReportsKpis'
 import { ReportsRankings } from './components/ReportsRankings'
@@ -29,6 +30,7 @@ const groupings: Array<{ value: ReportGrouping; label: string }> = [
 ]
 
 export function ReportsView(): React.JSX.Element {
+  const { config: businessConfig } = useBusinessConfig()
   const [period, setPeriod] = useState<ReportPeriod>('week')
   const [year, setYear] = useState(new Date().getFullYear())
   const [grouping, setGrouping] = useState<ReportGrouping>('day')
@@ -47,7 +49,7 @@ export function ReportsView(): React.JSX.Element {
     startDate: period === 'custom' ? startDate : undefined,
     endDate: period === 'custom' ? endDate : undefined
   })
-  const { rate, error: rateError } = useReportsExchangeRate()
+  const { rate, error: rateError } = useReportsExchangeRate(businessConfig.currency)
 
   return (
     <main className="flex h-full flex-col gap-4 overflow-y-auto bg-[#F3F3F3] p-4">
@@ -78,7 +80,7 @@ export function ReportsView(): React.JSX.Element {
               </p>
               <p className="truncate text-xs font-semibold text-[#1B1B1B]">
                 {rate
-                  ? `${rate.rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs./USD`
+                  ? `${rate.rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs./${rate.currency}`
                   : rateError
                     ? 'No disponible'
                     : 'Consultando…'}
@@ -216,8 +218,22 @@ export function ReportsView(): React.JSX.Element {
         </div>
       </section>
 
-      {data && <ReportsKpis kpis={data.kpis} isLoading={isLoading} rate={rate} />}
-      {!data && isLoading && <ReportsKpis kpis={emptyKpis} isLoading rate={rate} />}
+      {data && (
+        <ReportsKpis
+          kpis={data.kpis}
+          isLoading={isLoading}
+          rate={rate}
+          currency={data.currency}
+        />
+      )}
+      {!data && isLoading && (
+        <ReportsKpis
+          kpis={emptyKpis}
+          isLoading
+          rate={rate}
+          currency={businessConfig.currency}
+        />
+      )}
 
       {error && (
         <div
@@ -249,6 +265,7 @@ export function ReportsView(): React.JSX.Element {
             grouping={grouping}
             isLoading={isLoading}
             rate={rate}
+            currency={data.currency}
           />
           <ReportsRankings data={data} rate={rate} />
           <ReportsBusinessImpact data={data} rate={rate} />

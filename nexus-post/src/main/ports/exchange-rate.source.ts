@@ -1,5 +1,6 @@
+import type { ExchangeRateCurrency } from '@shared/contracts'
 import type { CachedExchangeRate } from './exchange-rate.repository'
 
 export interface ExchangeRateSource {
-  fetchBcvUsdVes(): Promise<CachedExchangeRate>
+  fetchBcvRate(currency: ExchangeRateCurrency): Promise<CachedExchangeRate>
 }

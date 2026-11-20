@@ -1,5 +1,7 @@
 import React from 'react'
 import type { BarcodeFormat } from '@shared/contracts'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface BarcodeLabelPreviewProps {
   productName?: string
@@ -25,7 +27,9 @@ export const BarcodeLabelPreview: React.FC<BarcodeLabelPreviewProps> = ({
   includePrice,
   isLoading,
   error
-}) => (
+}) => {
+  const { config } = useBusinessConfig()
+  return (
   <div className="flex flex-col items-center justify-center p-5 bg-slate-100 border border-dashed border-slate-300 rounded">
     <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
       Vista previa de etiqueta ({widthMm} × {heightMm} mm)
@@ -58,7 +62,7 @@ export const BarcodeLabelPreview: React.FC<BarcodeLabelPreviewProps> = ({
       </div>
       {includePrice && (
         <div className="text-sm font-extrabold font-tabular text-[#0078D4]">
-          ${salePrice?.toFixed(2)}
+          {salePrice === undefined ? '' : formatCurrency(salePrice, config.currency)}
         </div>
       )}
     </div>
@@ -71,6 +75,7 @@ export const BarcodeLabelPreview: React.FC<BarcodeLabelPreviewProps> = ({
       </span>
     )}
   </div>
-)
+  )
+}
 
 export default BarcodeLabelPreview

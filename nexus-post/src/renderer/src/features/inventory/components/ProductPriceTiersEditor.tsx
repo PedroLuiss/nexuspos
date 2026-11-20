@@ -6,6 +6,8 @@ import { useTablePagination } from '../hooks/useTablePagination'
 import { useConfirmDialog } from '../../../shared/hooks/useConfirmDialog'
 import { CurrencyInput } from '../../../shared/ui/CurrencyInput'
 import TablePagination from './TablePagination'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 
 interface ProductPriceTiersEditorProps {
   /** ID del producto (solo se edita si ya existe). */
@@ -30,6 +32,7 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
   productId,
   salePrice
 }) => {
+  const { config } = useBusinessConfig()
   const { tiers, error, createTier, updateTier, deleteTier } = useProductPriceTiers(productId)
   const pagination = useTablePagination(tiers)
   const confirmation = useConfirmDialog()
@@ -167,7 +170,7 @@ export const ProductPriceTiersEditor: React.FC<ProductPriceTiersEditorProps> = (
                     <td className="py-1 px-2 text-right font-mono">{tier.minQuantity}</td>
                     <td className="py-1 px-2 text-right font-mono">{tier.maxQuantity ?? '∞'}</td>
                     <td className="py-1 px-2 text-right font-mono font-bold text-[#107C41]">
-                      ${tier.price.toFixed(2)}
+                      {formatCurrency(tier.price, config.currency)}
                     </td>
                     <td className="py-1 px-2 text-center">{tier.active ? 'Sí' : 'No'}</td>
                     <td className="py-1 px-2">

@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react'
-import type { UsdVesExchangeRate } from '@shared/contracts'
+import type { CurrencyCode, CurrencyVesExchangeRate } from '@shared/contracts'
 import { reportsErrorMessage } from '../api/reports.api'
 
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000
 
 interface ExchangeRateState {
-  rate: UsdVesExchangeRate | null
+  rate: CurrencyVesExchangeRate | null
   error: string | null
 }
 
-export function useReportsExchangeRate(): ExchangeRateState {
+export function useReportsExchangeRate(currency: CurrencyCode): ExchangeRateState {
+  const rateCurrency = currency === 'VES' ? 'USD' : currency
   const [state, setState] = useState<ExchangeRateState>({ rate: null, error: null })
 
   useEffect(() => {
     let active = true
     const refresh = (): void => {
-      window.api.exchangeRate
-        .getUsdVes()
+      (rateCurrency === 'EUR'
+        ? window.api.exchangeRate.getEurVes()
+        : window.api.exchangeRate.getUsdVes())
         .then((rate) => {
           if (active) setState({ rate, error: null })
         })
@@ -32,7 +34,7 @@ export function useReportsExchangeRate(): ExchangeRateState {
       window.clearTimeout(initialTimer)
       window.clearInterval(intervalId)
     }
-  }, [])
+  }, [rateCurrency])
 
   return state
 }

@@ -6,6 +6,8 @@ import type {
   OpenCashShiftInput
 } from '@shared/contracts'
 import { roundMoney } from '@shared/lib/tax'
+import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
+import { formatCurrency } from '../../../shared/lib/currency'
 import { CashCloseSummary } from './CashCloseSummary'
 
 export type CashShiftDialogType = 'open' | 'close' | 'income' | 'expense'
@@ -27,6 +29,8 @@ export function CashShiftDialog({
   onCloseShift,
   onAddCashMovement
 }: CashShiftDialogProps): React.JSX.Element {
+  const { config } = useBusinessConfig()
+  const currency = shift?.currency ?? config.currency
   const [amount, setAmount] = useState(dialog === 'open' ? '0.00' : '')
   const [concept, setConcept] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -90,10 +94,10 @@ export function CashShiftDialog({
         <div className="space-y-3 p-4 text-xs">
           <label className="block font-semibold">
             {dialog === 'close'
-              ? 'Efectivo contado en gaveta ($)'
+              ? `Efectivo contado en gaveta (${currency})`
               : dialog === 'open'
-                ? 'Fondo inicial ($)'
-                : 'Monto ($)'}
+                ? `Fondo inicial (${currency})`
+                : `Monto (${currency})`}
             <input
               autoFocus
               type="text"
@@ -147,7 +151,7 @@ export function CashShiftDialog({
                         ? 'Sobrante'
                         : 'Faltante'}
                   </span>
-                  <strong>${Math.abs(difference).toFixed(2)}</strong>
+                  <strong>{formatCurrency(Math.abs(difference), currency)}</strong>
                 </>
               )}
             </p>

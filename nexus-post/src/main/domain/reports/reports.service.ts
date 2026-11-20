@@ -1,4 +1,9 @@
-import type { CustomerAccountSummary, ReportsData, ReportsQuery } from '@shared/contracts'
+import type {
+  CurrencyCode,
+  CustomerAccountSummary,
+  ReportsData,
+  ReportsQuery
+} from '@shared/contracts'
 import type { AuthService } from '../auth/auth.service'
 import type { CustomerService } from '../customers/customer.service'
 import type {
@@ -6,6 +11,8 @@ import type {
   ReportDateRange,
   ReportSummary
 } from '../../ports/reports.repository'
+import type { SettingsRepository } from '../../ports/settings.repository'
+import type { ExchangeRateRepository } from '../../ports/exchange-rate.repository'
 
 const money = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100
 
@@ -113,7 +120,9 @@ export class ReportsService {
   constructor(
     private readonly reports: ReportsRepository,
     private readonly auth: AuthService,
-    private readonly customers: CustomerService
+    private readonly customers: CustomerService,
+    private readonly settings: SettingsRepository,
+    private readonly exchangeRates: ExchangeRateRepository
   ) {}
 
   getDashboard(query: ReportsQuery): ReportsData {
@@ -142,8 +151,31 @@ export class ReportsService {
     }
 
     const { current, previous } = rangeFor(query)
-    const summary = this.reports.getSummary(current)
-    const previousSummary = this.reports.getSummary(previous)
+    const currency = this.settings.getBusiness().currency
+    const currencies = new Set([
+      ...this.reports.getCurrencies(current),
+      ...this.reports.getCurrencies(previous)
+    ])
+    const currenciesWithoutRate = new Set([
+      ...this.reports.getCurrenciesWithoutRate(current),
+      ...this.reports.getCurrenciesWithoutRate(previous)
+    ])
+    const requiresCrossCurrency = [...currencies].some((source) => source !== currency)
+    const targetVesRate =
+      currency === 'VES'
+        ? 1
+        : this.exchangeRates.getBcvRate(currency)?.rate ??
+          (requiresCrossCurrency ? undefined : 1)
+    const usdVesRate = this.getReportRate('USD', currenciesWithoutRate, currency)
+    const eurVesRate = this.getReportRate('EUR', currenciesWithoutRate, currency)
+    if (targetVesRate === undefined) {
+      throw new Error(
+        `No hay una tasa BCV vigente para convertir los reportes a ${currency}.`
+      )
+    }
+    const currencyContext = { currency, targetVesRate, usdVesRate, eurVesRate }
+    const summary = this.reports.getSummary(current, currencyContext)
+    const previousSummary = this.reports.getSummary(previous, currencyContext)
     const availableYears = this.reports.getAvailableYears()
     const currentYear = new Date().getFullYear()
     if (!availableYears.includes(currentYear)) availableYears.unshift(currentYear)
@@ -155,6 +187,7 @@ export class ReportsService {
     return {
       period: query.period,
       year: query.year,
+      currency,
       rangeStart: current.start,
       rangeEnd: current.end,
       availableYears,
@@ -172,12 +205,12 @@ export class ReportsService {
           summary.netRevenue === 0 ? 0 : money((summary.grossProfit / summary.netRevenue) * 100)
       },
       series: this.fillMissingBuckets(
-        this.reports.getSeries(current, query.grouping),
+        this.reports.getSeries(current, query.grouping, currencyContext),
         current,
         query.grouping
       ),
-      topProducts: this.reports.getTopProducts(current),
-      topCustomers: this.reports.getTopCustomers(current),
+      topProducts: this.reports.getTopProducts(current, currencyContext),
+      topCustomers: this.reports.getTopCustomers(current, currencyContext),
       payments: summary.payments
     }
   }
@@ -196,6 +229,26 @@ export class ReportsService {
     if (user.role !== 'ADMIN' && !user.permissions?.includes('reports')) {
       throw new Error('No tiene permiso para consultar reportes.')
     }
+  }
+
+  private getReportRate(
+    source: 'USD' | 'EUR',
+    currenciesWithoutRate: Set<CurrencyCode>,
+    outputCurrency: CurrencyCode
+  ): number {
+    if (
+      outputCurrency === source ||
+      !currenciesWithoutRate.has(source)
+    ) {
+      return this.exchangeRates.getBcvRate(source)?.rate ?? 1
+    }
+    const rate = this.exchangeRates.getBcvRate(source)?.rate
+    if (rate === undefined) {
+      throw new Error(
+        `No hay una tasa BCV ${source}/VES guardada para convertir las ventas históricas.`
+      )
+    }
+    return rate
   }
 
   private fillMissingBuckets(

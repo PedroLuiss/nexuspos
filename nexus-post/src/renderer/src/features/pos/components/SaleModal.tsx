@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CartItem, PaymentMethodType, PaymentDetails } from '../../../shared/types/domain'
-import type { UsdVesExchangeRate } from '@shared/contracts'
-import { formatVesAmount } from '../../../shared/lib/currency'
+import type { CurrencyVesExchangeRate } from '@shared/contracts'
+import { formatCurrency, formatVesAmount } from '../../../shared/lib/currency'
 import { roundMoney } from '@shared/lib/tax'
 import { useBusinessConfig } from '../../../shared/hooks/useBusinessConfig'
 import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
@@ -27,7 +27,7 @@ interface SaleModalProps {
   customerId?: string
   ticketNumber: string
   initialMethod: PaymentMethodType
-  exchangeRate: UsdVesExchangeRate | null
+  exchangeRate: CurrencyVesExchangeRate | null
   canCompleteSale: boolean
   onClose: () => void
   onConfirmSale: (details: PaymentDetails) => Promise<boolean | void> | boolean | void
@@ -109,11 +109,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
 
   const quickCashAmounts = [
     { label: 'Exacto', value: total },
-    { label: '$50', value: 50 },
-    { label: '$100', value: 100 },
-    { label: '$200', value: 200 },
-    { label: '$500', value: 500 },
-    { label: '$1,000', value: 1000 }
+    { label: formatCurrency(50, businessConfig.currency), value: 50 },
+    { label: formatCurrency(100, businessConfig.currency), value: 100 },
+    { label: formatCurrency(200, businessConfig.currency), value: 200 },
+    { label: formatCurrency(500, businessConfig.currency), value: 500 },
+    { label: formatCurrency(1000, businessConfig.currency), value: 1000 }
   ]
 
   const handleConfirm = async (e: React.FormEvent): Promise<void> => {
@@ -180,17 +180,21 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               Total a Pagar
             </span>
             <div className="text-3xl font-extrabold font-mono text-[#1B1B1B] tracking-tight">
-              ${total.toFixed(2)}
+              {formatCurrency(total, businessConfig.currency)}
             </div>
             <div className="mt-1 text-[11px] text-[#5C5C5C]">
-              {exchangeRate
+              {businessConfig.currency !== 'VES' && exchangeRate
                 ? `≈ ${formatVesAmount(total * exchangeRate.rate)} · BCV ${exchangeRate.rate.toFixed(2)}${exchangeRate.isStale ? ' (tasa desactualizada)' : ''}`
-                : 'Tasa BCV no disponible'}
+                : businessConfig.currency === 'VES'
+                  ? 'Moneda de operación: Bolívar'
+                  : 'Tasa BCV no disponible'}
             </div>
           </div>
           <div className="text-right text-xs text-[#5C5C5C] space-y-0.5 font-medium">
             <div>{items.length} artículos en la orden</div>
-            <div className="font-mono text-[11px]">Subtotal: ${subtotal.toFixed(2)}</div>
+            <div className="font-mono text-[11px]">
+              Subtotal: {formatCurrency(subtotal, businessConfig.currency)}
+            </div>
             {businessConfig.taxEnabled ? (
               taxBreakdown
                 .filter((line) => line.taxRate > 0)
@@ -200,7 +204,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                     className="font-mono text-[11px]"
                   >
                     {formatTaxLabel(line.taxName, line.taxRate)}
-                    {businessConfig.pricesIncludeTax ? ' incluido' : ''}: ${line.amount.toFixed(2)}
+                    {businessConfig.pricesIncludeTax ? ' incluido' : ''}:{' '}
+                    {formatCurrency(line.amount, businessConfig.currency)}
                   </div>
                 ))
             ) : (
@@ -208,7 +213,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             )}
             {discount > 0 && (
               <div className="text-[#107C41] font-semibold text-[11px]">
-                Descuento: -${discount.toFixed(2)}
+                Descuento: -{formatCurrency(discount, businessConfig.currency)}
               </div>
             )}
           </div>
@@ -298,7 +303,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717783] font-bold text-sm">
-                      $
+                      {businessConfig.currency}
                     </span>
                     <CurrencyInput
                       min="0"
@@ -333,7 +338,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                     {!isCashSufficient && (
                       <span className="text-[11px] text-[#C42B1C] font-semibold flex items-center gap-1 mt-0.5">
                         <AlertCircle size={12} />
-                        Monto insuficiente (Faltan ${(total - cashTendered).toFixed(2)})
+                        Monto insuficiente (Faltan{' '}
+                        {formatCurrency(total - cashTendered, businessConfig.currency)})
                       </span>
                     )}
                   </div>
@@ -342,7 +348,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                       isCashSufficient ? 'text-[#107C41]' : 'text-[#717783]'
                     }`}
                   >
-                    ${changeDue.toFixed(2)}
+                    {formatCurrency(changeDue, businessConfig.currency)}
                   </div>
                 </div>
               </div>
@@ -377,7 +383,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-[#1B1B1B] mb-1">
-                      Parte en Efectivo ($)
+                      Parte en Efectivo ({businessConfig.currency})
                     </label>
                     <CurrencyInput
                       min="0"
@@ -390,10 +396,10 @@ export const SaleModal: React.FC<SaleModalProps> = ({
 
                   <div>
                     <label className="block font-semibold text-[#1B1B1B] mb-1">
-                      Restante en Tarjeta ($)
+                      Restante en Tarjeta ({businessConfig.currency})
                     </label>
                     <div className="px-3 py-1.5 bg-white border border-[#D1D1D1] rounded-[4px] font-bold font-mono text-[#0067C0]">
-                      ${mixedCardRemainder.toFixed(2)}
+                      {formatCurrency(mixedCardRemainder, businessConfig.currency)}
                     </div>
                   </div>
                 </div>
@@ -447,7 +453,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#107C41] hover:bg-[#0F7B0F] active:bg-[#005228] disabled:bg-slate-300 rounded-[4px] shadow-xs transition-colors cursor-pointer"
             >
               <Check size={15} />
-              <span>{isSubmitting ? 'Procesando…' : `Confirmar Venta ($${total.toFixed(2)})`}</span>
+              <span>
+                {isSubmitting
+                  ? 'Procesando…'
+                  : `Confirmar Venta (${formatCurrency(total, businessConfig.currency)})`}
+              </span>
               <span className="kbd-badge bg-[#005228]/50 text-white border-emerald-700/50">
                 F12
               </span>

@@ -69,15 +69,15 @@ export function BusinessConfigProvider({
   }, [])
 
   const saveConfig = useCallback(async (input: BusinessConfigInput): Promise<BusinessConfig> => {
-    setError(null)
     try {
       const updated = await settingsApi.updateBusiness(input)
-      if (mounted.current) setConfig(updated)
+      if (mounted.current) {
+        setConfig(updated)
+        setError(null)
+      }
       return updated
     } catch (err: unknown) {
-      const message = settingsErrorMessage(err)
-      if (mounted.current) setError(message)
-      throw new Error(message)
+      throw new Error(settingsErrorMessage(err))
     }
   }, [])
 

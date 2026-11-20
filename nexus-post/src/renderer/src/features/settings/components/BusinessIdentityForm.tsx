@@ -73,6 +73,11 @@ export const BusinessIdentityForm: React.FC<BusinessIdentityFormProps> = ({
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+              Al guardar un cambio se convierten los precios activos y saldos pendientes con tasas
+              BCV vigentes. Los movimientos históricos conservan su moneda original; cierra todas
+              las cajas y conecta a internet antes de cambiarla.
+            </p>
           </div>
           <div>
             <label className={labelClass}>
