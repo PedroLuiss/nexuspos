@@ -16,7 +16,7 @@ export const AuthHeader: React.FC = () => {
   }
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.03)] select-none">
+    <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.03)] select-none [-webkit-app-region:drag]">
       <div className="h-11 w-full px-3 flex items-center justify-between">
         {/* App Title & Identity */}
         <div className="flex items-center">
@@ -29,7 +29,7 @@ export const AuthHeader: React.FC = () => {
         </div>
 
         {/* Windows 11 Titlebar Controls */}
-        <div className="flex items-center -mr-3">
+        <div className="flex items-center -mr-3 [-webkit-app-region:no-drag]">
           <button
             type="button"
             aria-label="Minimizar"

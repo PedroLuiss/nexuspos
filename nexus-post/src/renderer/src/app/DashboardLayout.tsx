@@ -3,7 +3,7 @@ import { useRouter } from './providers/HotkeysProvider'
 import { TABS_CONFIG, TabId } from './router/tabs.config'
 import { NavigationTabs } from '../shared/ui/NavigationTabs'
 import OperatorSwitchModal from '../features/auth/components/OperatorSwitchModal'
-import { Lock, LogOut, MessageCircle, RefreshCw } from '../shared/icons/Icons'
+import { Lock, LogOut, MessageCircle, Minus, RefreshCw, Square, X } from '../shared/icons/Icons'
 import { canAccessTab } from '../shared/lib/permissions'
 import { ExchangeRateIndicator } from '../shared/ui/ExchangeRateIndicator'
 import { IssueReportModal } from '../features/support/components/IssueReportModal'
@@ -81,16 +81,28 @@ export function DashboardLayout({
     void onLogout?.()
   }
 
+  const handleMinimize = (): void => {
+    void window.api?.appWindow?.minimize()
+  }
+
+  const handleMaximize = (): void => {
+    void window.api?.appWindow?.toggleMaximize()
+  }
+
+  const handleClose = (): void => {
+    void window.api?.appWindow?.close()
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#F3F3F3] text-[#1B1B1B] font-sans overflow-hidden select-none">
       {/* 1. Top Command Bar (Stitch 48px height specification) */}
       <header className="h-12 flex items-center justify-between px-4 bg-white border-b border-[#E5E5E5] shadow-[0_1px_2px_rgba(0,0,0,0.03)] z-20 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-full min-w-0 flex-1 items-center gap-3 [-webkit-app-region:drag]">
           <img
             src={logoBanner}
             alt="NexusPOS — Diseñado para crecer contigo"
             draggable={false}
-            className="h-9 w-auto max-w-[220px] object-contain"
+            className="h-9 w-auto max-w-[160px] object-contain xl:max-w-[220px]"
           />
         </div>
 
@@ -158,6 +170,36 @@ export function DashboardLayout({
               <span>{isLoggingOut ? 'Saliendo…' : 'Salir'}</span>
             </button>
           )}
+
+          <div className="ml-1 flex h-12 items-center -mr-4 [-webkit-app-region:no-drag]">
+            <button
+              type="button"
+              onClick={handleMinimize}
+              aria-label="Minimizar"
+              title="Minimizar"
+              className="flex h-12 w-10 cursor-pointer items-center justify-center text-[#5C5C5C] transition-colors hover:bg-[#E8E8E8] hover:text-[#1B1B1B]"
+            >
+              <Minus size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={handleMaximize}
+              aria-label="Maximizar o restaurar"
+              title="Maximizar o restaurar"
+              className="flex h-12 w-10 cursor-pointer items-center justify-center text-[#5C5C5C] transition-colors hover:bg-[#E8E8E8] hover:text-[#1B1B1B]"
+            >
+              <Square size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Cerrar"
+              title="Cerrar"
+              className="flex h-12 w-10 cursor-pointer items-center justify-center text-[#5C5C5C] transition-colors hover:bg-[#C42B1C] hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
       </header>
 
