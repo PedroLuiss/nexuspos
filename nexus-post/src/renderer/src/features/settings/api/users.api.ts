@@ -53,8 +53,7 @@ function buildDemoUser(input: CreateUserInput): User {
     active: true,
     branch: input.branch ?? 'Sucursal Central',
     station: input.station ?? 'CAJA-01',
-    permissions:
-      permissions.length > 0 ? permissions : [...ROLE_DEFAULT_PERMISSIONS[input.role]]
+    permissions: permissions.length > 0 ? permissions : [...ROLE_DEFAULT_PERMISSIONS[input.role]]
   }
 }
 
@@ -92,6 +91,7 @@ export const usersApi = {
       name: input.name?.trim() ?? current.name,
       role: input.role ?? current.role,
       pin: input.pin !== undefined ? input.pin || undefined : current.pin,
+      station: input.station?.trim() ?? current.station,
       active: input.active ?? current.active,
       permissions:
         input.permissions !== undefined

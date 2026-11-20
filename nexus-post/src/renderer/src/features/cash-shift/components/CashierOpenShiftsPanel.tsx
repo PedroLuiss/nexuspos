@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react'
-import type { CashRegisterData } from '@shared/contracts'
-import { Banknote, Clock3, RefreshCw, Search, X } from '../../../shared/icons/Icons'
-import { DetailValue, SummaryCard } from './CashierOpenShiftMetrics'
-import { formatCurrency, formatCurrencyTotals } from '../../../shared/lib/currency'
-
-type CashShiftOption = CashRegisterData['shiftOptions'][number]
+import type { CashierMonitorEntry } from '@shared/contracts'
+import { Banknote, RefreshCw, Search, X } from '../../../shared/icons/Icons'
+import { SummaryCard } from './CashierOpenShiftMetrics'
+import { CashierMonitorCard } from './CashierMonitorCard'
+import { formatCurrencyTotals } from '../../../shared/lib/currency'
 
 interface CashierOpenShiftsPanelProps {
-  shifts: CashShiftOption[]
+  cashiers: CashierMonitorEntry[]
   selectedShiftId?: string
   disabled: boolean
   onSelect: (shiftId: string) => void
@@ -15,38 +14,8 @@ interface CashierOpenShiftsPanelProps {
   onClose: () => void
 }
 
-const formatDate = (date: string): string =>
-  new Date(date).toLocaleString('es-VE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-
-function getElapsedTime(openedAt: string): string {
-  const openedTime = new Date(openedAt).getTime()
-  if (!Number.isFinite(openedTime)) return '—'
-  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - openedTime) / 60_000))
-  const days = Math.floor(elapsedMinutes / 1440)
-  const hours = Math.floor((elapsedMinutes % 1440) / 60)
-  const minutes = elapsedMinutes % 60
-  if (days > 0) return `${days} d ${hours} h`
-  if (hours > 0) return `${hours} h ${minutes} min`
-  return `${minutes} min`
-}
-
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toLocaleUpperCase())
-    .join('')
-}
-
 export function CashierOpenShiftsPanel({
-  shifts,
+  cashiers,
   selectedShiftId,
   disabled,
   onSelect,
@@ -54,21 +23,24 @@ export function CashierOpenShiftsPanel({
   onClose
 }: CashierOpenShiftsPanelProps): React.JSX.Element {
   const [cashierFilter, setCashierFilter] = useState('')
-  const filteredShifts = useMemo(
+  const filteredCashiers = useMemo(
     () =>
-      shifts.filter((shift) =>
-        `${shift.cashierName} ${shift.stationName}`
+      cashiers.filter((cashier) =>
+        `${cashier.cashierName} ${cashier.stationName}`
           .toLocaleLowerCase()
           .includes(cashierFilter.trim().toLocaleLowerCase())
       ),
-    [cashierFilter, shifts]
+    [cashierFilter, cashiers]
   )
-  const ticketCount = shifts.reduce((total, shift) => total + shift.ticketCount, 0)
+  const openShifts = cashiers.flatMap((cashier) =>
+    cashier.activeShift ? [cashier.activeShift] : []
+  )
+  const ticketCount = openShifts.reduce((total, shift) => total + shift.ticketCount, 0)
   const netSales = formatCurrencyTotals(
-    shifts.map((shift) => ({ amount: shift.totalSales, currency: shift.currency }))
+    openShifts.map((shift) => ({ amount: shift.totalSales, currency: shift.currency }))
   )
   const expectedCash = formatCurrencyTotals(
-    shifts.map((shift) => ({ amount: shift.expectedCash, currency: shift.currency }))
+    openShifts.map((shift) => ({ amount: shift.expectedCash, currency: shift.currency }))
   )
 
   return (
@@ -87,11 +59,22 @@ export function CashierOpenShiftsPanel({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 id="open-cashiers-title" className="text-sm font-bold text-slate-900">
-                  Monitoreo de cajas abiertas
+                  Monitoreo de cajeros y cajas
                 </h3>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                  En operación
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    openShifts.length
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      openShifts.length ? 'bg-emerald-500' : 'bg-slate-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  {openShifts.length ? `${openShifts.length} en operación` : 'Sin turnos abiertos'}
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-500">
@@ -110,11 +93,17 @@ export function CashierOpenShiftsPanel({
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard
+              label="Cajeros supervisados"
+              value={cashiers.length.toLocaleString('es-VE')}
+              detail={`${cashiers.filter((cashier) => cashier.isActive).length} activos`}
+              tone="slate"
+            />
             <SummaryCard
               label="Turnos en curso"
-              value={shifts.length.toLocaleString('es-VE')}
-              detail="Cajeros con caja abierta"
+              value={openShifts.length.toLocaleString('es-VE')}
+              detail="Cajas abiertas ahora"
               tone="blue"
             />
             <SummaryCard
@@ -138,7 +127,7 @@ export function CashierOpenShiftsPanel({
                   Detalle por cajero
                 </h4>
                 <p className="mt-0.5 text-[11px] text-slate-500">
-                  {filteredShifts.length} de {shifts.length} turnos activos
+                  {filteredCashiers.length} de {cashiers.length} cajeros
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -151,8 +140,8 @@ export function CashierOpenShiftsPanel({
                     type="search"
                     value={cashierFilter}
                     onChange={(event) => setCashierFilter(event.target.value)}
-                    placeholder="Buscar cajero"
-                    aria-label="Buscar por nombre de cajero"
+                    placeholder="Buscar cajero o caja"
+                    aria-label="Buscar por nombre de cajero o caja"
                     className="w-48 rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs outline-none transition focus:border-[#0067C0] focus:ring-2 focus:ring-[#0067C0]/10"
                   />
                 </label>
@@ -168,111 +157,34 @@ export function CashierOpenShiftsPanel({
               </div>
             </div>
 
-            {filteredShifts.length === 0 ? (
+            {filteredCashiers.length === 0 ? (
               <div className="flex flex-col items-center px-4 py-12 text-center">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                   <Search size={18} />
                 </div>
                 <p className="mt-3 text-xs font-semibold text-slate-700">
-                  {shifts.length === 0
-                    ? 'No hay cajas de cajeros abiertas'
+                  {cashiers.length === 0
+                    ? 'No hay cajeros activos configurados'
                     : 'No se encontraron cajeros'}
                 </p>
                 <p className="mt-1 max-w-sm text-[11px] text-slate-500">
-                  {shifts.length === 0
-                    ? 'Cuando un cajero abra su turno, aparecerá aquí con el resumen de su operación.'
+                  {cashiers.length === 0
+                    ? 'Los usuarios con rol Cajero aparecerán aquí cuando estén activos.'
                     : 'Prueba con otro nombre o limpia el campo de búsqueda.'}
                 </p>
               </div>
             ) : (
               <div className="grid gap-3 p-3 lg:grid-cols-2">
-                {filteredShifts.map((shift) => {
-                  const isSelected = shift.id === selectedShiftId
-                  return (
-                    <article
-                      key={shift.id}
-                      className={`rounded-lg border p-4 transition-colors ${
-                        isSelected
-                          ? 'border-[#0067C0]/50 bg-[#0067C0]/[0.03] ring-1 ring-[#0067C0]/10'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
-                            {getInitials(shift.cashierName)}
-                          </div>
-                          <div className="min-w-0">
-                            <h5 className="truncate text-sm font-bold text-slate-900">
-                              {shift.cashierName}
-                            </h5>
-                            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#0067C0]">
-                              {shift.stationName}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                            aria-hidden="true"
-                          />
-                          Abierta
-                        </span>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 rounded-md bg-slate-50 p-3">
-                        <DetailValue
-                          label="Ventas netas"
-                          value={formatCurrency(shift.totalSales, shift.currency)}
-                        />
-                        <DetailValue
-                          label="Efectivo esperado"
-                          value={formatCurrency(shift.expectedCash, shift.currency)}
-                          emphasized
-                        />
-                        <DetailValue
-                          label="Fondo inicial"
-                          value={formatCurrency(shift.openingAmount, shift.currency)}
-                        />
-                        <DetailValue
-                          label="Tickets vigentes"
-                          value={shift.ticketCount.toLocaleString('es-VE')}
-                        />
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock3 size={12} />
-                          Apertura: {formatDate(shift.openedAt)}
-                        </span>
-                        <span>En turno: {getElapsedTime(shift.openedAt)}</span>
-                      </div>
-
-                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-                        <span className="text-[10px] text-slate-500">
-                          {isSelected
-                            ? 'Caja actualmente seleccionada'
-                            : 'Consulta de solo lectura'}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => {
-                            onSelect(shift.id)
-                            onClose()
-                          }}
-                          className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-wait disabled:opacity-50 ${
-                            isSelected
-                              ? 'border border-[#0067C0]/25 bg-[#0067C0]/5 text-[#005A9E] hover:bg-[#0067C0]/10'
-                              : 'bg-[#0067C0] text-white hover:bg-[#005A9E]'
-                          }`}
-                        >
-                          {isSelected ? 'Caja seleccionada' : 'Ver detalle de caja'}
-                        </button>
-                      </div>
-                    </article>
-                  )
-                })}
+                {filteredCashiers.map((cashier) => (
+                  <CashierMonitorCard
+                    key={cashier.cashierId}
+                    cashier={cashier}
+                    selectedShiftId={selectedShiftId}
+                    disabled={disabled}
+                    onSelect={onSelect}
+                    onClose={onClose}
+                  />
+                ))}
               </div>
             )}
           </section>

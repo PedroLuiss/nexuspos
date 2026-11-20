@@ -83,6 +83,7 @@ function AppContent(): React.JSX.Element {
   const [cashRegister, setCashRegister] = useState<CashRegisterData>({
     shift: null,
     shiftOptions: [],
+    cashierMonitor: [],
     movements: [],
     tickets: []
   })
@@ -468,7 +469,13 @@ function AppContent(): React.JSX.Element {
     } finally {
       setCart([])
       setSuspendedSales([])
-      setCashRegister({ shift: null, shiftOptions: [], movements: [], tickets: [] })
+      setCashRegister({
+        shift: null,
+        shiftOptions: [],
+        cashierMonitor: [],
+        movements: [],
+        tickets: []
+      })
       setCurrentUser(null)
       setIsLoggingOut(false)
       showToast(
@@ -481,7 +488,13 @@ function AppContent(): React.JSX.Element {
   // Cambio de operador validado por PIN desde el candado del header (LOCK).
   const handleOperatorSwitch = (nextUser: User): void => {
     setCurrentUser(nextUser)
-    setCashRegister({ shift: null, shiftOptions: [], movements: [], tickets: [] })
+    setCashRegister({
+      shift: null,
+      shiftOptions: [],
+      cashierMonitor: [],
+      movements: [],
+      tickets: []
+    })
     setSuspendedSales([])
     setCashError(null)
     void reloadCashRegister()

@@ -98,22 +98,38 @@ export interface CashTicket {
   currency: CurrencyCode
 }
 
+export type CashShiftOption = Pick<
+  CashShift,
+  | 'id'
+  | 'cashierId'
+  | 'openedAt'
+  | 'closedAt'
+  | 'cashierName'
+  | 'stationName'
+  | 'openingAmount'
+  | 'currency'
+  | 'expectedCash'
+  | 'countedCash'
+  | 'difference'
+  | 'totalSales'
+  | 'ticketCount'
+> & {
+  cashierRole?: UserRole
+}
+
+export interface CashierMonitorEntry {
+  cashierId: string
+  cashierName: string
+  stationName: string
+  isActive: boolean
+  activeShift: CashShiftOption | null
+}
+
 export interface CashRegisterData {
   shift: CashShift | null
   activeShiftId?: string
-  shiftOptions: Array<
-    Pick<
-      CashShift,
-      'id' | 'openedAt' | 'closedAt' | 'cashierName' | 'stationName' | 'openingAmount'
-    > &
-      Pick<CashShift, 'currency'> &
-      Pick<
-        CashShift,
-        'expectedCash' | 'countedCash' | 'difference' | 'totalSales' | 'ticketCount'
-      > & {
-        cashierRole?: UserRole
-      }
-  >
+  shiftOptions: CashShiftOption[]
+  cashierMonitor: CashierMonitorEntry[]
   movements: CashMovement[]
   tickets: CashTicket[]
 }

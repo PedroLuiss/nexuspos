@@ -141,6 +141,7 @@ export class SqliteCashRepository implements CashRepository {
       .prepare(
         `
       SELECT cash_shifts.id, cash_shifts.opened_at AS openedAt,
+        cash_shifts.cashier_id AS cashierId,
         cash_shifts.closed_at AS closedAt, cash_shifts.cashier_name AS cashierName,
         cash_shifts.station_name AS stationName,
         cash_shifts.opening_amount AS openingAmount, cash_shifts.currency,
@@ -166,6 +167,7 @@ export class SqliteCashRepository implements CashRepository {
       )
       .all({ cashierId, includeAllCashiers: includeAllCashiers ? 1 : 0 }) as Array<{
       id: string
+      cashierId: string
       openedAt: string
       closedAt: string | null
       cashierName: string
@@ -188,6 +190,38 @@ export class SqliteCashRepository implements CashRepository {
         cashierRole: cashierRole ?? undefined
       })
     )
+    const cashierMonitor: CashRegisterData['cashierMonitor'] = includeAllCashiers
+      ? (
+          this.db
+            .prepare(
+              `SELECT users.id AS cashierId, users.name AS cashierName,
+                users.active AS isActive,
+                COALESCE(NULLIF(TRIM(users.station), ''), 'CAJA-01') AS stationName,
+                active_shifts.id AS activeShiftId
+               FROM users
+               LEFT JOIN cash_shifts AS active_shifts
+                 ON active_shifts.cashier_id = users.id AND active_shifts.closed_at IS NULL
+               WHERE users.role = 'CASHIER'
+                 AND (users.active = 1 OR active_shifts.id IS NOT NULL)
+               ORDER BY users.name COLLATE NOCASE`
+            )
+            .all() as Array<{
+            cashierId: string
+            cashierName: string
+            isActive: number
+            stationName: string
+            activeShiftId: string | null
+          }>
+        ).map(({ activeShiftId, isActive, ...cashier }) => {
+          const activeShift = activeShiftId
+            ? shiftOptions.find((option) => option.id === activeShiftId)
+            : undefined
+          if (activeShiftId && !activeShift) {
+            throw new Error(`No se pudo cargar el turno abierto de ${cashier.cashierName}.`)
+          }
+          return { ...cashier, isActive: Boolean(isActive), activeShift: activeShift ?? null }
+        })
+      : []
     const selected = shiftId
       ? (this.db
           .prepare(
@@ -218,7 +252,14 @@ export class SqliteCashRepository implements CashRepository {
           .get(cashierId) as ShiftRow | undefined))
     const row = selected ?? active ?? latest
     if (!row)
-      return { shift: null, activeShiftId: active?.id, shiftOptions, movements: [], tickets: [] }
+      return {
+        shift: null,
+        activeShiftId: active?.id,
+        shiftOptions,
+        cashierMonitor,
+        movements: [],
+        tickets: []
+      }
 
     const movementRows = this.db
       .prepare(
@@ -346,7 +387,7 @@ export class SqliteCashRepository implements CashRepository {
       ticketCount: tickets.length,
       currency: row.currency
     }
-    return { shift, activeShiftId: active?.id, shiftOptions, movements, tickets }
+    return { shift, activeShiftId: active?.id, shiftOptions, cashierMonitor, movements, tickets }
   }
 
   openShift(

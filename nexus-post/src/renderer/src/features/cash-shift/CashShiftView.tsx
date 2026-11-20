@@ -50,9 +50,7 @@ export function CashShiftView({
   const isOwnOpenShift = Boolean(shift && shift.id === activeShiftId && shift.isOpen)
   const isSelectedShiftOpen = Boolean(shift?.isOpen)
   const hasActiveShift = Boolean(activeShiftId)
-  const openCashierShifts = register.shiftOptions.filter(
-    (option) => !option.closedAt && option.cashierRole === 'CASHIER'
-  )
+  const openCashierShifts = register.cashierMonitor.filter((cashier) => cashier.activeShift)
 
   const openDialog = useCallback((next: CashShiftDialogType): void => setDialog(next), [])
 
@@ -221,7 +219,7 @@ export function CashShiftView({
       )}
       {showOpenCashiers && isAdmin && (
         <CashierOpenShiftsPanel
-          shifts={openCashierShifts}
+          cashiers={register.cashierMonitor}
           selectedShiftId={shift?.id}
           disabled={isLoading}
           onSelect={onSelectShift}
