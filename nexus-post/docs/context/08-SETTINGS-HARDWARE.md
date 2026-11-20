@@ -44,8 +44,10 @@ El módulo de Ajustes centraliza los parámetros críticos del sistema y la comu
   - Modo "impuesto incluido": el impuesto se desagrega del precio sin sumarse al total; en caso contrario se suma al subtotal.
 - **Catálogos de producto (marcas, proveedores y tipos):**
   - Escrituras validadas como `ADMIN` en sus servicios de dominio, además de los controles visuales del renderer.
-  - Los tipos muestran el conteo real de productos referenciados. No se permite su baja lógica mientras haya referencias, incluidas las de productos inactivos o dados de baja; primero se debe reasignar el tipo de esos productos.
-  - La regla se valida en `ProductTypeService` y el repositorio SQLite; la UI deshabilita la acción con productos asociados y muestra el error si la baja se intenta por IPC.
+  - Los cuatro tipos base sembrados son operativos y protegidos por ID: no se pueden renombrar, desactivar ni eliminar. La migración 028 los restaura y fija sus nombres, `kind`, `track_stock` y estado activo sin cambiar referencias de productos.
+  - Las clasificaciones adicionales no definen comportamiento: `ProductTypeService` fuerza `kind: 'simple'` y `trackStock: true` al crearlas o editarlas. La migración 028 normaliza también los tipos personalizados anteriores.
+  - Los tipos personalizados muestran el conteo real de productos referenciados. No se permite su baja lógica mientras haya referencias, incluidas las de productos inactivos o dados de baja; primero se debe reasignar el tipo de esos productos.
+  - Las reglas se validan en `ProductTypeService` y la UI bloquea las acciones de los cuatro tipos base; la capa de dominio también rechaza los intentos directos por IPC.
 - **Conexión de Báscula por Puerto Serial (RS-232 / COM):**
   - Comunicación con balanzas de peso comercial (Torrey, Rhino, Dibal) mediante lectura de buffer serial.
   - Parámetros persistidos en SQLite: puerto COM y velocidad en baudios; el guardado registra al administrador que hizo el cambio.

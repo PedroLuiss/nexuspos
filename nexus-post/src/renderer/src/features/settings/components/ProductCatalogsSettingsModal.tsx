@@ -7,21 +7,14 @@ import type {
   ProductType,
   ProductTypeInput
 } from '@shared/contracts'
-import {
-  X,
-  ShieldAlert,
-  AlertCircle,
-  Building2,
-  Truck,
-  Package
-} from '../../../shared/icons/Icons'
+import { X, ShieldAlert, AlertCircle, Building2, Truck, Package } from '../../../shared/icons/Icons'
+import { isCoreProductTypeId } from '@shared/contracts'
 import { useBrands } from '../../../shared/hooks/useBrands'
 import { useSuppliers } from '../../../shared/hooks/useSuppliers'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { CatalogEditor } from './CatalogEditor'
 
-const tabClass =
-  'px-3 py-1.5 text-xs font-medium rounded-[4px] transition-colors cursor-pointer'
+const tabClass = 'px-3 py-1.5 text-xs font-medium rounded-[4px] transition-colors cursor-pointer'
 
 interface ProductCatalogsSettingsModalProps {
   isOpen: boolean
@@ -100,9 +93,7 @@ export const ProductCatalogsSettingsModal: React.FC<ProductCatalogsSettingsModal
         {!canEdit && (
           <div className="px-5 py-2 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
             <ShieldAlert size={13} className="text-slate-500" />
-            <span>
-              Modo lectura: solo el Administrador puede modificar estos catálogos.
-            </span>
+            <span>Modo lectura: solo el Administrador puede modificar estos catálogos.</span>
           </div>
         )}
 
@@ -181,9 +172,16 @@ export const ProductCatalogsSettingsModal: React.FC<ProductCatalogsSettingsModal
               itemSubtitle={(item: ProductType) =>
                 item.trackStock ? 'Con control de stock' : 'Servicio (sin stock)'
               }
+              isItemProtected={(item: ProductType) => isCoreProductTypeId(item.id)}
               placeholderName="Ej. Producto Simple, Combo, Servicio, Insumo…"
               entityName="tipo de producto"
             />
+          )}
+          {activeTab === 'types' && (
+            <p className="rounded border border-blue-100 bg-blue-50/60 px-3 py-2 text-[10px] text-blue-900">
+              Los cuatro tipos operativos base están protegidos. Las nuevas clasificaciones se
+              comportan como Producto Simple y mantienen control de stock.
+            </p>
           )}
         </div>
 

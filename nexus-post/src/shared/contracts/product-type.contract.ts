@@ -7,11 +7,38 @@
  */
 export type ProductTypeKind = 'simple' | 'combo' | 'service' | 'raw_material'
 
+export interface CoreProductTypeDefinition {
+  id: string
+  name: string
+  kind: ProductTypeKind
+  trackStock: boolean
+}
+
+export const CORE_PRODUCT_TYPES: readonly CoreProductTypeDefinition[] = [
+  { id: 'type-simple', name: 'Producto Simple', kind: 'simple', trackStock: true },
+  { id: 'type-combo', name: 'Combo / Kit', kind: 'combo', trackStock: true },
+  { id: 'type-service', name: 'Servicio', kind: 'service', trackStock: false },
+  {
+    id: 'type-raw-material',
+    name: 'Insumo / Materia Prima',
+    kind: 'raw_material',
+    trackStock: true
+  }
+]
+
+export function getCoreProductType(id: string): CoreProductTypeDefinition | undefined {
+  return CORE_PRODUCT_TYPES.find((type) => type.id === id)
+}
+
+export function isCoreProductTypeId(id: string): boolean {
+  return getCoreProductType(id) !== undefined
+}
+
 export interface ProductType {
   id: string
   name: string
   kind: ProductTypeKind
-  /** Si es true, el producto no tiene stock físico (ej. servicio). */
+  /** Si es false, el producto no maneja existencias físicas (ej. servicio). */
   trackStock: boolean
   active: boolean
   deleted?: boolean

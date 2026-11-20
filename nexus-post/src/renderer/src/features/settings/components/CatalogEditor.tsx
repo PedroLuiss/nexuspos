@@ -19,6 +19,7 @@ interface CatalogEditorProps<T extends CatalogEntity> {
   deleteItem: (id: string) => Promise<void>
   itemLabel: (item: T) => string | undefined
   itemSubtitle?: (item: T) => string | undefined
+  isItemProtected?: (item: T) => boolean
   placeholderName: string
   entityName: string
 }
@@ -36,6 +37,7 @@ export function CatalogEditor<T extends CatalogEntity>({
   deleteItem,
   itemLabel,
   itemSubtitle,
+  isItemProtected,
   placeholderName,
   entityName
 }: CatalogEditorProps<T>): React.JSX.Element {
@@ -147,54 +149,66 @@ export function CatalogEditor<T extends CatalogEntity>({
                 </td>
               </tr>
             )}
-            {items.map((item) => (
-              <tr key={item.id} className={item.active ? '' : 'opacity-60'}>
-                <td className="py-1.5 px-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-slate-800">{itemLabel(item)}</span>
-                    {!item.active && (
-                      <span className="text-[9px] font-bold uppercase text-slate-500 bg-slate-100 border border-slate-200 rounded-[3px] px-1">
-                        Inactiva
-                      </span>
+            {items.map((item) => {
+              const isProtected = isItemProtected?.(item) ?? false
+              return (
+                <tr key={item.id} className={item.active ? '' : 'opacity-60'}>
+                  <td className="py-1.5 px-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-800">{itemLabel(item)}</span>
+                      {isProtected && (
+                        <span className="rounded-[3px] border border-blue-200 bg-blue-50 px-1 text-[9px] font-bold uppercase text-[#005A9E]">
+                          Operativo
+                        </span>
+                      )}
+                      {!item.active && (
+                        <span className="text-[9px] font-bold uppercase text-slate-500 bg-slate-100 border border-slate-200 rounded-[3px] px-1">
+                          Inactiva
+                        </span>
+                      )}
+                    </div>
+                    {itemSubtitle && (
+                      <span className="text-[10px] text-slate-400">{itemSubtitle(item)}</span>
                     )}
-                  </div>
-                  {itemSubtitle && (
-                    <span className="text-[10px] text-slate-400">{itemSubtitle(item)}</span>
-                  )}
-                </td>
-                <td className="py-1.5 px-2 text-center font-mono text-slate-500">
-                  {item.productCount ?? '—'}
-                </td>
-                <td className="py-1.5 px-2">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      type="button"
-                      disabled={!canEdit}
-                      onClick={() => startEdit(item)}
-                      title={`Editar ${entityName}`}
-                      className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 disabled:opacity-30 cursor-pointer"
-                    >
-                      <Edit3 size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={
-                        !canEdit || (item.productCount ?? 0) > 0
-                      }
-                      onClick={() => void handleDelete(item)}
-                      title={
-                        (item.productCount ?? 0) > 0
-                          ? 'Tiene productos asignados'
-                          : `Eliminar ${entityName}`
-                      }
-                      className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 disabled:opacity-30 cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-1.5 px-2 text-center font-mono text-slate-500">
+                    {item.productCount ?? '—'}
+                  </td>
+                  <td className="py-1.5 px-2">
+                    {isProtected ? (
+                      <span className="block text-center text-[10px] font-semibold text-slate-400">
+                        Protegido
+                      </span>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() => startEdit(item)}
+                          title={`Editar ${entityName}`}
+                          className="p-1 rounded text-[#717783] hover:text-[#0067C0] hover:bg-blue-50 disabled:opacity-30 cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canEdit || (item.productCount ?? 0) > 0}
+                          onClick={() => void handleDelete(item)}
+                          title={
+                            (item.productCount ?? 0) > 0
+                              ? 'Tiene productos asignados'
+                              : `Eliminar ${entityName}`
+                          }
+                          className="p-1 rounded text-[#717783] hover:text-[#C42B1C] hover:bg-red-50 disabled:opacity-30 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
