@@ -54,6 +54,7 @@ Cualquier cambio propuesto por una IA o desarrollador DEBE cumplir estrictamente
    - ✅ Los campos monetarios compartidos muestran montos redondeados a dos decimales (`CurrencyInput` / `MoneyInput`); cantidades, tasas y porcentajes conservan su precisión propia.
 7. **Shell y Controles de Ventana**:
    - ✅ El header del dashboard (`app/DashboardLayout.tsx`) concentra identidad (logo), estado del turno, candado de operador (PIN real vía `auth:loginWithPin`) y cierre de sesión.
+   - ✅ La ventana principal se maximiza al iniciar y conserva un tamaño mínimo de 960 × 600 para permitir restaurarla sin perder la disposición del POS.
    - ✅ El footer muestra únicamente estado operativo para el usuario, fecha y enlace al formulario de reportes; no expone detalles de infraestructura, almacenamiento ni hardware.
    - ⚠️ Los reportes se envían solo con internet por `POST /api/v1/support/issue-reports`, sin cola local. El cliente transmite únicamente categoría, asunto, descripción y correo opcional; Laravel debe implementar validación, limitación de frecuencia y respuesta `{ "success": true, "message": "..." }`.
    - ✅ Los controles minimizar/maximizar/cerrar del header de login usan `window.api.appWindow.*`, respaldado por `main/ipc/window.ipc.ts` (`appWindow:*`). Nunca se accede a `BrowserWindow` desde el renderer.
