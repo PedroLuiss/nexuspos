@@ -7,6 +7,11 @@ import { useAllPriceTiers } from '../../../shared/hooks/useAllPriceTiers'
 import { computeSaleTotals, resolveProductTax } from '@shared/lib/tax'
 import ThermalTicketDocument from './ThermalTicketDocument'
 import LetterInvoiceDocument from './LetterInvoiceDocument'
+import {
+  downloadInvoicePdf,
+  printInvoicePdf,
+  type InvoicePdfData
+} from '../lib/generateInvoicePdf'
 
 interface TicketPreviewModalProps {
   isOpen: boolean
@@ -62,10 +67,31 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
 
   const isLetter = business.invoicePaperSize === 'LETTER_PDF'
   const is58mm = business.invoicePaperSize === 'TICKET_58MM'
+  const paperSize = business.invoicePaperSize || 'TICKET_80MM'
   const clientDisplayName = customer?.name || customerName || 'Cliente'
 
-  const handlePrint = (): void => {
-    window.print()
+  const invoiceData: InvoicePdfData = {
+    business,
+    items,
+    subtotal,
+    tax,
+    discount,
+    total,
+    taxBreakdown: totals.taxBreakdown,
+    payment,
+    ticketNumber,
+    cashierName,
+    customer,
+    customerDisplayName: clientDisplayName,
+    exchangeRate
+  }
+
+  const handleDownloadPdf = (): void => {
+    downloadInvoicePdf(invoiceData, paperSize)
+  }
+
+  const handlePrintPdf = (): void => {
+    printInvoicePdf(invoiceData, paperSize)
   }
 
   return (
@@ -139,7 +165,11 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
         {/* Footer Actions */}
         <div className="px-4 py-3 bg-[#f8f9fa] border-t border-slate-200 flex justify-between items-center">
           <span className="text-[11px] text-slate-500">
-            {isLetter ? 'Formato Hoja Carta / A4 comercial' : 'Formato Ticket para impresora de recibos'}
+            {isLetter
+              ? 'Formato Hoja Carta / A4 comercial (PDF Vectorial)'
+              : is58mm
+                ? 'Formato Ticket Térmico 58mm (PDF / Impresión)'
+                : 'Formato Ticket Térmico 80mm (PDF / Impresión)'}
           </span>
 
           <div className="flex items-center gap-2">
@@ -151,11 +181,27 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
             </button>
 
             <button
-              onClick={handlePrint}
+              type="button"
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-[4px] shadow-xs cursor-pointer"
+            >
+              <Download size={14} className="text-[#0078D4]" />
+              <span>
+                {isLetter
+                  ? 'Descargar PDF'
+                  : is58mm
+                    ? 'Descargar PDF (58mm)'
+                    : 'Descargar PDF (80mm)'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrintPdf}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#0078D4] hover:bg-[#106EBE] rounded-[4px] shadow-xs cursor-pointer"
             >
-              {isLetter ? <Download size={14} /> : <Printer size={14} />}
-              <span>{isLetter ? 'Imprimir / Descargar PDF' : 'Imprimir Ticket'}</span>
+              <Printer size={14} />
+              <span>{isLetter ? 'Imprimir Factura' : 'Imprimir Ticket'}</span>
             </button>
           </div>
         </div>

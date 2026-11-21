@@ -17,7 +17,7 @@ El módulo POS es el núcleo transaccional de atención rápida:
 - Cobro Rápido en Efectivo (`[ALT + Q]`): Liquidación inmediata con un solo toque.
 - Pago mixto (`[F8]`): Distribución exacta entre efectivo y tarjeta.
 - Suspensión y reanudación de ventas en espera persistidas en SQLite (`[ALT + P]`).
-- Previsualización del ticket de 80mm. La impresión física ESC/POS aún no está conectada.
+- Previsualización y generación de PDF vectorial profesional nativo para los tres formatos configurables (`LETTER_PDF`, `TICKET_80MM`, `TICKET_58MM`) mediante `jsPDF` y `jspdf-autotable` (`generateInvoicePdf.ts`), permitiendo descarga directa del documento e impresión limpia sin recurrir a captura o recorte de ventana (`window.print`). Ideal tanto para negocios con impresoras como para aquellos que operan en modo digital/sin impresora física.
 
 ---
 

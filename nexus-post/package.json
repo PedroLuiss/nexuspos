@@ -26,6 +26,8 @@
     "better-sqlite3": "^13.1.1",
     "bwip-js": "^4.11.4",
     "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "lucide-react": "^1.16.0",
     "nodemailer": "^10.6.1",
     "serialport": "^13.0.0"

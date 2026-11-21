@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useMemo } from 'react'
+import bwipjs from 'bwip-js'
 import type { CartItem, PaymentDetails } from '../../../shared/types/domain'
 import type { BusinessConfig, CurrencyVesExchangeRate } from '@shared/contracts'
 import { formatBusinessAddress } from '../../../shared/lib/businessConfig'
@@ -37,8 +38,24 @@ export const ThermalTicketDocument: React.FC<ThermalTicketDocumentProps> = ({
   exchangeRate,
   is58mm = false
 }) => {
+  const barcodeSvg = useMemo(() => {
+    try {
+      return bwipjs.toSVG({
+        bcid: 'code128',
+        text: ticketNumber.trim(),
+        height: 8,
+        scale: 2,
+        includetext: false,
+        padding: 0
+      })
+    } catch {
+      return null
+    }
+  }, [ticketNumber])
+
   return (
     <div
+      id="thermal-ticket-print"
       className={`bg-white p-3.5 shadow-md font-mono leading-relaxed text-slate-800 border-t-4 border-[#0078D4] ${
         is58mm ? 'w-56 text-[10px]' : 'w-72 text-[11px]'
       }`}
@@ -176,11 +193,14 @@ export const ThermalTicketDocument: React.FC<ThermalTicketDocumentProps> = ({
 
       {/* Código de barras y pie */}
       <div className="pt-2 text-center">
-        <div className="flex items-center justify-center h-6 gap-[2px]">
-          {[2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 2, 4, 1, 2, 3, 1].map((w, i) => (
-            <div key={i} className="bg-black h-full" style={{ width: `${w}px` }} />
-          ))}
-        </div>
+        {barcodeSvg ? (
+          <div
+            className="flex justify-center my-1 [&>svg]:max-h-7 [&>svg]:w-auto"
+            dangerouslySetInnerHTML={{ __html: barcodeSvg }}
+          />
+        ) : (
+          <div className="h-6" />
+        )}
         <div className="text-[9px] text-slate-400 mt-1 font-mono tracking-widest">*{ticketNumber}*</div>
         <div className="text-[9px] text-slate-500 mt-1 italic">
           {business.ticketFooter || '¡Gracias por su compra!'}
