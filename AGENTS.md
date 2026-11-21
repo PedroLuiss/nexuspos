@@ -1,7 +1,7 @@
-# Rules for NexusPOS Desktop
+# Rules for NovusPOS Desktop
 
 ## Contexto del Proyecto
-NexusPOS es un sistema de Punto de Venta (POS), inventario, auditoría kardex y administración comercial nativo para Windows (Windows 11 Fluent Design / WinUI 3 visual engine).
+NovusPOS es un sistema de Punto de Venta (POS), inventario, auditoría kardex y administración comercial nativo para Windows (Windows 11 Fluent Design / WinUI 3 visual engine).
 
 - **Stack**: Electron + React 19 + TypeScript + Tailwind CSS + Vite (`electron-vite`) + SQLite (`better-sqlite3`).
 - **Procesos**:
@@ -13,19 +13,19 @@ NexusPOS es un sistema de Punto de Venta (POS), inventario, auditoría kardex y 
 
 ## 📚 Matriz de Contextos Modulares (Ahorro de Tokens)
 
-Para optimizar el uso de tokens y permitir que cualquier IA comprenda el proyecto sin saturar el contexto, la documentación técnica está fragmentada por módulos en `nexus-post/docs/context/`.
+Para optimizar el uso de tokens y permitir que cualquier IA comprenda el proyecto sin saturar el contexto, la documentación técnica está fragmentada por módulos en `novus-post/docs/context/`.
 
 > **Directiva Obligatoria para IAs:** Antes de trabajar, lee el contexto maestro y **ÚNICAMENTE** el contexto del módulo que vas a modificar.
 
-1. **[00-MASTER-CONTEXT.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/00-MASTER-CONTEXT.md)**: Estándares de arquitectura global, reglas de código, layout WinUI 3 y mapa del proyecto.
-2. **[01-AUTH-SESSION.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/01-AUTH-SESSION.md)**: Autenticación, PIN [F10], recuperación OTP + nueva clave y control de sesión.
-3. **[02-POS-SALES.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/02-POS-SALES.md)**: Terminal de ventas [F1], carrito reactivo, cobro normal [F12], cobro rápido [ALT+Q] y tickets 80mm.
-4. **[03-INVENTORY-PRODUCTS.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/03-INVENTORY-PRODUCTS.md)**: Catálogo denso [F2], nuevo producto [ALT+N], ajustes masivos [ALT+E/S] y código de barras [ALT+B].
-5. **[04-KARDEX-AUDIT.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/04-KARDEX-AUDIT.md)**: Auditoría inmutable [F3], trazabilidad histórica de entradas/salidas y exportación.
-6. **[05-CASH-SHIFT.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/05-CASH-SHIFT.md)**: Corte de turno [F4], Arqueo Z [ALT+K], balance esperado vs contado y gastos [ALT+G].
-7. **[06-CUSTOMERS-CREDIT.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/06-CUSTOMERS-CREDIT.md)**: Directorio de clientes [F5], cuentas corrientes, cartera vencida y abonos a caja.
-8. **[07-REPORTS-ANALYTICS.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/07-REPORTS-ANALYTICS.md)**: KPIs [F6], gráfico SVG interactivo de ventas y top 5 de productos.
-9. **[08-SETTINGS-HARDWARE.md](file:///c:/laragon/www/nexuspos/nexus-post/docs/context/08-SETTINGS-HARDWARE.md)**: Ajustes [F7], báscula RS-232, impresoras térmicas, backup SQLite y matriz RBAC [ALT+U].
+1. **[00-MASTER-CONTEXT.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/00-MASTER-CONTEXT.md)**: Estándares de arquitectura global, reglas de código, layout WinUI 3 y mapa del proyecto.
+2. **[01-AUTH-SESSION.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/01-AUTH-SESSION.md)**: Autenticación, PIN [F10], recuperación OTP + nueva clave y control de sesión.
+3. **[02-POS-SALES.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/02-POS-SALES.md)**: Terminal de ventas [F1], carrito reactivo, cobro normal [F12], cobro rápido [ALT+Q] y tickets 80mm.
+4. **[03-INVENTORY-PRODUCTS.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/03-INVENTORY-PRODUCTS.md)**: Catálogo denso [F2], nuevo producto [ALT+N], ajustes masivos [ALT+E/S] y código de barras [ALT+B].
+5. **[04-KARDEX-AUDIT.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/04-KARDEX-AUDIT.md)**: Auditoría inmutable [F3], trazabilidad histórica de entradas/salidas y exportación.
+6. **[05-CASH-SHIFT.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/05-CASH-SHIFT.md)**: Corte de turno [F4], Arqueo Z [ALT+K], balance esperado vs contado y gastos [ALT+G].
+7. **[06-CUSTOMERS-CREDIT.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/06-CUSTOMERS-CREDIT.md)**: Directorio de clientes [F5], cuentas corrientes, cartera vencida y abonos a caja.
+8. **[07-REPORTS-ANALYTICS.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/07-REPORTS-ANALYTICS.md)**: KPIs [F6], gráfico SVG interactivo de ventas y top 5 de productos.
+9. **[08-SETTINGS-HARDWARE.md](file:///c:/laragon/www/novuspos/novus-post/docs/context/08-SETTINGS-HARDWARE.md)**: Ajustes [F7], báscula RS-232, impresoras térmicas, backup SQLite y matriz RBAC [ALT+U].
 
 > **Protocolo de Actualización:** Por cada cambio significativo realizado en un módulo, se debe actualizar su archivo de contexto respectivo.
 
