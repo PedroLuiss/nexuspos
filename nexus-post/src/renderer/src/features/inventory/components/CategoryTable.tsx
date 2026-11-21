@@ -6,6 +6,7 @@ import TablePagination from './TablePagination'
 
 interface CategoryTableProps {
   categories: Category[]
+  isLoading?: boolean
   onEdit: (category: Category) => void
   onDelete: (category: Category) => void
   onToggleStatus: (id: string) => void
@@ -14,11 +15,55 @@ interface CategoryTableProps {
 /** Tabla densa de categorías (estado, acciones). Estilo Fluent WinUI 3. */
 export const CategoryTable: React.FC<CategoryTableProps> = ({
   categories,
+  isLoading = false,
   onEdit,
   onDelete,
   onToggleStatus
 }) => {
   const pagination = useTablePagination(categories)
+
+  if (isLoading) {
+    return (
+      <div className="border border-[#E5E5E5] rounded-[4px] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[540px] text-xs">
+            <thead>
+              <tr className="bg-[#F9F9F9] border-b border-[#E5E5E5] text-[#5C5C5C]">
+                <th className="text-left px-3 py-2 font-semibold">Nombre</th>
+                <th className="text-left px-3 py-2 font-semibold">Descripción</th>
+                <th className="text-center px-3 py-2 font-semibold w-24">Estado</th>
+                <th className="text-right px-3 py-2 font-semibold w-32">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F0F0F0]">
+              {Array.from({ length: 4 }, (_, i) => (
+                <tr key={i} className="animate-pulse" style={{ height: '36px' }}>
+                  <td className="px-3 py-2">
+                    <div className="h-3 w-28 bg-slate-200 rounded-[3px]" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div
+                      className="h-3 bg-slate-100 rounded-[3px]"
+                      style={{ width: `${40 + i * 15}%` }}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <div className="h-4 w-14 bg-slate-200 rounded-full mx-auto" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <div className="w-6 h-6 bg-slate-200 rounded-[3px]" />
+                      <div className="w-6 h-6 bg-slate-200 rounded-[3px]" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
 
   if (categories.length === 0) {
     return (

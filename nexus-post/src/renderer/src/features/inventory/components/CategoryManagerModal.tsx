@@ -156,6 +156,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
 
           <CategoryTable
             categories={categories}
+            isLoading={manager.isLoading}
             onEdit={(cat) => {
               setEditing(cat)
               setShowForm(true)

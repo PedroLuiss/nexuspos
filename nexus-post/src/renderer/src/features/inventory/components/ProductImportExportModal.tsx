@@ -83,8 +83,34 @@ export const ProductImportExportModal: React.FC<ProductImportExportModalProps> =
         {/* Contenido de Tabs */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoadingProducts ? (
-            <div className="p-10 text-center text-xs font-semibold text-slate-500">
-              Cargando catálogo de productos...
+            <div className="p-4 sm:p-5 space-y-4 animate-pulse">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div className="space-y-1.5">
+                  <div className="h-4 w-48 bg-slate-200 rounded-[3px]" />
+                  <div className="h-2.5 w-64 bg-slate-100 rounded-[3px]" />
+                </div>
+                <div className="h-8 w-32 bg-slate-200 rounded-[4px]" />
+              </div>
+              <div className="space-y-2">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-[4px]"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-8 h-8 bg-slate-200 rounded-[3px]" />
+                      <div className="space-y-1.5 flex-1">
+                        <div
+                          className="h-3 bg-slate-200 rounded-[3px]"
+                          style={{ width: `${40 + i * 12}%` }}
+                        />
+                        <div className="h-2 w-24 bg-slate-100 rounded-[3px]" />
+                      </div>
+                    </div>
+                    <div className="h-3 w-16 bg-slate-200 rounded-[3px]" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : activeTab === 'export' ? (
             <ProductExportTab products={products} />

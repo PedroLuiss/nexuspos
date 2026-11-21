@@ -45,7 +45,17 @@ export const BarcodeLabelPreview: React.FC<BarcodeLabelPreviewProps> = ({
         {productName}
       </div>
       <div className="my-2 flex flex-col items-center">
-        {barcodeSvg ? (
+        {isLoading ? (
+          <div className="h-12 w-36 flex items-center justify-center gap-1 animate-pulse">
+            {Array.from({ length: 16 }, (_, i) => (
+              <div
+                key={i}
+                className="bg-slate-300 h-10 rounded-[1px]"
+                style={{ width: i % 3 === 0 ? '4px' : '2px' }}
+              />
+            ))}
+          </div>
+        ) : barcodeSvg ? (
           <img
             src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(barcodeSvg)}`}
             alt={`Código de barras ${barcodeValue}`}
@@ -53,11 +63,15 @@ export const BarcodeLabelPreview: React.FC<BarcodeLabelPreviewProps> = ({
           />
         ) : (
           <span className="h-12 flex items-center text-[10px] text-slate-400">
-            {isLoading ? 'Cargando código…' : 'Vista previa no disponible'}
+            Vista previa no disponible
           </span>
         )}
         <span className="font-mono text-[10px] tracking-widest text-slate-800 mt-1">
-          {barcodeValue}
+          {isLoading ? (
+            <span className="inline-block w-24 h-2.5 bg-slate-200 rounded-[2px] animate-pulse" />
+          ) : (
+            barcodeValue
+          )}
         </span>
       </div>
       {includePrice && (

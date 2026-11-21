@@ -16,16 +16,12 @@ import { useBrands } from '../../../shared/hooks/useBrands'
 import { useSuppliers } from '../../../shared/hooks/useSuppliers'
 import { useProductTypes } from '../../../shared/hooks/useProductTypes'
 import { productsApi, toErrorMessage } from '../api/products.api'
-import AddProductModal from './AddProductModal'
-import BarcodeGeneratorModal from './BarcodeGeneratorModal'
-import StockAdjustmentModal from './StockAdjustmentModal'
-import CategoryManagerModal from './CategoryManagerModal'
-import ProductImportExportModal from './ProductImportExportModal'
 import ProductToolbar from './ProductToolbar'
 import ProductFilters from './ProductFilters'
 import ProductRows from './ProductRows'
 import ProductStatusBar from './ProductStatusBar'
 import TablePagination from './TablePagination'
+import ProductTableModals from './ProductTableModals'
 import type { ProductImportBatchResult } from './ProductImportTab'
 
 export const ProductTable: React.FC<{ user: User }> = ({ user }) => {
@@ -252,7 +248,7 @@ export const ProductTable: React.FC<{ user: User }> = ({ user }) => {
           onEdit={handleEdit}
           onDelete={requestDelete}
         />
-        <ProductStatusBar stats={stats} />
+        <ProductStatusBar stats={stats} isLoading={isLoading} />
         <TablePagination
           page={page}
           pageSize={filters.pageSize}
@@ -264,54 +260,33 @@ export const ProductTable: React.FC<{ user: User }> = ({ user }) => {
         />
       </div>
 
-      {isModalOpen && (
-        <AddProductModal
-          user={user}
-          isOpen={isModalOpen}
-          initialProduct={editingProduct}
-          categories={categoryNames}
-          products={products}
-          onClose={() => {
-            setIsModalOpen(false)
-            setEditingProduct(null)
-          }}
-          onSubmit={handleSave}
-        />
-      )}
-
-      {confirmationDialog}
-
-      <CategoryManagerModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        manager={categoryManager}
-      />
-
-      <BarcodeGeneratorModal
-        isOpen={isBarcodeModalOpen}
-        products={fullCatalog}
-        onClose={() => setIsBarcodeModalOpen(false)}
-      />
-
-      <StockAdjustmentModal
-        key={adjustmentMode ?? 'closed'}
-        isOpen={adjustmentMode !== null}
-        mode={adjustmentMode || 'IN'}
+      <ProductTableModals
+        user={user}
+        isModalOpen={isModalOpen}
+        editingProduct={editingProduct}
+        categoryNames={categoryNames}
         products={products}
-        onClose={() => setAdjustmentMode(null)}
+        onCloseModal={() => {
+          setIsModalOpen(false)
+          setEditingProduct(null)
+        }}
+        onSaveProduct={handleSave}
+        confirmationDialog={confirmationDialog}
+        isCategoryModalOpen={isCategoryModalOpen}
+        onCloseCategoryModal={() => setIsCategoryModalOpen(false)}
+        categoryManager={categoryManager}
+        isBarcodeModalOpen={isBarcodeModalOpen}
+        fullCatalog={fullCatalog}
+        onCloseBarcodeModal={() => setIsBarcodeModalOpen(false)}
+        adjustmentMode={adjustmentMode}
+        onCloseAdjustment={() => setAdjustmentMode(null)}
         onConfirmAdjustment={handleStockAdjustment}
+        isImportExportOpen={isImportExportOpen}
+        importExportTab={importExportTab}
+        isLoadingFullCatalog={isLoadingFullCatalog}
+        onCloseImportExport={() => setIsImportExportOpen(false)}
+        onImportBatch={handleImportBatch}
       />
-
-      {isImportExportOpen && (
-        <ProductImportExportModal
-          isOpen={isImportExportOpen}
-          initialTab={importExportTab}
-          onClose={() => setIsImportExportOpen(false)}
-          products={fullCatalog}
-          isLoadingProducts={isLoadingFullCatalog}
-          onImportBatch={handleImportBatch}
-        />
-      )}
     </div>
   )
 }

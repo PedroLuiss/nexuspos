@@ -179,7 +179,23 @@ export const ProductSearchSelect: React.FC<ProductSearchSelectProps> = ({
           className="mt-1 max-h-48 overflow-y-auto border border-slate-200 bg-white rounded-[4px] shadow-md"
         >
           {isLoading ? (
-            <p className="px-2.5 py-2 text-[11px] text-slate-500">Buscando productos...</p>
+            <div className="p-1 space-y-1">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between gap-3 px-2.5 py-2 animate-pulse"
+                >
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div
+                      className="h-2.5 bg-slate-200 rounded-[3px]"
+                      style={{ width: `${55 + i * 15}%` }}
+                    />
+                    <div className="h-2 w-1/3 bg-slate-100 rounded-[3px]" />
+                  </div>
+                  <div className="h-3 w-14 bg-slate-200 rounded-[3px] shrink-0" />
+                </div>
+              ))}
+            </div>
           ) : loadError ? (
             <p role="alert" className="px-2.5 py-2 text-[11px] text-red-600">
               No se pudieron cargar productos: {loadError}

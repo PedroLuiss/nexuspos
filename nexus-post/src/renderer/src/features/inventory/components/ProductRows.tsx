@@ -2,6 +2,7 @@ import React from 'react'
 import type { Product } from '@shared/contracts'
 import { Package, Power, Edit3, Trash2 } from '../../../shared/icons/Icons'
 import ProductAvatar from '../../../shared/ui/ProductAvatar'
+import ProductTableSkeleton from './ProductTableSkeleton'
 import { formatTaxRate } from '@shared/lib/tax'
 import type { User } from '@shared/contracts'
 import { hasPermission } from '../../../shared/lib/permissions'
@@ -52,12 +53,14 @@ export const ProductRows: React.FC<ProductRowsProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-[#E5E5E5]">
-          {products.length === 0 ? (
+          {isLoading ? (
+            <ProductTableSkeleton rows={10} />
+          ) : products.length === 0 ? (
             <tr>
               <td colSpan={10} className="py-20 text-center text-[#717783]">
                 <Package size={40} className="mx-auto mb-2 text-[#D1D1D1]" />
                 <p className="text-xs font-semibold text-[#1B1B1B]">
-                  {isLoading ? 'Cargando catálogo...' : 'No se encontraron productos registrados'}
+                  No se encontraron productos registrados
                 </p>
               </td>
             </tr>
